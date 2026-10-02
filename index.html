@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="ms">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Borneo Pro Trade V3</title>
+    <script src="https://unpkg.com/lightweight-charts@4.1.3/dist/lightweight-charts.standalone.production.js"></script>
+    <style>
+        :root { --bg-dark: #0b1120; --bg-panel: #1e293b; --bg-header: #0f172a; --accent-yellow: #fbbf24; --text-green: #22c55e; --text-red: #ef4444; --text-blue: #38bdf8; --text-gray: #94a3b8; }
+        body { background-color: var(--bg-dark); color: white; font-family: Arial, sans-serif; margin: 0; padding: 0; padding-bottom: 70px; overflow-x: hidden; }
+        .header { background-color: var(--bg-header); padding: 15px; text-align: center; border-bottom: 1px solid #1e293b; }
+        .header img { display: block; margin: 0 auto 10px auto; width: 90px; height: 90px; border-radius: 50%; object-fit: cover; box-shadow: 0 0 20px rgba(56, 189, 248, 0.6); border: 2px solid #38bdf8; }
+        .header h1 { margin: 0; color: var(--accent-yellow); font-size: 18px; letter-spacing: 1px; }
+        select { margin-top: 10px; padding: 8px; border-radius: 5px; background-color: #1e293b; color: white; border: 1px solid #334155; font-weight: bold; width: 80%; }
+        .screen { display: none; padding: 15px; }
+        .screen.active { display: block; }
+        .card { background-color: var(--bg-panel); border-radius: 8px; padding: 15px; margin-bottom: 15px; }
+        .card-title { font-size: 14px; font-weight: bold; color: var(--text-gray); margin-top: 0; margin-bottom: 10px; }
+        
+        .signal-box { padding: 30px 40px; border-radius: 15px; font-size: 45px; font-weight: bold; text-align: center; margin: 20px auto; transition: all 0.3s ease; min-width: 280px; line-height: 1.2; max-width: 90%; }
+        .wait { background-color: #334155; color: #94a3b8; border: 3px solid #475569; }
+        .buy { background-color: #166534; color: #4ade80; border: 3px solid #22c55e; box-shadow: 0 0 30px rgba(34, 197, 94, 0.5); }
+        .sell { background-color: #991b1b; color: #fca5a5; border: 3px solid #ef4444; box-shadow: 0 0 30px rgba(239, 68, 68, 0.5); }
+
+        .poc-banner { background-color: var(--accent-yellow); color: var(--bg-dark); font-weight: bold; text-align: center; padding: 12px; border-radius: 8px; margin-bottom: 10px; font-size: 18px; }
+        .sell-power { background-color: #991b1b; border: 1px solid #ef4444; padding: 10px; border-radius: 8px; margin-bottom: 20px; }
+        .sell-power h3 { margin: 0; color: #fca5a5; font-size: 16px; }
+        .sell-power p { margin: 5px 0 0 0; font-size: 12px; color: #f87171; }
+        .snr-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 20px; }
+        .snr-box { background-color: var(--bg-panel); padding: 10px; border-radius: 8px; text-align: center; border: 1px solid #334155; }
+        .snr-box .label { font-size: 12px; margin-bottom: 5px; }
+        .snr-box .value { font-size: 18px; font-weight: bold; color: white; }
+        .snr-box.red .label { color: #ef4444; } .snr-box.green .label { color: #22c55e; } .snr-box.blue .label { color: #3b82f6; }
+        .snr-box.yellow { background-color: var(--accent-yellow); border: none; } .snr-box.yellow .label, .snr-box.yellow .value { color: var(--bg-dark); }
+        
+        .table-container { background-color: var(--bg-panel); border-radius: 8px; overflow: hidden; }
+        table { width: 100%; border-collapse: collapse; font-size: 14px; }
+        th { background-color: #334155; padding: 10px; color: var(--text-gray); text-align: left; font-size: 12px;}
+        td { padding: 10px; border-bottom: 1px solid var(--bg-dark); }
+        .highlight-row { background-color: var(--accent-yellow); color: var(--bg-dark); font-weight: bold; }
+        .text-green { color: var(--text-green); } .text-red { color: var(--text-red); }
+
+        #chart { width: 100%; height: 400px; background-color: var(--bg-panel); border-radius: 8px; }
+        .news-panel { background-color: #1e293b; padding: 15px; border-radius: 8px; margin-bottom: 15px; }
+        .news-row { display: flex; justify-content: space-between; margin: 8px 0; font-size: 14px;}
+        .news-label { color: #94a3b8; } .news-value { color: white; font-weight: bold; }
+
+        #bottom-nav { position: fixed; bottom: 0; left: 0; width: 100%; background-color: var(--bg-header); border-top: 1px solid #1e293b; display: flex; justify-content: space-around; padding: 10px 0; z-index: 100; }
+        .nav-item { display: flex; flex-direction: column; align-items: center; color: #64748b; font-size: 10px; cursor: pointer; background: none; border: none; width: 25%; }
+        .nav-item.active { color: var(--accent-yellow); } .nav-item span { margin-top: 5px; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <img src="logo.png" alt="Borneo Pro Trade Logo">
+        <h1>BORNEO PRO TRADE V3</h1>
+        <select id="market-selector" onchange="tukarMarket()">
+            <option value="XAU/USD">XAUUSD (Gold)</option>
+            <option value="BTCUSDT">BTCUSDT (Bitcoin)</option>
+            <option value="EUR/USD">EURUSD (Euro)</option>
+        </select>
+    </div>
+
+    <!-- SKRIN 1: SIGNAL -->
+    <div id="screen-signal" class="screen active">
+        <div style="text-align: center; margin: 10px 0;">
+            <h2 style="font-size: 40px; margin: 0;" id="main-price-signal">Loading...</h2>
+            <p style="color: var(--text-green); margin: 5px 0;">↑ +12.64 (+0.30%) • Today</p>
+            <span style="background-color: #166534; color: #4ade80; padding: 2px 8px; border-radius: 10px; font-size: 10px; font-weight: bold;">● LIVE</span>
+        </div>
+        <div id="signal-box" class="signal-box wait">WAIT</div>
+        <div class="card" style="text-align: center; margin-top: 20px;">
+            <span style="color: var(--text-gray);">EMA 9:</span> <span id="ema9" style="color: white; font-weight: bold;">-</span> &nbsp;|&nbsp;
+            <span style="color: var(--text-gray);">EMA 21:</span> <span id="ema21" style="color: white; font-weight: bold;">-</span>
+            <p id="status" style="font-size: 12px; color: gray; margin-top: 10px;">Menunggu data...</p>
+        </div>
+    </div>
+
+    <!-- SKRIN 2: LEVELS -->
+    <div id="screen-levels" class="screen">
+        <div class="poc-banner">☆ POC <span id="poc-val">-</span></div>
+        <div class="sell-power"><h3>⚠ SELL POWER</h3><p>Signal active • Confidence <span id="confidence">86</span>%</p></div>
+        <p class="card-title">AUTO SNR LEVELS ✨</p>
+        <div class="snr-grid">
+            <div class="snr-box red"><div class="label">R3</div><div class="value" id="r3">-</div></div>
+            <div class="snr-box red"><div class="label">R2</div><div class="value" id="r2">-</div></div>
+            <div class="snr-box red"><div class="label">R1</div><div class="value" id="r1">-</div></div>
+            <div class="snr-box yellow"><div class="label">☆ POC</div><div class="value" id="poc-box">-</div></div>
+            <div class="snr-box blue"><div class="label">VAH</div><div class="value" id="vah">-</div></div>
+            <div class="snr-box blue"><div class="label">VAL</div><div class="value" id="val">-</div></div>
+            <div class="snr-box green"><div class="label">S1</div><div class="value" id="s1">-</div></div>
+            <div class="snr-box green"><div class="label">S2</div><div class="value" id="s2">-</div></div>
+            <div class="snr-box green"><div class="label">S3</div><div class="value" id="s3">-</div></div>
+        </div>
+        <p class="card-title">FOOTPRINT 📊</p>
+        <div class="table-container"><table><thead><tr><th>PRICE</th><th>VOL</th><th>DELTA</th></tr></thead><tbody id="footprint-summary"></tbody></table></div>
+    </div>
+
+    <!-- SKRIN 3: CHART -->
+    <div id="screen-chart" class="screen"><h2 style="text-align: center;">CHART</h2><div id="chart"></div></div>
+
+    <!-- SKRIN 4: NEWS -->
+    <div id="screen-news" class="screen">
+        <h2 style="text-align: center; color: #fbbf24; margin-top: 0;">AI NEWS ANALYZER</h2>
+        <div class="news-panel">
+            <h3 id="news-event" style="color: #fbbf24; margin-top: 0; text-align: center;">Menunggu Berita...</h3>
+            <div class="news-row"><span class="news-label">Actual:</span> <span id="news-actual" class="news-value">-</span></div>
+            <div class="news-row"><span class="news-label">Forecast:</span> <span id="news-forecast" class="news-value">-</span></div>
+            <div class="news-row"><span class="news-label">Previous:</span> <span id="news-previous" class="news-value">-</span></div>
+            <hr style="border-color: #334155; margin: 15px 0;">
+            <h2 id="news-bias" style="color: gray; text-align: center; margin: 10px 0;">MENUNGGU...</h2>
+            <p id="news-alasan" style="font-size: 12px; color: #94a3b8; text-align: center;">Sila tunggu berita seterusnya.</p>
+        </div>
+    </div>
+
+    <!-- MENU BAWAH -->
+    <nav id="bottom-nav">
+        <button class="nav-item active" onclick="switchTab('signal', this)">📈<span>SIGNAL</span></button>
+        <button class="nav-item" onclick="switchTab('levels', this)">⭐<span>LEVELS</span></button>
+        <button class="nav-item" onclick="switchTab('chart', this)">📉<span>CHART</span></button>
+        <button class="nav-item" onclick="switchTab('news', this)">📰<span>NEWS</span></button>
+    </nav>
+
+    <script>
+        let marketAktif = 'XAU/USD';
+        
+        function switchTab(tabName, element) {
+            document.querySelectorAll('.screen').forEach(screen => screen.classList.remove('active'));
+            document.getElementById('screen-' + tabName).classList.add('active');
+            document.querySelectorAll('.nav-item').forEach(btn => btn.classList.remove('active'));
+            element.classList.add('active');
+            if(tabName === 'chart') { setTimeout(() => chart.applyOptions({ width: document.getElementById('chart').clientWidth }), 10); }
+        }
+
+        function tukarMarket() {
+            marketAktif = document.getElementById('market-selector').value;
+            dapatkanSignal(); dapatkanMarketData(); dapatkanBerita();
+        }
+
+        async function dapatkanSignal() {
+            try {
+                const response = await fetch(`/api/signal?symbol=${marketAktif}`);
+                const data = await response.json();
+                if (data.error) return;
+
+                document.getElementById('main-price-signal').innerText = data.harga;
+                document.getElementById('ema9').innerText = data.ema9;
+                document.getElementById('ema21').innerText = data.ema21;
+                document.getElementById('status').innerText = "Dikemas kini: " + data.masa;
+
+                const signalBox = document.getElementById('signal-box');
+                if (data.signal === "BUY") {
+                    signalBox.innerHTML = "BUY <br><span style='font-size: 30px;'>@ " + data.harga + "</span>";
+                    signalBox.className = "signal-box buy";
+                } else if (data.signal === "SELL") {
+                    signalBox.innerHTML = "SELL <br><span style='font-size: 30px;'>@ " + data.harga + "</span>";
+                    signalBox.className = "signal-box sell";
+                } else {
+                    signalBox.innerText = "WAIT"; signalBox.className = "signal-box wait";
+                }
+            } catch (error) { console.error("Ralat Signal:", error); }
+        }
+
+        async function dapatkanMarketData() {
+            try {
+                const response = await fetch(`/api/market?symbol=${marketAktif}`);
+                const data = await response.json();
+                if (data.error) return;
+                document.getElementById('poc-val').innerText = data.poc;
+                document.getElementById('poc-box').innerText = data.poc;
+                document.getElementById('r3').innerText = data.snr.r3; document.getElementById('r2').innerText = data.snr.r2; document.getElementById('r1').innerText = data.snr.r1;
+                document.getElementById('vah').innerText = data.snr.vah; document.getElementById('val').innerText = data.snr.val;
+                document.getElementById('s1').innerText = data.snr.s1; document.getElementById('s2').innerText = data.snr.s2; document.getElementById('s3').innerText = data.snr.s3;
+                
+                const tbody = document.getElementById('footprint-summary'); tbody.innerHTML = ""; 
+                data.footprint.forEach(row => {
+                    const tr = document.createElement('tr'); if (row.is_poc) tr.className = 'highlight-row';
+                    let deltaColor = row.delta > 0 ? 'text-green' : 'text-red'; let deltaArrow = row.delta > 0 ? '↑' : '↓'; let deltaSign = row.delta > 0 ? '+' : '';
+                    tr.innerHTML = `<td>${row.price} ${row.is_poc ? 'POC ☆' : ''}</td><td>${row.vol}</td><td class="${deltaColor}">${deltaSign}${row.delta} ${deltaArrow}</td>`; tbody.appendChild(tr);
+                });
+            } catch (error) { console.error("Ralat Market:", error); }
+        }
+
+        async function dapatkanBerita() {
+            try {
+                const response = await fetch('/api/news');
+                const data = await response.json();
+                document.getElementById('news-event').innerText = data.event || "Tiada Berita";
+                document.getElementById('news-actual').innerText = data.actual || "-";
+                document.getElementById('news-forecast').innerText = data.forecast || "-";
+                document.getElementById('news-previous').innerText = data.previous || "-";
+                const biasBox = document.getElementById('news-bias');
+                biasBox.innerText = data.bias; biasBox.style.color = data.warna || "gray";
+                document.getElementById('news-alasan').innerText = data.alasan;
+            } catch (error) { console.error("Ralat Berita:", error); }
+        }
+
+        const chart = LightweightCharts.createChart(document.getElementById('chart'), { layout: { background: { color: '#1e293b' }, textColor: '#d1d5db' } });
+        const candleSeries = chart.addCandlestickSeries({ upColor: '#22c55e', downColor: '#ef4444' });
+
+        setInterval(dapatkanSignal, 10000);
+        setInterval(dapatkanMarketData, 10000);
+        setInterval(dapatkanBerita, 60000);
+        
+        dapatkanSignal(); dapatkanMarketData(); dapatkanBerita();
+    </script>
+</body>
+</html>
