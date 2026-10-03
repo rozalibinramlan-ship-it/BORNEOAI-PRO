@@ -10,7 +10,6 @@
         :root { 
             --bg-dark: #050810;
             --bg-card: #141e30;
-            --bg-card-solid: #1a2538;
             --border: #1f2d42;
             --accent-yellow: #fbbf24; 
             --accent-blue: #38bdf8;
@@ -20,13 +19,12 @@
             --text-white: #f1f5f9;
         }
         body { 
-            background: radial-gradient(ellipse at top, #0a1525 0%, #050810 60%);
+            background: #050810;
             color: var(--text-white); 
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif; 
             margin: 0; padding: 0; padding-bottom: 80px; 
             overflow-x: hidden;
             min-height: 100vh;
-            -webkit-font-smoothing: antialiased;
         }
         
         .header { 
@@ -41,12 +39,8 @@
             border: 2px solid var(--accent-blue); 
         }
         .header h1 { 
-            margin: 0; color: var(--text-white); font-size: 14px; 
+            margin: 0; color: var(--accent-yellow); font-size: 14px; 
             letter-spacing: 4px; font-weight: 900;
-            background: linear-gradient(90deg, #38bdf8, #fbbf24);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
         }
         select { 
             margin-top: 15px; padding: 10px 15px; border-radius: 10px; 
@@ -76,10 +70,7 @@
         .price-value { 
             font-size: 52px; font-weight: 900; margin: 0; 
             letter-spacing: -2px;
-            background: linear-gradient(180deg, #ffffff 0%, #94a3b8 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
+            color: var(--text-white);
         }
         .price-change { color: var(--text-green); margin: 8px 0; font-size: 14px; font-weight: 700; }
         .live-badge { 
@@ -96,10 +87,7 @@
             margin: 20px auto; transition: all 0.5s ease; 
             line-height: 1.05; letter-spacing: 4px;
         }
-        .wait { 
-            background: #1e293b; color: #64748b; 
-            border: 2px solid #475569;
-        }
+        .wait { background: #1e293b; color: #64748b; border: 2px solid #475569; }
         .buy { 
             background: linear-gradient(135deg, #064e3b, #065f46); 
             color: #4ade80; border: 2px solid #22c55e; 
@@ -122,8 +110,7 @@
         .indicator-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
         .indicator-item { 
             text-align: center; padding: 12px 6px; 
-            background: #0a1525;
-            border-radius: 12px;
+            background: #0a1525; border-radius: 12px;
             border: 1px solid var(--border);
         }
         .indicator-label { 
@@ -329,4 +316,185 @@
         <div class="snr-grid">
             <div class="snr-box red"><div class="label">R3</div><div class="value" id="r3">-</div></div>
             <div class="snr-box red"><div class="label">R2</div><div class="value" id="r2">-</div></div>
-            <div class="snr-box red"><div class="label">R1</div><div class="value" id
+            <div class="snr-box red"><div class="label">R1</div><div class="value" id="r1">-</div></div>
+            <div class="snr-box yellow"><div class="label">☆ POC</div><div class="value" id="poc-box">-</div></div>
+            <div class="snr-box blue"><div class="label">VAH</div><div class="value" id="vah">-</div></div>
+            <div class="snr-box blue"><div class="label">VAL</div><div class="value" id="val">-</div></div>
+            <div class="snr-box green"><div class="label">S1</div><div class="value" id="s1">-</div></div>
+            <div class="snr-box green"><div class="label">S2</div><div class="value" id="s2">-</div></div>
+            <div class="snr-box green"><div class="label">S3</div><div class="value" id="s3">-</div></div>
+        </div>
+        <p class="card-title">FOOTPRINT</p>
+        <div class="table-container"><table><thead><tr><th>PRICE</th><th>VOL</th><th>DELTA</th></tr></thead><tbody id="footprint-summary"></tbody></table></div>
+    </div>
+
+    <div id="screen-chart" class="screen">
+        <h2 style="text-align: center; letter-spacing: 3px; font-size: 14px; color: var(--text-gray);">CHART</h2>
+        <div id="chart"></div>
+    </div>
+
+    <div id="screen-strategi" class="screen">
+        <h2 style="text-align: center; color: var(--accent-yellow); margin-top: 0; letter-spacing: 3px; font-size: 14px;">STRATEGY AI</h2>
+        <div class="strategy-card">
+            <div class="strategy-header">
+                <div>
+                    <h3 class="strategy-title">EMA Cross + RSI + ATR</h3>
+                    <p class="strategy-meta"><span id="strategy-symbol">XAU/USD</span> • <span style="color: var(--accent-yellow);">Multi-Filter</span></p>
+                </div>
+                <span class="strategy-badge">ACTIVE</span>
+            </div>
+            <div class="stat-grid">
+                <div class="stat-item"><p class="stat-label">WIN RATE</p><p class="stat-value green" id="bt-winrate">-</p></div>
+                <div class="stat-item stat-divider"><p class="stat-label">TF</p><p class="stat-value">15m</p></div>
+                <div class="stat-item stat-divider"><p class="stat-label">R:R</p><p class="stat-value">1:1</p></div>
+                <div class="stat-item"><p class="stat-label">SIGNALS</p><p class="stat-value" id="bt-signals">-</p></div>
+            </div>
+            <div id="chart-backtest"></div>
+            <div class="ai-comment-box">
+                <p class="ai-comment-label">🤖 AI COMMENTARY</p>
+                <p class="ai-comment-text" id="bt-ai-comment">Press the button below to start the analysis.</p>
+            </div>
+            <button onclick="jalankanBacktest()" class="btn-primary">⚡ RUN BACKTEST</button>
+        </div>
+    </div>
+
+    <nav id="bottom-nav">
+        <button class="nav-item active" onclick="switchTab('signal', this)">📈<span>SIGNAL</span></button>
+        <button class="nav-item" onclick="switchTab('levels', this)">⭐<span>LEVELS</span></button>
+        <button class="nav-item" onclick="switchTab('chart', this)">📉<span>CHART</span></button>
+        <button class="nav-item" onclick="switchTab('strategi', this)">⚡<span>STRATEGY</span></button>
+    </nav>
+
+    <script>
+        let marketAktif = 'XAU/USD';
+        let chart = null; let candleSeries = null;
+        let backtestChart = null; let backtestSeries = null;
+        
+        function switchTab(tabName, element) {
+            document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+            document.getElementById('screen-' + tabName).classList.add('active');
+            document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
+            element.classList.add('active');
+            if(tabName === 'chart' && chart) {
+                setTimeout(() => { chart.applyOptions({ width: document.getElementById('chart').clientWidth }); dapatkanCandleData(); }, 100);
+            }
+        }
+
+        function tukarMarket() {
+            marketAktif = document.getElementById('market-selector').value;
+            document.getElementById('strategy-symbol').innerText = marketAktif;
+            dapatkanSignal(); dapatkanMarketData();
+        }
+
+        async function dapatkanSignal() {
+            try {
+                const res = await fetch(`/api/signal?symbol=${marketAktif}`);
+                const data = await res.json();
+                document.getElementById('main-price-signal').innerText = data.harga;
+                document.getElementById('ema9').innerText = data.ema9;
+                document.getElementById('ema21').innerText = data.ema21;
+                document.getElementById('ema50').innerText = data.ema50;
+                document.getElementById('rsi').innerText = data.rsi;
+                document.getElementById('atr').innerText = data.atrPercent + '%';
+                document.getElementById('session').innerText = data.session;
+                document.getElementById('status').innerText = "Updated: " + data.masa;
+                
+                const filterBox = document.getElementById('filter-status');
+                let badges = '';
+                badges += `<span class="filter-badge ${!data.filtered ? 'filter-pass' : 'filter-fail'}">SIGNAL ${data.filtered ? 'FILTERED' : 'ACTIVE'}</span>`;
+                if (data.reasons && data.reasons.length > 0) data.reasons.forEach(r => badges += `<span class="filter-badge filter-fail">${r}</span>`);
+                filterBox.innerHTML = badges;
+                
+                const signalBox = document.getElementById('signal-box');
+                if (data.signal === "BUY") { signalBox.innerHTML = "BUY <br><span style='font-size: 26px;'>@ " + data.harga + "</span>"; signalBox.className = "signal-box buy"; }
+                else if (data.signal === "SELL") { signalBox.innerHTML = "SELL <br><span style='font-size: 26px;'>@ " + data.harga + "</span>"; signalBox.className = "signal-box sell"; }
+                else { signalBox.innerHTML = "WAIT <br><span style='font-size: 14px; font-weight: 400; letter-spacing: 1px;'>Market Not Ready</span>"; signalBox.className = "signal-box wait"; }
+            } catch (e) { console.error(e); }
+        }
+
+        async function dapatkanMarketData() {
+            try {
+                const res = await fetch(`/api/market?symbol=${marketAktif}`);
+                const data = await res.json();
+                document.getElementById('poc-val').innerText = data.poc;
+                document.getElementById('poc-box').innerText = data.poc;
+                document.getElementById('r3').innerText = data.snr.r3; document.getElementById('r2').innerText = data.snr.r2; document.getElementById('r1').innerText = data.snr.r1;
+                document.getElementById('vah').innerText = data.snr.vah; document.getElementById('val').innerText = data.snr.val;
+                document.getElementById('s1').innerText = data.snr.s1; document.getElementById('s2').innerText = data.snr.s2; document.getElementById('s3').innerText = data.snr.s3;
+                const tbody = document.getElementById('footprint-summary'); tbody.innerHTML = "";
+                data.footprint.forEach(row => {
+                    const tr = document.createElement('tr'); if (row.is_poc) tr.className = 'highlight-row';
+                    tr.innerHTML = `<td>${row.price} ${row.is_poc ? 'POC ☆' : ''}</td><td>${row.vol}</td><td class="${row.delta > 0 ? 'text-green' : 'text-red'}">${row.delta > 0 ? '+' : ''}${row.delta} ${row.delta > 0 ? '↑' : '↓'}</td>`;
+                    tbody.appendChild(tr);
+                });
+            } catch (e) { console.error(e); }
+        }
+
+        async function tanyaAI() {
+            const harga = document.getElementById('main-price-signal').innerText;
+            const soalan = document.getElementById('soalan-ai').value;
+            if (harga === "Loading..." || !soalan) { alert("Please wait for data and type your question."); return; }
+            const data = { price: harga, ema9: document.getElementById('ema9').innerText, ema21: document.getElementById('ema21').innerText, rsi: document.getElementById('rsi').innerText, atr: document.getElementById('atr').innerText, session: document.getElementById('session').innerText, signal_time: Date.now() / 1000, soalan };
+            const box = document.getElementById('hasil-ai');
+            const text = document.getElementById('hasil-ai-text');
+            box.style.display = 'block'; box.style.borderLeftColor = '#fbbf24';
+            text.innerText = "AI is analyzing..."; text.style.color = "#fbbf24";
+            try {
+                const res = await fetch('/api/ai-analysis', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
+                const result = await res.json();
+                if (result.status === "success") { text.innerText = result.analysis; text.style.color = "#cbd5e1"; box.style.borderLeftColor = '#38bdf8'; }
+                else { text.innerText = "AI service temporarily unavailable."; text.style.color = "#f87171"; }
+            } catch (e) { text.innerText = "Connection error."; text.style.color = "#f87171"; }
+        }
+
+        async function dapatkanCandleData() {
+            if (!chart) {
+                const c = document.getElementById('chart');
+                chart = LightweightCharts.createChart(c, {
+                    width: c.clientWidth, height: 420,
+                    layout: { background: { color: '#0a1525' }, textColor: '#94a3b8' },
+                    grid: { vertLines: { color: 'rgba(56, 189, 248, 0.05)' }, horzLines: { color: 'rgba(56, 189, 248, 0.05)' } },
+                    crosshair: { mode: LightweightCharts.CrosshairMode.Normal },
+                    rightPriceScale: { borderColor: 'rgba(56, 189, 248, 0.2)' },
+                    timeScale: { borderColor: 'rgba(56, 189, 248, 0.2)', timeVisible: true, secondsVisible: false },
+                });
+                candleSeries = chart.addCandlestickSeries({ upColor: '#22c55e', downColor: '#ef4444', borderDownColor: '#ef4444', borderUpColor: '#22c55e', wickDownColor: '#ef4444', wickUpColor: '#22c55e' });
+                chart.applyOptions({ watermark: { visible: true, fontSize: 26, horzAlign: 'center', vertAlign: 'center', color: 'rgba(56, 189, 248, 0.08)', text: 'BORNEO PRO TRADE' } });
+                window.addEventListener('resize', () => chart.applyOptions({ width: c.clientWidth }));
+            }
+            try {
+                const res = await fetch(`/api/candles?symbol=${marketAktif}`);
+                const data = await res.json();
+                if (data.status === "success") candleSeries.setData(data.candles);
+            } catch (e) { console.error(e); }
+        }
+
+        async function jalankanBacktest() {
+            document.getElementById('bt-ai-comment').innerText = "Analyzing historical data...";
+            document.getElementById('bt-winrate').innerText = "...";
+            document.getElementById('bt-signals').innerText = "...";
+            try {
+                const res = await fetch('/api/backtest?symbol=' + marketAktif);
+                const data = await res.json();
+                if (data.status === "success") {
+                    document.getElementById('bt-winrate').innerText = data.winRate + "%";
+                    document.getElementById('bt-signals').innerText = data.totalTrades;
+                    const c = document.getElementById('chart-backtest'); c.innerHTML = "";
+                    backtestChart = LightweightCharts.createChart(c, { width: c.clientWidth, height: 260, layout: { background: { color: '#0a1525' }, textColor: '#94a3b8' }, grid: { vertLines: { color: 'rgba(56, 189, 248, 0.05)' }, horzLines: { color: 'rgba(56, 189, 248, 0.05)' } } });
+                    backtestSeries = backtestChart.addCandlestickSeries({ upColor: '#22c55e', downColor: '#ef4444', borderVisible: false, wickUpColor: '#22c55e', wickDownColor: '#ef4444' });
+                    backtestSeries.setData(data.candles);
+                    backtestSeries.setMarkers(data.markers);
+                    const aiRes = await fetch('/api/ai-analysis', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ price: "Backtest", ema9: "N/A", ema21: "N/A", signal_time: Date.now() / 1000, soalan: `Strategy Win Rate ${data.winRate}% with ${data.totalTrades} signals. Give a brief review.` }) });
+                    const aiData = await aiRes.json();
+                    document.getElementById('bt-ai-comment').innerText = aiData.analysis || "Analysis not available.";
+                }
+            } catch (e) { document.getElementById('bt-ai-comment').innerText = "Connection error."; }
+        }
+
+        setInterval(dapatkanSignal, 10000);
+        setInterval(dapatkanMarketData, 10000);
+        setInterval(dapatkanCandleData, 60000);
+        dapatkanSignal(); dapatkanMarketData();
+    </script>
+</body>
+</html>
