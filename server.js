@@ -10,12 +10,10 @@ app.use(cors());
 app.use(express.json());
 app.use(express.static(__dirname));
 
-// Setup Gemini AI
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
-
 const TWELVE_DATA_KEY = '9232c8d947f1486a9562da7d78b8f5c4';
 
-// 1. API SIGNAL LAMA
+// 1. API SIGNAL
 app.get('/api/signal', async (req, res) => {
     const symbol = req.query.symbol || 'XAU/USD'; 
     try {
@@ -42,7 +40,7 @@ app.get('/api/signal', async (req, res) => {
     }
 });
 
-// 2. API MARKET LAMA
+// 2. API MARKET
 app.get('/api/market', async (req, res) => {
     const symbol = req.query.symbol || 'XAU/USD'; 
     try {
@@ -62,7 +60,7 @@ app.get('/api/market', async (req, res) => {
     }
 });
 
-// 3. API NEWS LAMA
+// 3. API NEWS
 app.get('/api/news', async (req, res) => {
     try {
         const response = await axios.get('https://www.forexfactory.com/calendar', { headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36' } });
@@ -85,39 +83,61 @@ app.get('/api/news', async (req, res) => {
     }
 });
 
-// 4. API AI BARU (GEMINI - PENAPIS SIGNAL PALSU)
+// 4. API AI (GEMINI)
 app.post('/api/ai-analysis', async (req, res) => {
     try {
-        const { price, ema9, ema21, signal_time } = req.body;
+        const { price, ema9, ema21, signal_time, soalan } = req.body;
         const masa_sekarang = Date.now() / 1000; 
 
         const prompt = `
-        Kamu adalah Penapis Signal Palsu untuk XAUUSD.
-        Data semasa:
-        - Harga sekarang: ${price}
+        You are a Professional Trading Assistant for XAUUSD.
+        Current Data:
+        - Current Price: ${price}
         - EMA9: ${ema9}, EMA21: ${ema21}
-        - Masa signal dijana: ${signal_time}
-        - Masa sekarang: ${masa_sekarang}
+        - Signal Time: ${signal_time}
+        - Current Time: ${masa_sekarang}
         
-        Tugas kamu:
-        1. Semak sama ada signal ini PALSU, SAH, atau TERLALU LAMBAT (Late Entry).
-        2. Jika harga dah terlalu jauh dari EMA, beri amaran supaya tunggu pullback.
-        3. Jika masa sekarang dah melebihi 45 minit dari masa signal, tandakan sebagai 'TAMAT TEMPOH' (Expired).
-        4. Beri jawapan ringkas 2 ayat dalam Bahasa Melayu.
+        User Question: "${soalan}"
+        
+        Your Task:
+        1. Answer the user's question based on the market data.
+        2. If the question is about the signal, check if it is FALSE, VALID, or TOO LATE.
+        3. Give a brief answer in 2-3 sentences in Bahasa Melayu.
         `;
 
-        // Guna model terkini yang diminta oleh API
         const response = await ai.models.generateContent({
             model: 'gemini-3.6-flash',
             contents: prompt,
         });
         
         const text = response.text;
-
         res.json({ status: "success", analysis: text });
 
     } catch (error) {
         console.error("AI Error:", error);
+        res.status(500).json({ status: "error", message: "AI service temporarily unavailable." });
+    }
+});
+
+// 5. API HISTORICAL CANDLES (Untuk Carta)
+app.get('/api/candles', async (req, res) => {
+    const symbol = req.query.symbol || 'XAU/USD';
+    try {
+        const response = await axios.get(`https://api.twelvedata.com/time_series?symbol=${symbol}&interval=15min&outputsize=100&apikey=${TWELVE_DATA_KEY}`);
+        if (response.data.status === 'error') throw new Error("API Limit");
+        
+        const values = response.data.values;
+        
+        const candles = values.map(v => ({
+            time: Math.floor(new Date(v.datetime).getTime() / 1000),
+            open: parseFloat(v.open),
+            high: parseFloat(v.high),
+            low: parseFloat(v.low),
+            close: parseFloat(v.close)
+        })).reverse();
+        
+        res.json({ status: "success", candles: candles });
+    } catch (error) {
         res.status(500).json({ status: "error", message: error.message });
     }
 });

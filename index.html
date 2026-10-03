@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="ms">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -48,6 +48,16 @@
         #bottom-nav { position: fixed; bottom: 0; left: 0; width: 100%; background-color: var(--bg-header); border-top: 1px solid #1e293b; display: flex; justify-content: space-around; padding: 10px 0; z-index: 100; }
         .nav-item { display: flex; flex-direction: column; align-items: center; color: #64748b; font-size: 10px; cursor: pointer; background: none; border: none; width: 25%; }
         .nav-item.active { color: var(--accent-yellow); } .nav-item span { margin-top: 5px; }
+
+        .ai-input-container { display: flex; gap: 8px; margin-top: 15px; }
+        .ai-input { flex: 1; padding: 12px 15px; border-radius: 25px; border: 1px solid #334155; background-color: #1e293b; color: white; font-size: 14px; outline: none; }
+        .ai-input:focus { border-color: #38bdf8; }
+        .ai-send-btn { background-color: #2196F3; color: white; padding: 12px 20px; border-radius: 25px; border: none; cursor: pointer; font-weight: bold; font-size: 14px; }
+        .ai-result-box { margin-top: 15px; padding: 15px; background-color: #0f172a; border-radius: 12px; border-left: 3px solid #38bdf8; display: none; }
+        .ai-result-header { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
+        .ai-result-header span { font-size: 18px; }
+        .ai-result-header b { color: #38bdf8; font-size: 13px; text-transform: uppercase; letter-spacing: 1px; }
+        .ai-result-text { color: #e2e8f0; font-size: 14px; line-height: 1.6; margin: 0; }
     </style>
 </head>
 <body>
@@ -61,7 +71,7 @@
         </select>
     </div>
 
-    <!-- SKRIN 1: SIGNAL -->
+    <!-- SCREEN 1: SIGNAL -->
     <div id="screen-signal" class="screen active">
         <div style="text-align: center; margin: 10px 0;">
             <h2 style="font-size: 40px; margin: 0;" id="main-price-signal">Loading...</h2>
@@ -72,19 +82,24 @@
         <div class="card" style="text-align: center; margin-top: 20px;">
             <span style="color: var(--text-gray);">EMA 9:</span> <span id="ema9" style="color: white; font-weight: bold;">-</span> &nbsp;|&nbsp;
             <span style="color: var(--text-gray);">EMA 21:</span> <span id="ema21" style="color: white; font-weight: bold;">-</span>
-            <p id="status" style="font-size: 12px; color: gray; margin-top: 10px;">Menunggu data...</p>
+            <p id="status" style="font-size: 12px; color: gray; margin-top: 10px;">Waiting for data...</p>
         </div>
         
-        <!-- BAHAGIAN AI BARU -->
-        <button onclick="tanyaAI()" style="background-color: #2196F3; color: white; padding: 12px; border-radius: 8px; border: none; cursor: pointer; margin-top: 15px; width: 100%; font-weight: bold; font-size: 16px;">
-            🤖 Tanya AI
-        </button>
-        <div id="hasil-ai" style="margin-top: 15px; color: #ffffff; font-size: 14px; text-align: left; padding: 10px; background-color: rgba(255,255,255,0.1); border-radius: 8px; display: none; line-height: 1.5;"></div>
-        <!-- TAMAT BAHAGIAN AI -->
-
+        <div class="ai-input-container">
+            <input type="text" id="soalan-ai" class="ai-input" placeholder="Ask about this signal...">
+            <button onclick="tanyaAI()" class="ai-send-btn">Ask AI</button>
+        </div>
+        
+        <div id="hasil-ai" class="ai-result-box">
+            <div class="ai-result-header">
+                <span>🤖</span>
+                <b>AI Analysis</b>
+            </div>
+            <p id="hasil-ai-text" class="ai-result-text"></p>
+        </div>
     </div>
 
-    <!-- SKRIN 2: LEVELS -->
+    <!-- SCREEN 2: LEVELS -->
     <div id="screen-levels" class="screen">
         <div class="poc-banner">☆ POC <span id="poc-val">-</span></div>
         <div class="sell-power"><h3>⚠ SELL POWER</h3><p>Signal active • Confidence <span id="confidence">86</span>%</p></div>
@@ -104,24 +119,27 @@
         <div class="table-container"><table><thead><tr><th>PRICE</th><th>VOL</th><th>DELTA</th></tr></thead><tbody id="footprint-summary"></tbody></table></div>
     </div>
 
-    <!-- SKRIN 3: CHART -->
-    <div id="screen-chart" class="screen"><h2 style="text-align: center;">CHART</h2><div id="chart"></div></div>
+    <!-- SCREEN 3: CHART -->
+    <div id="screen-chart" class="screen">
+        <h2 style="text-align: center;">CHART</h2>
+        <div id="chart"></div>
+    </div>
 
-    <!-- SKRIN 4: NEWS -->
+    <!-- SCREEN 4: NEWS -->
     <div id="screen-news" class="screen">
         <h2 style="text-align: center; color: #fbbf24; margin-top: 0;">AI NEWS ANALYZER</h2>
         <div class="news-panel">
-            <h3 id="news-event" style="color: #fbbf24; margin-top: 0; text-align: center;">Menunggu Berita...</h3>
+            <h3 id="news-event" style="color: #fbbf24; margin-top: 0; text-align: center;">Waiting for news...</h3>
             <div class="news-row"><span class="news-label">Actual:</span> <span id="news-actual" class="news-value">-</span></div>
             <div class="news-row"><span class="news-label">Forecast:</span> <span id="news-forecast" class="news-value">-</span></div>
             <div class="news-row"><span class="news-label">Previous:</span> <span id="news-previous" class="news-value">-</span></div>
             <hr style="border-color: #334155; margin: 15px 0;">
-            <h2 id="news-bias" style="color: gray; text-align: center; margin: 10px 0;">MENUNGGU...</h2>
-            <p id="news-alasan" style="font-size: 12px; color: #94a3b8; text-align: center;">Sila tunggu berita seterusnya.</p>
+            <h2 id="news-bias" style="color: gray; text-align: center; margin: 10px 0;">WAITING...</h2>
+            <p id="news-alasan" style="font-size: 12px; color: #94a3b8; text-align: center;">Please wait for the next news.</p>
         </div>
     </div>
 
-    <!-- MENU BAWAH -->
+    <!-- BOTTOM NAV -->
     <nav id="bottom-nav">
         <button class="nav-item active" onclick="switchTab('signal', this)">📈<span>SIGNAL</span></button>
         <button class="nav-item" onclick="switchTab('levels', this)">⭐<span>LEVELS</span></button>
@@ -131,13 +149,23 @@
 
     <script>
         let marketAktif = 'XAU/USD';
+        let chart = null;
+        let candleSeries = null;
         
         function switchTab(tabName, element) {
             document.querySelectorAll('.screen').forEach(screen => screen.classList.remove('active'));
             document.getElementById('screen-' + tabName).classList.add('active');
             document.querySelectorAll('.nav-item').forEach(btn => btn.classList.remove('active'));
             element.classList.add('active');
-            if(tabName === 'chart') { setTimeout(() => chart.applyOptions({ width: document.getElementById('chart').clientWidth }), 10); }
+            
+            if(tabName === 'chart') {
+                setTimeout(() => {
+                    if(chart) {
+                        chart.applyOptions({ width: document.getElementById('chart').clientWidth });
+                        dapatkanCandleData();
+                    }
+                }, 100);
+            }
         }
 
         function tukarMarket() {
@@ -150,12 +178,10 @@
                 const response = await fetch(`/api/signal?symbol=${marketAktif}`);
                 const data = await response.json();
                 if (data.error) return;
-
                 document.getElementById('main-price-signal').innerText = data.harga;
                 document.getElementById('ema9').innerText = data.ema9;
                 document.getElementById('ema21').innerText = data.ema21;
-                document.getElementById('status').innerText = "Dikemas kini: " + data.masa;
-
+                document.getElementById('status').innerText = "Updated: " + data.masa;
                 const signalBox = document.getElementById('signal-box');
                 if (data.signal === "BUY") {
                     signalBox.innerHTML = "BUY <br><span style='font-size: 30px;'>@ " + data.harga + "</span>";
@@ -166,7 +192,7 @@
                 } else {
                     signalBox.innerText = "WAIT"; signalBox.className = "signal-box wait";
                 }
-            } catch (error) { console.error("Ralat Signal:", error); }
+            } catch (error) { console.error("Signal Error:", error); }
         }
 
         async function dapatkanMarketData() {
@@ -179,85 +205,107 @@
                 document.getElementById('r3').innerText = data.snr.r3; document.getElementById('r2').innerText = data.snr.r2; document.getElementById('r1').innerText = data.snr.r1;
                 document.getElementById('vah').innerText = data.snr.vah; document.getElementById('val').innerText = data.snr.val;
                 document.getElementById('s1').innerText = data.snr.s1; document.getElementById('s2').innerText = data.snr.s2; document.getElementById('s3').innerText = data.snr.s3;
-                
                 const tbody = document.getElementById('footprint-summary'); tbody.innerHTML = ""; 
                 data.footprint.forEach(row => {
                     const tr = document.createElement('tr'); if (row.is_poc) tr.className = 'highlight-row';
                     let deltaColor = row.delta > 0 ? 'text-green' : 'text-red'; let deltaArrow = row.delta > 0 ? '↑' : '↓'; let deltaSign = row.delta > 0 ? '+' : '';
                     tr.innerHTML = `<td>${row.price} ${row.is_poc ? 'POC ☆' : ''}</td><td>${row.vol}</td><td class="${deltaColor}">${deltaSign}${row.delta} ${deltaArrow}</td>`; tbody.appendChild(tr);
                 });
-            } catch (error) { console.error("Ralat Market:", error); }
+            } catch (error) { console.error("Market Error:", error); }
         }
 
         async function dapatkanBerita() {
             try {
                 const response = await fetch('/api/news');
                 const data = await response.json();
-                document.getElementById('news-event').innerText = data.event || "Tiada Berita";
+                document.getElementById('news-event').innerText = data.event || "No News";
                 document.getElementById('news-actual').innerText = data.actual || "-";
                 document.getElementById('news-forecast').innerText = data.forecast || "-";
                 document.getElementById('news-previous').innerText = data.previous || "-";
                 const biasBox = document.getElementById('news-bias');
                 biasBox.innerText = data.bias; biasBox.style.color = data.warna || "gray";
                 document.getElementById('news-alasan').innerText = data.alasan;
-            } catch (error) { console.error("Ralat Berita:", error); }
+            } catch (error) { console.error("News Error:", error); }
         }
 
-        // ==========================================
-        // FUNGSI BARU: TANYA AI
-        // ==========================================
         async function tanyaAI() {
-            // 1. Ambil data semasa yang terpapar di skrin
             const hargaSemasa = document.getElementById('main-price-signal').innerText;
             const ema9Semasa = document.getElementById('ema9').innerText;
             const ema21Semasa = document.getElementById('ema21').innerText;
+            const soalanUser = document.getElementById('soalan-ai').value;
 
-            // Semak jika data masih "Loading..." atau "-"
-            if (hargaSemasa === "Loading..." || ema9Semasa === "-" || ema21Semasa === "-") {
-                alert("Sila tunggu data signal selesai dimuatkan.");
-                return;
-            }
+            if (hargaSemasa === "Loading..." || ema9Semasa === "-") { alert("Please wait for data."); return; }
+            if (!soalanUser) { alert("Please type your question first."); return; }
 
-            const data = {
-                price: hargaSemasa,
-                ema9: ema9Semasa,
-                ema21: ema21Semasa,
-                signal_time: Date.now() / 1000 // Hantar masa sekarang
-            };
+            const data = { price: hargaSemasa, ema9: ema9Semasa, ema21: ema21Semasa, signal_time: Date.now() / 1000, soalan: soalanUser };
+            const resultBox = document.getElementById('hasil-ai');
+            const resultText = document.getElementById('hasil-ai-text');
+            
+            resultBox.style.display = 'block';
+            resultBox.style.borderLeftColor = '#fbbf24';
+            resultText.innerText = "AI is analyzing market conditions...";
+            resultText.style.color = "#fbbf24";
 
-            const kotakHasil = document.getElementById('hasil-ai');
-            kotakHasil.style.display = 'block';
-            kotakHasil.innerHTML = "⏳ AI sedang menganalisis signal...";
-            kotakHasil.style.color = "#fbbf24"; // Kuning
-
-            // 2. Hantar ke backend server.js
             try {
-                const response = await fetch('/api/ai-analysis', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify(data)
-                });
-                
+                const response = await fetch('/api/ai-analysis', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
                 const result = await response.json();
-                
-                if (result.status === "success") {
-                    kotakHasil.innerText = result.analysis;
-                    kotakHasil.style.color = "#ffffff"; // Putih
-                } else {
-                    kotakHasil.innerText = "Ralat: " + (result.message || "AI gagal memberi respons.");
-                    kotakHasil.style.color = "#ef4444"; // Merah
+                if (result.status === "success") { 
+                    resultText.innerText = result.analysis;
+                    resultText.style.color = "#e2e8f0";
+                    resultBox.style.borderLeftColor = '#38bdf8';
+                } else { 
+                    resultText.innerText = "AI service is temporarily unavailable. Please try again later.";
+                    resultText.style.color = "#f87171";
+                    resultBox.style.borderLeftColor = '#ef4444';
                 }
-            } catch (error) {
-                console.error('Error:', error);
-                kotakHasil.innerText = "Ralat sambungan ke server AI. Sila cuba lagi.";
-                kotakHasil.style.color = "#ef4444"; // Merah
+            } catch (error) { 
+                resultText.innerText = "Connection error. Please check your network and try again.";
+                resultText.style.color = "#f87171";
+                resultBox.style.borderLeftColor = '#ef4444';
             }
         }
 
-        const chart = LightweightCharts.createChart(document.getElementById('chart'), { layout: { background: { color: '#1e293b' }, textColor: '#d1d5db' } });
-        const candleSeries = chart.addCandlestickSeries({ upColor: '#22c55e', downColor: '#ef4444' });
+        // ==========================================
+        // SETUP CARTA PRO
+        // ==========================================
+        async function dapatkanCandleData() {
+            if (!chart) {
+                const chartContainer = document.getElementById('chart');
+                chart = LightweightCharts.createChart(chartContainer, {
+                    width: chartContainer.clientWidth,
+                    height: 400,
+                    layout: { background: { color: '#0b1120' }, textColor: '#94a3b8' },
+                    grid: { vertLines: { color: '#1e293b' }, horzLines: { color: '#1e293b' } },
+                    crosshair: { mode: LightweightCharts.CrosshairMode.Normal },
+                    rightPriceScale: { borderColor: '#334155' },
+                    timeScale: { borderColor: '#334155', timeVisible: true, secondsVisible: false },
+                });
+                candleSeries = chart.addCandlestickSeries({
+                    upColor: '#22c55e', downColor: '#ef4444',
+                    borderDownColor: '#ef4444', borderUpColor: '#22c55e',
+                    wickDownColor: '#ef4444', wickUpColor: '#22c55e',
+                });
+                
+                chart.applyOptions({
+                    watermark: {
+                        visible: true, fontSize: 24, horzAlign: 'center', vertAlign: 'center',
+                        color: 'rgba(148, 163, 184, 0.15)', text: 'BORNEO PRO TRADE',
+                    },
+                });
+                
+                window.addEventListener('resize', () => {
+                    chart.applyOptions({ width: chartContainer.clientWidth });
+                });
+            }
+            
+            try {
+                const response = await fetch(`/api/candles?symbol=${marketAktif}`);
+                const data = await response.json();
+                if (data.status === "success" && data.candles.length > 0) {
+                    candleSeries.setData(data.candles);
+                }
+            } catch (error) { console.error("Candle Error:", error); }
+        }
 
         setInterval(dapatkanSignal, 10000);
         setInterval(dapatkanMarketData, 10000);
