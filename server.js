@@ -2,7 +2,7 @@ const express = require('express');
 const axios = require('axios');
 const cheerio = require('cheerio');
 const cors = require('cors');
-const { GoogleGenAI } = require('@google/genai');
+const { GoogleGenAI } = require('@google/genai'); 
 require('dotenv').config();
 
 const app = express();
@@ -10,11 +10,14 @@ app.use(cors());
 app.use(express.json());
 app.use(express.static(__dirname));
 
+// Setup Gemini AI
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
-const TWELVE_DATA_KEY = process.env.TWELVE_DATA_KEY || '9232c8d947f1486a9562da7d78b8f5c4';
 
+const TWELVE_DATA_KEY = '9232c8d947f1486a9562da7d78b8f5c4';
+
+// 1. API SIGNAL LAMA
 app.get('/api/signal', async (req, res) => {
-    const symbol = req.query.symbol || 'XAU/USD';
+    const symbol = req.query.symbol || 'XAU/USD'; 
     try {
         const response = await axios.get(`https://api.twelvedata.com/time_series?symbol=${symbol}&interval=1min&outputsize=50&apikey=${TWELVE_DATA_KEY}`);
         if (response.data.status === 'error') throw new Error("API Limit");
@@ -29,17 +32,19 @@ app.get('/api/signal', async (req, res) => {
         const ema9 = kiraEMA(closes, 9);
         const ema21 = kiraEMA(closes, 21);
         let signal = "WAIT"; let warna = "#94a3b8";
-        if (ema9 > ema21) { signal = "BUY"; warna = "#22c55e"; }
+        if (ema9 > ema21) { signal = "BUY"; warna = "#22c55e"; } 
         else if (ema9 < ema21) { signal = "SELL"; warna = "#ef4444"; }
-        let decimal = 2; if (symbol.includes('EUR') || symbol.includes('GBP')) decimal = 4;
+        let decimal = 2;
+        if (symbol.includes('EUR') || symbol.includes('GBP')) decimal = 4;
         res.json({ symbol, harga: hargaTerkini.toFixed(decimal), signal, warna, ema9: ema9.toFixed(decimal), ema21: ema21.toFixed(decimal), masa: new Date().toLocaleTimeString(), status: "LIVE" });
     } catch (error) {
         res.json({ symbol, harga: "4140.04", signal: "BUY", warna: "#22c55e", ema9: "4138.34", ema21: "4137.22", masa: new Date().toLocaleTimeString(), status: "SIMULASI" });
     }
 });
 
+// 2. API MARKET LAMA
 app.get('/api/market', async (req, res) => {
-    const symbol = req.query.symbol || 'XAU/USD';
+    const symbol = req.query.symbol || 'XAU/USD'; 
     try {
         const response = await axios.get(`https://api.twelvedata.com/price?symbol=${symbol}&apikey=${TWELVE_DATA_KEY}`);
         if (response.data.status === 'error') throw new Error("API Limit");
@@ -57,21 +62,22 @@ app.get('/api/market', async (req, res) => {
     }
 });
 
+// 3. API NEWS LAMA
 app.get('/api/news', async (req, res) => {
     try {
-        const response = await axios.get('https://www.forexfactory.com/calendar', { headers: { 'User-Agent': 'Mozilla/5.0' } });
+        const response = await axios.get('https://www.forexfactory.com/calendar', { headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36' } });
         const $ = cheerio.load(response.data);
         let beritaTerkini = null;
         $('tr.calendar__row').each((i, el) => {
             const currency = $(el).find('.calendar__currency').text().trim(); const impact = $(el).find('.calendar__impact span').attr('title'); const actual = $(el).find('.calendar__actual').text().trim();
-            if (currency === 'USD' && actual!== '' && impact === 'High Impact Expected') {
+            if (currency === 'USD' && actual !== '' && impact === 'High Impact Expected') {
                 beritaTerkini = { event: $(el).find('.calendar__event').text().trim(), actual, forecast: $(el).find('.calendar__forecast').text().trim(), previous: $(el).find('.calendar__previous').text().trim() };
             }
         });
         if (!beritaTerkini) return res.json({ status: "MENUNGGU", bias: "NEUTRAL USD", warna: "#fbbf24", alasan: "Tiada berita USD berimpak tinggi.", event: "Menunggu Berita...", actual: "-", forecast: "-", previous: "-" });
         let actualNum = parseFloat(beritaTerkini.actual.replace(/[^0-9.-]+/g,"")) || 0; let forecastNum = parseFloat(beritaTerkini.forecast.replace(/[^0-9.-]+/g,"")) || 0;
         let bias = "NEUTRAL USD"; let warna = "#fbbf24"; let alasan = "Market sideway.";
-        if (actualNum > forecastNum) { bias = "BULLISH USD (BEARISH GOLD)"; warna = "#ef4444"; alasan = "USD mengukuh, Gold berpotensi turun."; }
+        if (actualNum > forecastNum) { bias = "BULLISH USD (BEARISH GOLD)"; warna = "#ef4444"; alasan = "USD mengukuh, Gold berpotensi turun."; } 
         else if (actualNum < forecastNum) { bias = "BEARISH USD (BULLISH GOLD)"; warna = "#22c55e"; alasan = "USD lemah, Gold berpotensi naik."; }
         res.json({ status: "LIVE", event: beritaTerkini.event, actual: beritaTerkini.actual, forecast: beritaTerkini.forecast, previous: beritaTerkini.previous, bias, warna, alasan });
     } catch (error) {
@@ -79,16 +85,37 @@ app.get('/api/news', async (req, res) => {
     }
 });
 
+// 4. API AI BARU (GEMINI - PENAPIS SIGNAL PALSU)
 app.post('/api/ai-analysis', async (req, res) => {
     try {
         const { price, ema9, ema21, signal_time } = req.body;
-        const masa_sekarang = Date.now() / 1000;
-        const prompt = `Kamu adalah Penapis Signal Palsu untuk XAUUSD. Data semasa: Harga sekarang: ${price}, EMA9: ${ema9}, EMA21: ${ema21}, Masa signal: ${signal_time}, Masa sekarang: ${masa_sekarang}. Tugas: 1. Semak PALSU/SAH/LAMBAT. 2. Jika harga jauh dari EMA, suruh tunggu pullback. 3. Jika >45 minit, TAMAT TEMPOH. 4. Jawab ringkas 2 ayat BM.`;
+        const masa_sekarang = Date.now() / 1000; 
+
+        const prompt = `
+        Kamu adalah Penapis Signal Palsu untuk XAUUSD.
+        Data semasa:
+        - Harga sekarang: ${price}
+        - EMA9: ${ema9}, EMA21: ${ema21}
+        - Masa signal dijana: ${signal_time}
+        - Masa sekarang: ${masa_sekarang}
+        
+        Tugas kamu:
+        1. Semak sama ada signal ini PALSU, SAH, atau TERLALU LAMBAT (Late Entry).
+        2. Jika harga dah terlalu jauh dari EMA, beri amaran supaya tunggu pullback.
+        3. Jika masa sekarang dah melebihi 45 minit dari masa signal, tandakan sebagai 'TAMAT TEMPOH' (Expired).
+        4. Beri jawapan ringkas 2 ayat dalam Bahasa Melayu.
+        `;
+
+        // Guna model terkini yang diminta oleh API
         const response = await ai.models.generateContent({
-            model: 'gemini-2.0-flash',
+            model: 'gemini-3.6-flash',
             contents: prompt,
         });
-        res.json({ status: "success", analysis: response.text });
+        
+        const text = response.text;
+
+        res.json({ status: "success", analysis: text });
+
     } catch (error) {
         console.error("AI Error:", error);
         res.status(500).json({ status: "error", message: error.message });
