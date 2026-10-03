@@ -74,6 +74,14 @@
             <span style="color: var(--text-gray);">EMA 21:</span> <span id="ema21" style="color: white; font-weight: bold;">-</span>
             <p id="status" style="font-size: 12px; color: gray; margin-top: 10px;">Menunggu data...</p>
         </div>
+        
+        <!-- BAHAGIAN AI BARU -->
+        <button onclick="tanyaAI()" style="background-color: #2196F3; color: white; padding: 12px; border-radius: 8px; border: none; cursor: pointer; margin-top: 15px; width: 100%; font-weight: bold; font-size: 16px;">
+            🤖 Tanya AI
+        </button>
+        <div id="hasil-ai" style="margin-top: 15px; color: #ffffff; font-size: 14px; text-align: left; padding: 10px; background-color: rgba(255,255,255,0.1); border-radius: 8px; display: none; line-height: 1.5;"></div>
+        <!-- TAMAT BAHAGIAN AI -->
+
     </div>
 
     <!-- SKRIN 2: LEVELS -->
@@ -193,6 +201,59 @@
                 biasBox.innerText = data.bias; biasBox.style.color = data.warna || "gray";
                 document.getElementById('news-alasan').innerText = data.alasan;
             } catch (error) { console.error("Ralat Berita:", error); }
+        }
+
+        // ==========================================
+        // FUNGSI BARU: TANYA AI
+        // ==========================================
+        async function tanyaAI() {
+            // 1. Ambil data semasa yang terpapar di skrin
+            const hargaSemasa = document.getElementById('main-price-signal').innerText;
+            const ema9Semasa = document.getElementById('ema9').innerText;
+            const ema21Semasa = document.getElementById('ema21').innerText;
+
+            // Semak jika data masih "Loading..." atau "-"
+            if (hargaSemasa === "Loading..." || ema9Semasa === "-" || ema21Semasa === "-") {
+                alert("Sila tunggu data signal selesai dimuatkan.");
+                return;
+            }
+
+            const data = {
+                price: hargaSemasa,
+                ema9: ema9Semasa,
+                ema21: ema21Semasa,
+                signal_time: Date.now() / 1000 // Hantar masa sekarang
+            };
+
+            const kotakHasil = document.getElementById('hasil-ai');
+            kotakHasil.style.display = 'block';
+            kotakHasil.innerHTML = "⏳ AI sedang menganalisis signal...";
+            kotakHasil.style.color = "#fbbf24"; // Kuning
+
+            // 2. Hantar ke backend server.js
+            try {
+                const response = await fetch('/api/ai-analysis', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(data)
+                });
+                
+                const result = await response.json();
+                
+                if (result.status === "success") {
+                    kotakHasil.innerText = result.analysis;
+                    kotakHasil.style.color = "#ffffff"; // Putih
+                } else {
+                    kotakHasil.innerText = "Ralat: " + (result.message || "AI gagal memberi respons.");
+                    kotakHasil.style.color = "#ef4444"; // Merah
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                kotakHasil.innerText = "Ralat sambungan ke server AI. Sila cuba lagi.";
+                kotakHasil.style.color = "#ef4444"; // Merah
+            }
         }
 
         const chart = LightweightCharts.createChart(document.getElementById('chart'), { layout: { background: { color: '#1e293b' }, textColor: '#d1d5db' } });
