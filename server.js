@@ -105,11 +105,22 @@ app.post('/api/ai-analysis', async (req, res) => {
     try {
         const { price, ema9, ema21, signal_time, soalan, rsi, atr, session, reasons } = req.body;
         const prompt = `You are a Professional Trading Assistant for XAUUSD. Current Data: Price ${price}, EMA9 ${ema9}, EMA21 ${ema21}, RSI ${rsi}, ATR% ${atr}, Session ${session}, Filtered: ${reasons ? reasons.join(', ') : 'None'}. User Question: "${soalan}". Answer in 2-3 sentences in Bahasa Melayu.`;
-        const response = await ai.models.generateContent({ model: 'gemini-3.8-flash', contents: prompt });
+        
+        // Cuba guna gemini-2.5-flash (versi stabil terkini)
+        const response = await ai.models.generateContent({ model: 'gemini-2.5-flash', contents: prompt });
         res.json({ status: "success", analysis: response.text });
     } catch (error) {
         console.error("AI Error:", error.message);
-        res.status(500).json({ status: "error", message: "AI service temporarily unavailable." });
+        // Cuba fallback ke model lain kalau gagal
+        try {
+            const { price, soalan } = req.body;
+            const prompt2 = `Analyze XAUUSD at ${price}. Question: ${soalan}. Answer briefly in Bahasa Melayu.`;
+            const response2 = await ai.models.generateContent({ model: 'gemini-1.5-flash', contents: prompt2 });
+            res.json({ status: "success", analysis: response2.text });
+        } catch (error2) {
+            console.error("AI Fallback Error:", error2.message);
+            res.status(500).json({ status: "error", message: "AI service temporarily unavailable." });
+        }
     }
 });
 
@@ -126,14 +137,14 @@ app.get('/api/candles', async (req, res) => {
     } catch (error) { res.status(500).json({ status: "error", message: error.message }); }
 });
 
-app.get('/api/backtest', async (req, res)(v => {
-    const symbol = req.query.symbol.l || 'XAU/USD';
+app.get('/api/backtest', async (req, res) => {
+    const symbol = req.query.symbol || 'XAU/USD';
     try {
-        const response = awaitow axios.get(`https://api.twelvedata),.com/time_series? closesymbol=${symbol}&interval=15min:&outputsize=500&apikey=${TWELVE_DATA_KEY}`);
+        const response = await axios.get(`https://api.twelvedata.com/time_series?symbol=${symbol}&interval=15min&outputsize=500&apikey=${TWELVE_DATA_KEY}`);
         if (response.data.status === 'error') throw new Error("API Limit");
         const candles = response.data.values.map(v => ({
             time: Math.floor(new Date(v.datetime).getTime() / 1000),
-            open: parseFloat(v.open), high: parseFloat(v.high), low: parseFloat parseFloat(v.close)
+            open: parseFloat(v.open), high: parseFloat(v.high), low: parseFloat(v.low), close: parseFloat(v.close)
         })).reverse();
         
         let win = 0, loss = 0, markers = [];
