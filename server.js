@@ -1,6 +1,5 @@
 const express = require('express');
 const axios = require('axios');
-const cheerio = require('cheerio');
 const cors = require('cors');
 const { GoogleGenAI } = require('@google/genai'); 
 require('dotenv').config();
@@ -13,34 +12,72 @@ app.use(express.static(__dirname));
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 const TWELVE_DATA_KEY = '9232c8d947f1486a9562da7d78b8f5c4';
 
-// 1. API SIGNAL
+function calculateRSI(closes, period = 14) {
+    if (closes.length < period + 1) return 50;
+    let gains = 0, losses = 0;
+    for (let i = closes.length - period; i < closes.length; i++) {
+        const diff = closes[i] - closes[i - 1];
+        if (diff >= 0) gains += diff; else losses -= diff;
+    }
+    const avgGain = gains / period; const avgLoss = losses / period;
+    if (avgLoss === 0) return 100;
+    return 100 - (100 / (1 + (avgGain / avgLoss)));
+}
+
+function calculateATR(candles, period = 14) {
+    if (candles.length < period + 1) return 0;
+    let trs = [];
+    for (let i = candles.length - period; i < candles.length; i++) {
+        const high = candles[i].high; const low = candles[i].low; const prevClose = candles[i - 1].close;
+        trs.push(Math.max(high - low, Math.abs(high - prevClose), Math.abs(low - prevClose)));
+    }
+    return trs.reduce((a, b) => a + b, 0) / period;
+}
+
+function getMarketSession() {
+    const hour = new Date().getUTCHours();
+    if (hour >= 7 && hour < 16) return "LONDON";
+    if (hour >= 12 && hour < 21) return "NEW YORK";
+    if (hour >= 0 && hour < 7) return "ASIA";
+    return "CLOSED";
+}
+
 app.get('/api/signal', async (req, res) => {
     const symbol = req.query.symbol || 'XAU/USD'; 
     try {
-        const response = await axios.get(`https://api.twelvedata.com/time_series?symbol=${symbol}&interval=1min&outputsize=50&apikey=${TWELVE_DATA_KEY}`);
+        const response = await axios.get(`https://api.twelvedata.com/time_series?symbol=${symbol}&interval=1min&outputsize=100&apikey=${TWELVE_DATA_KEY}`);
         if (response.data.status === 'error') throw new Error("API Limit");
         const values = response.data.values;
-        const closes = values.map(v => parseFloat(v.close)).reverse();
+        const candles = values.map(v => ({
+            time: v.datetime, open: parseFloat(v.open),
+            high: parseFloat(v.high), low: parseFloat(v.low), close: parseFloat(v.close)
+        })).reverse();
+        const closes = candles.map(c => c.close);
         const hargaTerkini = closes[closes.length - 1];
-        const kiraEMA = (arr, tempoh) => {
-            let ema = arr[0]; let k = 2 / (tempoh + 1);
-            for (let i = 1; i < arr.length; i++) { ema = (arr[i] * k) + (ema * (1 - k)); }
-            return ema;
-        };
-        const ema9 = kiraEMA(closes, 9);
-        const ema21 = kiraEMA(closes, 21);
-        let signal = "WAIT"; let warna = "#94a3b8";
-        if (ema9 > ema21) { signal = "BUY"; warna = "#22c55e"; } 
-        else if (ema9 < ema21) { signal = "SELL"; warna = "#ef4444"; }
-        let decimal = 2;
-        if (symbol.includes('EUR') || symbol.includes('GBP')) decimal = 4;
-        res.json({ symbol, harga: hargaTerkini.toFixed(decimal), signal, warna, ema9: ema9.toFixed(decimal), ema21: ema21.toFixed(decimal), masa: new Date().toLocaleTimeString(), status: "LIVE" });
+        const kiraEMA = (arr, t) => { let e = arr[0]; let k = 2/(t+1); for (let i = 1; i < arr.length; i++) e = (arr[i]*k) + (e*(1-k)); return e; };
+        const ema9 = kiraEMA(closes, 9); const ema21 = kiraEMA(closes, 21); const ema50 = kiraEMA(closes, 50);
+        const rsi = calculateRSI(closes, 14);
+        const atr = calculateATR(candles, 14);
+        const atrPercent = (atr / hargaTerkini) * 100;
+        const session = getMarketSession();
+        
+        let signal = "WAIT"; let warna = "#94a3b8"; let reasons = []; let filtered = false;
+        const emaCross = ema9 > ema21 ? "BUY" : "SELL";
+        if (emaCross === "BUY" && rsi > 70) { filtered = true; reasons.push("RSI Overbought"); }
+        if (emaCross === "SELL" && rsi < 30) { filtered = true; reasons.push("RSI Oversold"); }
+        if (atrPercent < 0.05) { filtered = true; reasons.push("Low Volatility"); }
+        if (emaCross === "BUY" && hargaTerkini < ema50) { filtered = true; reasons.push("Against Trend"); }
+        if (emaCross === "SELL" && hargaTerkini > ema50) { filtered = true; reasons.push("Against Trend"); }
+        if (session === "ASIA" || session === "CLOSED") { filtered = true; reasons.push("Off Session"); }
+        if (!filtered) { signal = emaCross; warna = signal === "BUY" ? "#22c55e" : "#ef4444"; }
+        
+        let decimal = 2; if (symbol.includes('EUR') || symbol.includes('GBP')) decimal = 4;
+        res.json({ symbol, harga: hargaTerkini.toFixed(decimal), signal, warna, ema9: ema9.toFixed(decimal), ema21: ema21.toFixed(decimal), ema50: ema50.toFixed(decimal), rsi: rsi.toFixed(1), atrPercent: atrPercent.toFixed(3), session, filtered, reasons, masa: new Date().toLocaleTimeString(), status: "LIVE" });
     } catch (error) {
-        res.json({ symbol, harga: "4140.04", signal: "BUY", warna: "#22c55e", ema9: "4138.34", ema21: "4137.22", masa: new Date().toLocaleTimeString(), status: "SIMULASI" });
+        res.json({ symbol, harga: "4140.04", signal: "WAIT", warna: "#94a3b8", ema9: "4138.34", ema21: "4137.22", ema50: "4135.00", rsi: "50", atrPercent: "0.1", session: "LONDON", filtered: true, reasons: ["Simulation"], masa: new Date().toLocaleTimeString(), status: "SIMULASI" });
     }
 });
 
-// 2. API MARKET
 app.get('/api/market', async (req, res) => {
     const symbol = req.query.symbol || 'XAU/USD'; 
     try {
@@ -60,86 +97,68 @@ app.get('/api/market', async (req, res) => {
     }
 });
 
-// 3. API NEWS
-app.get('/api/news', async (req, res) => {
-    try {
-        const response = await axios.get('https://www.forexfactory.com/calendar', { headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36' } });
-        const $ = cheerio.load(response.data);
-        let beritaTerkini = null;
-        $('tr.calendar__row').each((i, el) => {
-            const currency = $(el).find('.calendar__currency').text().trim(); const impact = $(el).find('.calendar__impact span').attr('title'); const actual = $(el).find('.calendar__actual').text().trim();
-            if (currency === 'USD' && actual !== '' && impact === 'High Impact Expected') {
-                beritaTerkini = { event: $(el).find('.calendar__event').text().trim(), actual, forecast: $(el).find('.calendar__forecast').text().trim(), previous: $(el).find('.calendar__previous').text().trim() };
-            }
-        });
-        if (!beritaTerkini) return res.json({ status: "MENUNGGU", bias: "NEUTRAL USD", warna: "#fbbf24", alasan: "Tiada berita USD berimpak tinggi.", event: "Menunggu Berita...", actual: "-", forecast: "-", previous: "-" });
-        let actualNum = parseFloat(beritaTerkini.actual.replace(/[^0-9.-]+/g,"")) || 0; let forecastNum = parseFloat(beritaTerkini.forecast.replace(/[^0-9.-]+/g,"")) || 0;
-        let bias = "NEUTRAL USD"; let warna = "#fbbf24"; let alasan = "Market sideway.";
-        if (actualNum > forecastNum) { bias = "BULLISH USD (BEARISH GOLD)"; warna = "#ef4444"; alasan = "USD mengukuh, Gold berpotensi turun."; } 
-        else if (actualNum < forecastNum) { bias = "BEARISH USD (BULLISH GOLD)"; warna = "#22c55e"; alasan = "USD lemah, Gold berpotensi naik."; }
-        res.json({ status: "LIVE", event: beritaTerkini.event, actual: beritaTerkini.actual, forecast: beritaTerkini.forecast, previous: beritaTerkini.previous, bias, warna, alasan });
-    } catch (error) {
-        res.json({ status: "SIMULASI", bias: "BEARISH USD (BULLISH GOLD)", warna: "#22c55e", alasan: "IP disekat sementara. Ini data simulasi.", event: "US NFP (Simulasi)", actual: "150K", forecast: "160K", previous: "162K" });
-    }
-});
-
-// 4. API AI (GEMINI)
 app.post('/api/ai-analysis', async (req, res) => {
     try {
-        const { price, ema9, ema21, signal_time, soalan } = req.body;
+        const { price, ema9, ema21, signal_time, soalan, rsi, atr, session, reasons } = req.body;
         const masa_sekarang = Date.now() / 1000; 
-
-        const prompt = `
-        You are a Professional Trading Assistant for XAUUSD.
-        Current Data:
-        - Current Price: ${price}
-        - EMA9: ${ema9}, EMA21: ${ema21}
-        - Signal Time: ${signal_time}
-        - Current Time: ${masa_sekarang}
-        
-        User Question: "${soalan}"
-        
-        Your Task:
-        1. Answer the user's question based on the market data.
-        2. If the question is about the signal, check if it is FALSE, VALID, or TOO LATE.
-        3. Give a brief answer in 2-3 sentences in Bahasa Melayu.
-        `;
-
-        const response = await ai.models.generateContent({
-            model: 'gemini-3.6-flash',
-            contents: prompt,
-        });
-        
-        const text = response.text;
-        res.json({ status: "success", analysis: text });
-
+        const prompt = `You are a Professional Trading Assistant for XAUUSD. Current Data: Price ${price}, EMA9 ${ema9}, EMA21 ${ema21}, RSI ${rsi}, ATR% ${atr}, Session ${session}, Filtered: ${reasons ? reasons.join(', ') : 'None'}. User Question: "${soalan}". Answer in 2-3 sentences in Bahasa Melayu.`;
+        const response = await ai.models.generateContent({ model: 'gemini-3.6-flash', contents: prompt });
+        res.json({ status: "success", analysis: response.text });
     } catch (error) {
-        console.error("AI Error:", error);
         res.status(500).json({ status: "error", message: "AI service temporarily unavailable." });
     }
 });
 
-// 5. API HISTORICAL CANDLES (Untuk Carta)
 app.get('/api/candles', async (req, res) => {
     const symbol = req.query.symbol || 'XAU/USD';
     try {
         const response = await axios.get(`https://api.twelvedata.com/time_series?symbol=${symbol}&interval=15min&outputsize=100&apikey=${TWELVE_DATA_KEY}`);
         if (response.data.status === 'error') throw new Error("API Limit");
-        
-        const values = response.data.values;
-        
-        const candles = values.map(v => ({
+        const candles = response.data.values.map(v => ({
             time: Math.floor(new Date(v.datetime).getTime() / 1000),
-            open: parseFloat(v.open),
-            high: parseFloat(v.high),
-            low: parseFloat(v.low),
-            close: parseFloat(v.close)
+            open: parseFloat(v.open), high: parseFloat(v.high), low: parseFloat(v.low), close: parseFloat(v.close)
+        })).reverse();
+        res.json({ status: "success", candles });
+    } catch (error) { res.status(500).json({ status: "error", message: error.message }); }
+});
+
+app.get('/api/backtest', async (req, res) => {
+    const symbol = req.query.symbol || 'XAU/USD';
+    try {
+        const response = await axios.get(`https://api.twelvedata.com/time_series?symbol=${symbol}&interval=15min&outputsize=500&apikey=${TWELVE_DATA_KEY}`);
+        if (response.data.status === 'error') throw new Error("API Limit");
+        const candles = response.data.values.map(v => ({
+            time: Math.floor(new Date(v.datetime).getTime() / 1000),
+            open: parseFloat(v.open), high: parseFloat(v.high), low: parseFloat(v.low), close: parseFloat(v.close)
         })).reverse();
         
-        res.json({ status: "success", candles: candles });
-    } catch (error) {
-        res.status(500).json({ status: "error", message: error.message });
-    }
+        let win = 0, loss = 0, markers = [];
+        for (let i = 50; i < candles.length - 1; i++) {
+            const current = candles[i];
+            const closesSlice = candles.slice(0, i + 1).map(c => c.close);
+            const ema9 = (() => { let e = closesSlice[0]; let k = 2/10; for (let x = 1; x < closesSlice.length; x++) e = (closesSlice[x]*k)+(e*(1-k)); return e; })();
+            const ema21 = (() => { let e = closesSlice[0]; let k = 2/22; for (let x = 1; x < closesSlice.length; x++) e = (closesSlice[x]*k)+(e*(1-k)); return e; })();
+            const rsi = calculateRSI(closesSlice, 14);
+            const atr = calculateATR(candles.slice(0, i + 1), 14);
+            const atrPercent = (atr / current.close) * 100;
+            if (ema9 > ema21 && rsi < 70 && atrPercent > 0.05) {
+                const tp = current.close * 1.01; const sl = current.close * 0.99;
+                let result = null;
+                for (let j = i + 1; j < candles.length; j++) {
+                    if (candles[j].high >= tp) { result = 'WIN'; break; }
+                    if (candles[j].low <= sl) { result = 'LOSS'; break; }
+                }
+                if (result === 'WIN') win++;
+                if (result === 'LOSS') loss++;
+                if (result) markers.push({ time: current.time, position: result === 'WIN' ? 'belowBar' : 'aboveBar', color: result === 'WIN' ? '#22c55e' : '#ef4444', shape: result === 'WIN' ? 'arrowUp' : 'arrowDown', text: result });
+            }
+        }
+        const totalTrades = win + loss;
+        const winRate = totalTrades > 0 ? ((win / totalTrades) * 100).toFixed(1) : 0;
+        const chartCandles = candles.slice(-100);
+        const chartMarkers = markers.filter(m => m.time >= chartCandles[0].time);
+        res.json({ status: "success", winRate, totalTrades, candles: chartCandles, markers: chartMarkers });
+    } catch (error) { res.status(500).json({ status: "error", message: error.message }); }
 });
 
 const PORT = process.env.PORT || 3000;
