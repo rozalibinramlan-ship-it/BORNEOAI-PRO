@@ -2,21 +2,20 @@ const express = require('express');
 const axios = require('axios');
 const cheerio = require('cheerio');
 const cors = require('cors');
-const OpenAI = require('openai'); // Library baru untuk AI
-require('dotenv').config(); // Library untuk baca .env (kalau ada)
+const { GoogleGenerativeAI } = require('@google/generative-ai'); // Guna Gemini
+require('dotenv').config();
 
 const app = express();
 app.use(cors());
-app.use(express.json()); // PENTING: Untuk terima data JSON dari frontend
+app.use(express.json());
 app.use(express.static(__dirname));
 
-// Setup OpenAI
-const openai = new OpenAI({
-    apiKey: process.env.OPENAI_API_KEY, // Ambil dari Environment Render
-});
+// Setup Gemini AI (Ambil API Key dari Environment Render)
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
 const TWELVE_DATA_KEY = '9232c8d947f1486a9562da7d78b8f5c4';
 
+// 1. API SIGNAL LAMA
 app.get('/api/signal', async (req, res) => {
     const symbol = req.query.symbol || 'XAU/USD'; 
     try {
@@ -43,6 +42,7 @@ app.get('/api/signal', async (req, res) => {
     }
 });
 
+// 2. API MARKET LAMA
 app.get('/api/market', async (req, res) => {
     const symbol = req.query.symbol || 'XAU/USD'; 
     try {
@@ -62,6 +62,7 @@ app.get('/api/market', async (req, res) => {
     }
 });
 
+// 3. API NEWS LAMA
 app.get('/api/news', async (req, res) => {
     try {
         const response = await axios.get('https://www.forexfactory.com/calendar', { headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36' } });
@@ -84,15 +85,12 @@ app.get('/api/news', async (req, res) => {
     }
 });
 
-// ==========================================
-// KOD BARU: API AI UNTUK PENAPIS SIGNAL PALSU
-// ==========================================
+// 4. API AI BARU (GEMINI - PENAPIS SIGNAL PALSU)
 app.post('/api/ai-analysis', async (req, res) => {
     try {
         const { price, ema9, ema21, signal_time } = req.body;
-        const masa_sekarang = Date.now() / 1000; // dalam saat
+        const masa_sekarang = Date.now() / 1000; 
 
-        // Prompt khas untuk tapis signal palsu, lambat, dan expired
         const prompt = `
         Kamu adalah Penapis Signal Palsu untuk XAUUSD.
         Data semasa:
@@ -108,13 +106,13 @@ app.post('/api/ai-analysis', async (req, res) => {
         4. Beri jawapan ringkas 2 ayat dalam Bahasa Melayu.
         `;
 
-        const response = await openai.chat.completions.create({
-            model: "gpt-4o-mini",
-            messages: [{ role: "user", content: prompt }],
-            max_tokens: 150,
-        });
+        // Guna model Gemini 1.5 Flash (Percuma)
+        const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+        const result = await model.generateContent(prompt);
+        const response = await result.response;
+        const text = response.text();
 
-        res.json({ status: "success", analysis: response.choices[0].message.content });
+        res.json({ status: "success", analysis: text });
 
     } catch (error) {
         console.error("AI Error:", error);
