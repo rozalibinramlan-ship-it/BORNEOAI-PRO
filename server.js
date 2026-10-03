@@ -9,6 +9,11 @@ app.use(cors());
 app.use(express.json());
 app.use(express.static(__dirname));
 
+// Route untuk serve HTML
+app.get('/', (req, res) => {
+    res.sendFile(__dirname + '/index.html');
+});
+
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 const TWELVE_DATA_KEY = '9232c8d947f1486a9562da7d78b8f5c4';
 
@@ -100,11 +105,11 @@ app.get('/api/market', async (req, res) => {
 app.post('/api/ai-analysis', async (req, res) => {
     try {
         const { price, ema9, ema21, signal_time, soalan, rsi, atr, session, reasons } = req.body;
-        const masa_sekarang = Date.now() / 1000; 
         const prompt = `You are a Professional Trading Assistant for XAUUSD. Current Data: Price ${price}, EMA9 ${ema9}, EMA21 ${ema21}, RSI ${rsi}, ATR% ${atr}, Session ${session}, Filtered: ${reasons ? reasons.join(', ') : 'None'}. User Question: "${soalan}". Answer in 2-3 sentences in Bahasa Melayu.`;
-        const response = await ai.models.generateContent({ model: 'gemini-3.6-flash', contents: prompt });
+        const response = await ai.models.generateContent({ model: 'gemini-2.0-flash', contents: prompt });
         res.json({ status: "success", analysis: response.text });
     } catch (error) {
+        console.error("AI Error:", error.message);
         res.status(500).json({ status: "error", message: "AI service temporarily unavailable." });
     }
 });

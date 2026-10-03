@@ -133,10 +133,7 @@
         .snr-box.red .label { color: #ef4444; } 
         .snr-box.green .label { color: #22c55e; } 
         .snr-box.blue .label { color: #3b82f6; }
-        .snr-box.yellow { 
-            background: linear-gradient(135deg, #fbbf24, #f59e0b); 
-            border: none;
-        } 
+        .snr-box.yellow { background: linear-gradient(135deg, #fbbf24, #f59e0b); border: none; } 
         .snr-box.yellow .label, .snr-box.yellow .value { color: #050810; }
         
         .table-container { 
@@ -194,8 +191,7 @@
         }
         .ai-result-box { 
             margin-top: 15px; padding: 18px; 
-            background: #0a1525; 
-            border-radius: 14px; 
+            background: #0a1525; border-radius: 14px; 
             border-left: 3px solid var(--accent-blue); 
             display: none;
         }
@@ -249,8 +245,7 @@
         
         #bottom-nav { 
             position: fixed; bottom: 0; left: 0; width: 100%; 
-            background: #050810;
-            border-top: 1px solid var(--border); 
+            background: #050810; border-top: 1px solid var(--border); 
             display: flex; justify-content: space-around; 
             padding: 12px 0 15px; z-index: 100; 
         }
@@ -282,7 +277,6 @@
             <span class="live-badge">● LIVE</span>
         </div>
         <div id="signal-box" class="signal-box wait">WAIT</div>
-        
         <div id="filter-status" style="text-align: center; margin: 15px 0;"></div>
         
         <div class="glass-card">
@@ -302,7 +296,6 @@
             <input type="text" id="soalan-ai" class="ai-input" placeholder="Ask about this signal...">
             <button onclick="tanyaAI()" class="ai-send-btn">Ask AI</button>
         </div>
-        
         <div id="hasil-ai" class="ai-result-box">
             <div class="ai-result-header"><span>🤖</span><b>AI Analysis</b></div>
             <p id="hasil-ai-text" class="ai-result-text"></p>
