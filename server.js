@@ -2,10 +2,18 @@ const express = require('express');
 const axios = require('axios');
 const cheerio = require('cheerio');
 const cors = require('cors');
+const OpenAI = require('openai'); // Library baru untuk AI
+require('dotenv').config(); // Library untuk baca .env (kalau ada)
 
 const app = express();
 app.use(cors());
+app.use(express.json()); // PENTING: Untuk terima data JSON dari frontend
 app.use(express.static(__dirname));
+
+// Setup OpenAI
+const openai = new OpenAI({
+    apiKey: process.env.OPENAI_API_KEY, // Ambil dari Environment Render
+});
 
 const TWELVE_DATA_KEY = '9232c8d947f1486a9562da7d78b8f5c4';
 
@@ -73,6 +81,44 @@ app.get('/api/news', async (req, res) => {
         res.json({ status: "LIVE", event: beritaTerkini.event, actual: beritaTerkini.actual, forecast: beritaTerkini.forecast, previous: beritaTerkini.previous, bias, warna, alasan });
     } catch (error) {
         res.json({ status: "SIMULASI", bias: "BEARISH USD (BULLISH GOLD)", warna: "#22c55e", alasan: "IP disekat sementara. Ini data simulasi.", event: "US NFP (Simulasi)", actual: "150K", forecast: "160K", previous: "162K" });
+    }
+});
+
+// ==========================================
+// KOD BARU: API AI UNTUK PENAPIS SIGNAL PALSU
+// ==========================================
+app.post('/api/ai-analysis', async (req, res) => {
+    try {
+        const { price, ema9, ema21, signal_time } = req.body;
+        const masa_sekarang = Date.now() / 1000; // dalam saat
+
+        // Prompt khas untuk tapis signal palsu, lambat, dan expired
+        const prompt = `
+        Kamu adalah Penapis Signal Palsu untuk XAUUSD.
+        Data semasa:
+        - Harga sekarang: ${price}
+        - EMA9: ${ema9}, EMA21: ${ema21}
+        - Masa signal dijana: ${signal_time}
+        - Masa sekarang: ${masa_sekarang}
+        
+        Tugas kamu:
+        1. Semak sama ada signal ini PALSU, SAH, atau TERLALU LAMBAT (Late Entry).
+        2. Jika harga dah terlalu jauh dari EMA, beri amaran supaya tunggu pullback.
+        3. Jika masa sekarang dah melebihi 45 minit dari masa signal, tandakan sebagai 'TAMAT TEMPOH' (Expired).
+        4. Beri jawapan ringkas 2 ayat dalam Bahasa Melayu.
+        `;
+
+        const response = await openai.chat.completions.create({
+            model: "gpt-4o-mini",
+            messages: [{ role: "user", content: prompt }],
+            max_tokens: 150,
+        });
+
+        res.json({ status: "success", analysis: response.choices[0].message.content });
+
+    } catch (error) {
+        console.error("AI Error:", error);
+        res.status(500).json({ status: "error", message: error.message });
     }
 });
 
