@@ -2,7 +2,7 @@ const express = require('express');
 const axios = require('axios');
 const cheerio = require('cheerio');
 const cors = require('cors');
-const { GoogleGenerativeAI } = require('@google/generative-ai'); // Guna Gemini
+const { GoogleGenAI } = require('@google/genai'); // SDK BARU
 require('dotenv').config();
 
 const app = express();
@@ -10,8 +10,8 @@ app.use(cors());
 app.use(express.json());
 app.use(express.static(__dirname));
 
-// Setup Gemini AI (Ambil API Key dari Environment Render)
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+// Setup Gemini AI (SDK BARU)
+const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
 const TWELVE_DATA_KEY = '9232c8d947f1486a9562da7d78b8f5c4';
 
@@ -106,11 +106,13 @@ app.post('/api/ai-analysis', async (req, res) => {
         4. Beri jawapan ringkas 2 ayat dalam Bahasa Melayu.
         `;
 
-        // Guna model Gemini 1.5 Flash (Percuma)
-        const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
-        const result = await model.generateContent(prompt);
-        const response = await result.response;
-        const text = response.text();
+        // Guna SDK BARU dan MODEL TERKINI
+        const response = await ai.models.generateContent({
+            model: 'gemini-2.5-flash',
+            contents: prompt,
+        });
+        
+        const text = response.text;
 
         res.json({ status: "success", analysis: text });
 
