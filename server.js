@@ -16,20 +16,20 @@ app.get('/', (req, res) => {
 if (!process.env.GEMINI_API_KEY) {
     console.error("⚠️ GEMINI_API_KEY tidak dijumpai!");
 }
+if (!process.env.TWELVEDATA_API_KEY) {
+    console.error("⚠️ TWELVEDATA_API_KEY tidak dijumpai!");
+}
 
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || 'MISSING_KEY' });
-const BIQUOTE_URL = 'https://biquote.io/api';
+const TWELVEDATA_URL = 'https://api.twelvedata.com';
+const TWELVEDATA_KEY = process.env.TWELVEDATA_API_KEY || '';
 
-// ===== SENARAI MODEL (MODEL BARU DARI GOOGLE) =====
-const AI_MODELS = [
-    'gemini-3.8-flash'
-];
+// ===== SENARAI MODEL =====
+const AI_MODELS = ['gemini-3.8-flash'];
 
-// ===== CALL AI (TAMBAH CACHE) =====
 let workingModel = null;
 
 async function callAI(prompt) {
-    // Kalau dah tahu model mana berjaya, terus guna
     if (workingModel) {
         try {
             const r = await ai.models.generateContent({ 
@@ -42,8 +42,6 @@ async function callAI(prompt) {
             workingModel = null;
         }
     }
-    
-    // Cuba satu-satu
     let lastErr = null;
     for (const model of AI_MODELS) {
         try {
@@ -63,18 +61,19 @@ async function callAI(prompt) {
     throw lastErr || new Error("Semua model gagal");
 }
 
+// ===== SYMBOL MAPPING UNTUK TWELVEDATA =====
 const symbolMap = {
-    'XAU/USD': 'xauusd', 'XAG/USD': 'xagusd',
-    'EUR/USD': 'eurusd', 'GBP/USD': 'gbpusd', 'USD/JPY': 'usdjpy',
-    'AUD/USD': 'audusd', 'USD/CAD': 'usdcad', 'USD/CHF': 'usdchf', 'NZD/USD': 'nzdusd',
-    'EUR/GBP': 'eurgbp', 'EUR/JPY': 'eurjpy', 'EUR/AUD': 'euraud',
-    'GBP/JPY': 'gbpjpy', 'GBP/AUD': 'gbpaud', 'AUD/JPY': 'audjpy',
-    'SPX500': 'spx500', 'NAS100': 'nas100', 'US30': 'us30',
-    'DE30': 'de30', 'JP225': 'jp225',
-    'WTICO': 'wtiusd', 'BCO': 'brentusd', 'NATGAS': 'natgas'
+    'XAU/USD': 'XAU/USD', 'XAG/USD': 'XAG/USD',
+    'EUR/USD': 'EUR/USD', 'GBP/USD': 'GBP/USD', 'USD/JPY': 'USD/JPY',
+    'AUD/USD': 'AUD/USD', 'USD/CAD': 'USD/CAD', 'USD/CHF': 'USD/CHF', 'NZD/USD': 'NZD/USD',
+    'EUR/GBP': 'EUR/GBP', 'EUR/JPY': 'EUR/JPY', 'EUR/AUD': 'EUR/AUD',
+    'GBP/JPY': 'GBP/JPY', 'GBP/AUD': 'GBP/AUD', 'AUD/JPY': 'AUD/JPY',
+    'SPX500': 'SPX', 'NAS100': 'NDX', 'US30': 'DJI',
+    'DE30': 'DAX', 'JP225': 'N225',
+    'WTICO': 'WTI/USD', 'BCO': 'BRENT/USD', 'NATGAS': 'NG'
 };
 
-function toBiquote(s) { return symbolMap[s] || s.replace('/', '').toLowerCase(); }
+function toTwelveData(s) { return symbolMap[s] || s; }
 
 function getDecimal(s) {
     if (s.includes('JPY')) return 3;
@@ -142,30 +141,67 @@ function detectSNR(candles) {
     return { resistance, support };
 }
 
+// ===== TWELVEDATA: GET TICK =====
 async function getTick(symbol) {
-    const url = `${BIQUOTE_URL}/${toBiquote(symbol)}`;
+    const tdSymbol = toTwelveData(symbol);
+    const url = `${TWELVEDATA_URL}/quote?symbol=${encodeURIComponent(tdSymbol)}&apikey=${TWELVEDATA_KEY}`;
     const response = await axios.get(url, { timeout: 10000 });
     const d = response.data;
+
+    if (d.status === 'error' || d.code) {
+        throw new Error(d.message || 'TwelveData error');
+    }
+
     const bid = parseFloat(d.bid || 0);
     const ask = parseFloat(d.ask || 0);
-    const mid = parseFloat(d.mid || (bid + ask) / 2 || d.last || 0);
-    const spread = parseFloat(d.spread || (ask - bid) || 0);
-    return { bid, ask, mid, spread, marketState: d.marketState || 'unknown', stale: d.stale || false };
+    const price = parseFloat(d.close || d.price || 0);
+    const mid = price || (bid + ask) / 2 || 0;
+
+    if (mid === 0) throw new Error('Harga 0.00 dari TwelveData');
+
+    return {
+        bid: bid || mid,
+        ask: ask || mid,
+        mid,
+        spread: parseFloat(d.spread || (ask - bid) || 0),
+        marketState: 'open',
+        stale: false,
+        change: parseFloat(d.change || 0),
+        percentChange: parseFloat(d.percent_change || 0)
+    };
 }
 
+// ===== TWELVEDATA: GET OHLC =====
 async function getOHLC(symbol, interval = '15m', limit = 100) {
-    const url = `${BIQUOTE_URL}/${toBiquote(symbol)}/ohlc?interval=${interval}&limit=${limit}`;
+    const tdSymbol = toTwelveData(symbol);
+    // Map interval ke format TwelveData
+    const intervalMap = {
+        '1min': '1min', '5min': '5min', '15min': '15min',
+        '30min': '30min', '1h': '1h', '4h': '4h', '1day': '1day'
+    };
+    const tdInterval = intervalMap[interval] || '15min';
+
+    const url = `${TWELVEDATA_URL}/time_series?symbol=${encodeURIComponent(tdSymbol)}&interval=${tdInterval}&outputsize=${limit}&apikey=${TWELVEDATA_KEY}`;
     const response = await axios.get(url, { timeout: 10000 });
     const d = response.data;
-    const bars = d.bars || d.data || (Array.isArray(d) ? d : []);
-    return bars.map(c => ({
-        time: c.openTime || c.time || c.timestamp,
-        timestamp: Math.floor(new Date(c.openTime || c.time || c.timestamp).getTime() / 1000),
+
+    if (d.status === 'error' || d.code) {
+        throw new Error(d.message || 'TwelveData OHLC error');
+    }
+
+    if (!d.values || !Array.isArray(d.values)) {
+        return [];
+    }
+
+    // TwelveData hantar newest first, kita reverse
+    return d.values.slice().reverse().map(c => ({
+        time: c.datetime,
+        timestamp: Math.floor(new Date(c.datetime).getTime() / 1000),
         open: parseFloat(c.open || 0),
         high: parseFloat(c.high || 0),
         low: parseFloat(c.low || 0),
         close: parseFloat(c.close || 0)
-    })).filter(c => !isNaN(c.timestamp));
+    })).filter(c => !isNaN(c.timestamp) && c.close > 0);
 }
 
 // ===== API: TEST AI =====
@@ -175,17 +211,19 @@ app.get('/api/test-ai', async (req, res) => {
             model: AI_MODELS[0],
             contents: 'Reply with only: OK'
         });
-        res.json({ 
-            status: 'OK',
-            model: AI_MODELS[0],
-            reply: r.text ? r.text.substring(0, 30) : '(empty)'
-        });
+        res.json({ status: 'OK', model: AI_MODELS[0], reply: r.text ? r.text.substring(0, 30) : '(empty)' });
     } catch (e) {
-        res.json({ 
-            status: 'FAIL',
-            model: AI_MODELS[0],
-            error: (e.message || '').substring(0, 200)
-        });
+        res.json({ status: 'FAIL', model: AI_MODELS[0], error: (e.message || '').substring(0, 200) });
+    }
+});
+
+// ===== API: TEST TWELVEDATA =====
+app.get('/api/test-twelvedata', async (req, res) => {
+    try {
+        const tick = await getTick('XAU/USD');
+        res.json({ status: 'OK', data: tick });
+    } catch (e) {
+        res.json({ status: 'FAIL', error: (e.message || '').substring(0, 200) });
     }
 });
 
@@ -221,6 +259,7 @@ app.get('/api/signal', async (req, res) => {
         if (!filtered) { signal = emaCross; warna = signal === "BUY" ? "#22c55e" : "#ef4444"; }
         res.json({ symbol, harga: harga.toFixed(decimal), signal, warna, ema9: ema9.toFixed(decimal), ema21: ema21.toFixed(decimal), ema50: ema50.toFixed(decimal), rsi: rsi.toFixed(1), atrPercent: atrPercent.toFixed(3), session, spread: spread.toFixed(decimal), bid: bid.toFixed(decimal), ask: ask.toFixed(decimal), filtered, reasons, masa: new Date().toLocaleTimeString(), status: "LIVE" });
     } catch (error) {
+        console.error("/api/signal ERROR:", error.message);
         res.json({ symbol, harga: "0.00", signal: "WAIT", warna: "#94a3b8", ema9: "0", ema21: "0", ema50: "0", rsi: "50", atrPercent: "0", session: "CLOSED", spread: "0", bid: "0", ask: "0", filtered: true, reasons: ["Data Error"], masa: new Date().toLocaleTimeString(), status: "ERROR" });
     }
 });
@@ -319,7 +358,7 @@ app.get('/api/backtest', async (req, res) => {
 app.get('/api/next-news', async (req, res) => {
     const fallback = { time: 'Akan datang', currency: 'USD', impact: 'high', event: 'US Non-Farm Payrolls', actual: '-', forecast: '180K', previous: '175K' };
     try {
-        const response = await axios.get(`${BIQUOTE_URL}/calendar`, { timeout: 10000 });
+        const response = await axios.get(`${BIQUOTE_URL}/calendar`, { timeout: 10000 }).catch(() => ({ data: { events: [] } }));
         const d = response.data;
         let events = d.events || d.data || d.calendar || (Array.isArray(d) ? d : []);
         if (!Array.isArray(events)) events = [];
@@ -354,8 +393,9 @@ app.get('/api/next-news', async (req, res) => {
 
 // ===== API: NEWS =====
 app.get('/api/news', async (req, res) => {
+    const fallback = { status: 'success', events: [{ time: 'Akan datang', currency: 'USD', impact: 'high', event: 'US Non-Farm Payrolls', actual: '-', forecast: '180K', previous: '175K' }], note: 'Simulasi' };
     try {
-        const response = await axios.get(`${BIQUOTE_URL}/calendar`, { timeout: 10000 });
+        const response = await axios.get(`${BIQUOTE_URL}/calendar`, { timeout: 10000 }).catch(() => ({ data: { events: [] } }));
         const d = response.data;
         let events = d.events || d.data || d.calendar || (Array.isArray(d) ? d : []);
         if (!Array.isArray(events)) events = [];
@@ -363,9 +403,10 @@ app.get('/api/news', async (req, res) => {
             .filter(e => { const cur = safeStr(e.currency || e.country).toUpperCase(); return cur === 'USD' || cur === 'US'; })
             .slice(0, 20)
             .map(e => ({ time: safeStr(e.time || e.date || e.datetime || ''), currency: safeStr(e.currency || 'USD'), impact: safeStr(e.impact || 'medium').toLowerCase(), event: safeStr(e.event || e.title || e.name || ''), actual: safeStr(e.actual || '-'), forecast: safeStr(e.forecast || e.estimate || '-'), previous: safeStr(e.previous || e.prior || '-') }));
+        if (usdEvents.length === 0) return res.json(fallback);
         res.json({ status: 'success', events: usdEvents });
     } catch (error) {
-        res.json({ status: 'success', events: [{ time: 'Akan datang', currency: 'USD', impact: 'high', event: 'US Non-Farm Payrolls', actual: '-', forecast: '180K', previous: '175K' }], note: 'Simulasi' });
+        res.json(fallback);
     }
 });
 
@@ -425,12 +466,7 @@ app.get('/api/ai-desk', async (req, res) => {
             price: price.toFixed(2), spread: tick.spread.toFixed(2),
             rsi: rsi.toFixed(1), atr: atrPct.toFixed(3), session,
             ema9: ema9.toFixed(2), ema21: ema21.toFixed(2), ema50: ema50.toFixed(2),
-            snr: {
-                resistance: snr.resistance.toFixed(2),
-                support: snr.support.toFixed(2),
-                distToResistance: distToResistance + '%',
-                distToSupport: distToSupport + '%'
-            }
+            snr: { resistance: snr.resistance.toFixed(2), support: snr.support.toFixed(2), distToResistance: distToResistance + '%', distToSupport: distToSupport + '%' }
         };
         
         let signal = "WAIT", reasons = [];
