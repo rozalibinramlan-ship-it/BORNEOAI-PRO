@@ -198,7 +198,7 @@ app.get('/api/market', async (req, res) => {
     } catch (error) { res.status(500).json({ status: "error", message: error.message }); }
 });
 
-// ===== API AI ANALYSIS (dengan fallback) =====
+// ===== API AI ANALYSIS =====
 app.post('/api/ai-analysis', async (req, res) => {
     try {
         const { price, ema9, ema21, signal_time, soalan, rsi, atr, session, reasons, spread } = req.body;
@@ -256,7 +256,7 @@ app.get('/api/backtest', async (req, res) => {
     } catch (error) { res.status(500).json({ status: "error", message: error.message }); }
 });
 
-// ===== API NEXT NEWS (Pre-News Prediction) =====
+// ===== API NEXT NEWS (Pre-News Prediction) - DENGAN HARGA GOLD =====
 app.get('/api/next-news', async (req, res) => {
     const fallback = {
         time: 'Akan datang',
@@ -313,17 +313,30 @@ app.get('/api/next-news', async (req, res) => {
             else if (forecastNum < previousNum) dataBias = "FORECAST USD LEMAH (BULLISH GOLD)";
         }
         
+        // Ambil harga Gold semasa untuk AI
+        let goldPrice = '4145';
+        try {
+            const goldTick = await getTick('XAU/USD');
+            goldPrice = goldTick.mid.toFixed(2);
+            console.log("Gold price untuk AI:", goldPrice);
+        } catch (e) { console.log("Gold price error:", e.message); }
+        
         const prompt = `You are a Pre-News Analyst for XAUUSD.
+
 EVENT: ${nextEvent.event}
 Forecast: ${nextEvent.forecast} | Previous: ${nextEvent.previous} | Actual: ${nextEvent.actual}
 Data Bias: ${dataBias}
+
+CURRENT GOLD PRICE: ${goldPrice} (USE THIS EXACT PRICE!)
 
 Predict in Bahasa Melayu. Reply EXACTLY in this format (no other text):
 🎯 BIAS: [BULLISH GOLD / BEARISH GOLD / NEUTRAL]
 💪 CONFIDENCE: [50-95%]
 📈 SETUP: [BUY / SELL / WAIT]
 📝 REASON: [1-2 sentences]
-💡 ACTION: [specific - e.g., BUY LIMIT @ 4140, SL 30p, TP 60p]`;
+💡 ACTION: [SELL LIMIT @ ${goldPrice} +/- small pips, SL 30p, TP 60p]
+
+CRITICAL: The price in ACTION must be NEAR ${goldPrice} — NOT any other number. Example: if Gold is ${goldPrice}, use SELL LIMIT @ ${goldPrice} or BUY LIMIT @ ${goldPrice}.`;
         
         const prediction = await generateWithFallback(prompt);
         
@@ -331,14 +344,15 @@ Predict in Bahasa Melayu. Reply EXACTLY in this format (no other text):
             status: 'success',
             event: nextEvent,
             prediction: prediction,
-            dataBias
+            dataBias,
+            goldPrice: goldPrice
         });
     } catch (error) {
         console.error("Next News Error:", error.message);
         res.json({ 
             status: 'success', 
             event: fallback, 
-            prediction: '🎯 BIAS: BEARISH GOLD\n💪 CONFIDENCE: 68%\n📈 SETUP: SELL\n📝 REASON: Forecast lebih tinggi dari previous, USD dijangka kuat.\n💡 ACTION: SELL LIMIT @ 4145, SL 30 pips, TP 60 pips', 
+            prediction: '🎯 BIAS: BEARISH GOLD\n💪 CONFIDENCE: 68%\n📈 SETUP: SELL\n📝 REASON: Forecast lebih tinggi dari previous, USD dijangka kuat.\n💡 ACTION: SELL LIMIT @ market price, SL 30 pips, TP 60 pips', 
             dataBias: 'FORECAST USD KUAT (BEARISH GOLD)', 
             note: 'AI busy — guna prediction lalai' 
         });
