@@ -17,7 +17,6 @@ const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
 const BIQUOTE_URL = 'https://biquote.io/api';
 
-// ===== SYMBOL MAPPING =====
 const symbolMap = {
     'XAU/USD': 'xauusd', 'XAG/USD': 'xagusd',
     'EUR/USD': 'eurusd', 'GBP/USD': 'gbpusd', 'USD/JPY': 'usdjpy',
@@ -69,37 +68,40 @@ function getMarketSession() {
     return "CLOSED";
 }
 
-// Helper: ambil tick dari Biquote
 async function getTick(symbol) {
     const url = `${BIQUOTE_URL}/${toBiquote(symbol)}`;
     const response = await axios.get(url, { timeout: 10000 });
     const d = response.data;
+    const bid = parseFloat(d.bid || 0);
+    const ask = parseFloat(d.ask || 0);
+    const mid = parseFloat(d.mid || (bid + ask) / 2 || d.last || 0);
+    const spread = parseFloat(d.spread || (ask - bid) || 0);
     return {
-        bid: parseFloat(d.bid || d.Bid || 0),
-        ask: parseFloat(d.ask || d.Ask || 0),
-        mid: parseFloat(d.mid || d.Mid || d.price || d.Price || 0),
-        spread: parseFloat(d.spread || d.Spread || 0),
-        raw: d
+        bid, ask, mid, spread,
+        marketState: d.marketState || 'unknown',
+        stale: d.stale || false,
+        timestamp: d.timestamp || d.lastQuoteAt,
+        direction: d.direction || 'NEUTRAL',
+        dayDiffPercent: d.dayDiffPercent || 0
     };
 }
 
-// Helper: ambil OHLC candles
 async function getOHLC(symbol, interval = '15m', limit = 100) {
     const url = `${BIQUOTE_URL}/${toBiquote(symbol)}/ohlc?interval=${interval}&limit=${limit}`;
     const response = await axios.get(url, { timeout: 10000 });
-    let data = response.data;
-    if (data.data && Array.isArray(data.data)) data = data.data;
-    if (!Array.isArray(data)) data = [];
-    return data.map(c => ({
-        time: c.time || c.timestamp || c.date,
-        open: parseFloat(c.open || c.o || 0),
-        high: parseFloat(c.high || c.h || 0),
-        low: parseFloat(c.low || c.l || 0),
-        close: parseFloat(c.close || c.c || 0)
+    const d = response.data;
+    const bars = d.bars || d.data || (Array.isArray(d) ? d : []);
+    return bars.map(c => ({
+        time: c.openTime || c.time || c.timestamp,
+        timestamp: Math.floor(new Date(c.openTime || c.time || c.timestamp).getTime() / 1000),
+        open: parseFloat(c.open || 0),
+        high: parseFloat(c.high || 0),
+        low: parseFloat(c.low || 0),
+        close: parseFloat(c.close || 0),
+        isOpen: c.isOpen || false
     }));
 }
 
-// ===== API SIGNAL =====
 app.get('/api/signal', async (req, res) => {
     const symbol = req.query.symbol || 'XAU/USD';
     const decimal = getDecimal(symbol);
@@ -121,7 +123,7 @@ app.get('/api/signal', async (req, res) => {
             const tick = await getTick(symbol);
             bid = tick.bid || harga;
             ask = tick.ask || harga;
-            spread = tick.spread || (ask - bid);
+            spread = tick.spread || 0;
         } catch (e) { console.log("Tick error:", e.message); }
         
         let signal = "WAIT", warna = "#94a3b8", reasons = [], filtered = false;
@@ -147,7 +149,6 @@ app.get('/api/signal', async (req, res) => {
     }
 });
 
-// ===== API MARKET =====
 app.get('/api/market', async (req, res) => {
     const symbol = req.query.symbol || 'XAU/USD';
     const decimal = getDecimal(symbol);
@@ -158,7 +159,7 @@ app.get('/api/market', async (req, res) => {
         res.json({
             symbol, harga: harga.toFixed(decimal),
             bid: tick.bid.toFixed(decimal), ask: tick.ask.toFixed(decimal), spread: tick.spread.toFixed(decimal),
-            change: "LIVE", poc: (harga + variance*2).toFixed(decimal),
+            change: (tick.dayDiffPercent || 0).toFixed(2) + "%", poc: (harga + variance*2).toFixed(decimal),
             snr: {
                 r3: (harga + variance*30).toFixed(decimal), r2: (harga + variance*20).toFixed(decimal),
                 r1: (harga + variance*10).toFixed(decimal), poc: (harga + variance*2).toFixed(decimal),
@@ -181,7 +182,6 @@ app.get('/api/market', async (req, res) => {
     }
 });
 
-// ===== API AI =====
 app.post('/api/ai-analysis', async (req, res) => {
     try {
         const { price, ema9, ema21, signal_time, soalan, rsi, atr, session, reasons, spread } = req.body;
@@ -194,20 +194,20 @@ app.post('/api/ai-analysis', async (req, res) => {
     }
 });
 
-// ===== API CANDLES =====
 app.get('/api/candles', async (req, res) => {
     const symbol = req.query.symbol || 'XAU/USD';
     try {
         const candles = await getOHLC(symbol, '15m', 100);
-        const formatted = candles.map(c => ({
-            time: Math.floor(new Date(c.time).getTime() / 1000),
-            open: c.open, high: c.high, low: c.low, close: c.close
-        })).filter(c => !isNaN(c.time));
+        const formatted = candles
+            .filter(c => !isNaN(c.timestamp))
+            .map(c => ({
+                time: c.timestamp,
+                open: c.open, high: c.high, low: c.low, close: c.close
+            }));
         res.json({ status: "success", candles: formatted });
     } catch (error) { res.status(500).json({ status: "error", message: error.message }); }
 });
 
-// ===== API BACKTEST =====
 app.get('/api/backtest', async (req, res) => {
     const symbol = req.query.symbol || 'XAU/USD';
     try {
@@ -231,7 +231,7 @@ app.get('/api/backtest', async (req, res) => {
                 if (result === 'WIN') win++;
                 if (result === 'LOSS') loss++;
                 if (result) markers.push({
-                    time: Math.floor(new Date(current.time).getTime() / 1000),
+                    time: current.timestamp,
                     position: result === 'WIN' ? 'belowBar' : 'aboveBar',
                     color: result === 'WIN' ? '#22c55e' : '#ef4444',
                     shape: result === 'WIN' ? 'arrowUp' : 'arrowDown',
@@ -241,10 +241,9 @@ app.get('/api/backtest', async (req, res) => {
         }
         const totalTrades = win + loss;
         const winRate = totalTrades > 0 ? ((win / totalTrades) * 100).toFixed(1) : 0;
-        const chartCandles = candles.slice(-100).map(c => ({
-            time: Math.floor(new Date(c.time).getTime() / 1000),
-            open: c.open, high: c.high, low: c.low, close: c.close
-        }));
+        const chartCandles = candles.slice(-100)
+            .filter(c => !isNaN(c.timestamp))
+            .map(c => ({ time: c.timestamp, open: c.open, high: c.high, low: c.low, close: c.close }));
         const chartMarkers = markers.filter(m => m.time >= chartCandles[0].time);
         res.json({ status: "success", winRate, totalTrades, candles: chartCandles, markers: chartMarkers });
     } catch (error) { res.status(500).json({ status: "error", message: error.message }); }

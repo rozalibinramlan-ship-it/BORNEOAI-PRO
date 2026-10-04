@@ -18,116 +18,36 @@
             --text-gray: #94a3b8; 
             --text-white: #f1f5f9;
         }
-        body { 
-            background: #050810;
-            color: var(--text-white); 
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif; 
-            margin: 0; padding: 0; padding-bottom: 80px; 
-            overflow-x: hidden;
-            min-height: 100vh;
-        }
-        
-        .header { 
-            padding: 25px 15px 15px; text-align: center; 
-            border-bottom: 1px solid var(--border);
-            background: #0a1525;
-        }
-        .header img { 
-            display: block; margin: 0 auto 12px; width: 70px; height: 70px; 
-            border-radius: 50%; object-fit: cover; 
-            box-shadow: 0 0 40px rgba(56, 189, 248, 0.6); 
-            border: 2px solid var(--accent-blue); 
-        }
-        .header h1 { 
-            margin: 0; color: var(--accent-yellow); font-size: 14px; 
-            letter-spacing: 4px; font-weight: 900;
-        }
-        select { 
-            margin-top: 15px; padding: 10px 15px; border-radius: 10px; 
-            background: #141e30; color: white; 
-            border: 1px solid var(--border); font-weight: 700; 
-            width: 85%; font-size: 13px;
-        }
-        
+        body { background: #050810; color: var(--text-white); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif; margin: 0; padding: 0; padding-bottom: 80px; overflow-x: hidden; min-height: 100vh; }
+        .header { padding: 25px 15px 15px; text-align: center; border-bottom: 1px solid var(--border); background: #0a1525; }
+        .header img { display: block; margin: 0 auto 12px; width: 70px; height: 70px; border-radius: 50%; object-fit: cover; box-shadow: 0 0 40px rgba(56, 189, 248, 0.6); border: 2px solid var(--accent-blue); }
+        .header h1 { margin: 0; color: var(--accent-yellow); font-size: 14px; letter-spacing: 4px; font-weight: 900; }
+        select { margin-top: 15px; padding: 10px 15px; border-radius: 10px; background: #141e30; color: white; border: 1px solid var(--border); font-weight: 700; width: 85%; font-size: 13px; }
+        optgroup { color: var(--accent-yellow); font-weight: 900; font-size: 11px; letter-spacing: 1px; }
+        option { color: white; font-size: 13px; }
         .screen { display: none; padding: 15px; }
         .screen.active { display: block; }
-        
-        .glass-card { 
-            background: var(--bg-card);
-            border: 1px solid var(--border);
-            border-radius: 18px;
-            padding: 18px;
-            margin-bottom: 15px;
-            box-shadow: 0 8px 32px rgba(0,0,0,0.4);
-        }
-        .card-title { 
-            font-size: 10px; font-weight: 800; color: var(--text-gray); 
-            margin-top: 0; margin-bottom: 12px; 
-            letter-spacing: 2.5px; text-transform: uppercase; 
-        }
-        
+        .glass-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 18px; padding: 18px; margin-bottom: 15px; box-shadow: 0 8px 32px rgba(0,0,0,0.4); }
+        .card-title { font-size: 10px; font-weight: 800; color: var(--text-gray); margin-top: 0; margin-bottom: 12px; letter-spacing: 2.5px; text-transform: uppercase; }
         .price-display { text-align: center; margin: 20px 0; }
-        .price-value { 
-            font-size: 52px; font-weight: 900; margin: 0; 
-            letter-spacing: -2px;
-            color: var(--text-white);
-        }
+        .price-value { font-size: 52px; font-weight: 900; margin: 0; letter-spacing: -2px; color: var(--text-white); }
         .price-change { color: var(--text-green); margin: 8px 0; font-size: 14px; font-weight: 700; }
-        .live-badge { 
-            background: rgba(34, 197, 94, 0.15); color: #4ade80; 
-            padding: 5px 14px; border-radius: 20px; 
-            font-size: 10px; font-weight: 900; letter-spacing: 2px;
-            border: 1px solid rgba(34, 197, 94, 0.4);
-            display: inline-block;
-        }
-        
-        .signal-box { 
-            padding: 35px 20px; border-radius: 22px; 
-            font-size: 46px; font-weight: 900; text-align: center; 
-            margin: 20px auto; transition: all 0.5s ease; 
-            line-height: 1.05; letter-spacing: 4px;
-        }
+        .live-badge { background: rgba(34, 197, 94, 0.15); color: #4ade80; padding: 5px 14px; border-radius: 20px; font-size: 10px; font-weight: 900; letter-spacing: 2px; border: 1px solid rgba(34, 197, 94, 0.4); display: inline-block; }
+        .signal-box { padding: 35px 20px; border-radius: 22px; font-size: 46px; font-weight: 900; text-align: center; margin: 20px auto; transition: all 0.5s ease; line-height: 1.05; letter-spacing: 4px; }
         .wait { background: #1e293b; color: #64748b; border: 2px solid #475569; }
-        .buy { 
-            background: linear-gradient(135deg, #064e3b, #065f46); 
-            color: #4ade80; border: 2px solid #22c55e; 
-            box-shadow: 0 0 60px rgba(34, 197, 94, 0.5);
-        }
-        .sell { 
-            background: linear-gradient(135deg, #7f1d1d, #991b1b); 
-            color: #fca5a5; border: 2px solid #ef4444; 
-            box-shadow: 0 0 60px rgba(239, 68, 68, 0.5);
-        }
-        
-        .filter-badge { 
-            display: inline-block; padding: 6px 12px; border-radius: 8px; 
-            font-size: 9px; font-weight: 900; letter-spacing: 1.5px; 
-            margin: 4px; text-transform: uppercase;
-        }
+        .buy { background: linear-gradient(135deg, #064e3b, #065f46); color: #4ade80; border: 2px solid #22c55e; box-shadow: 0 0 60px rgba(34, 197, 94, 0.5); }
+        .sell { background: linear-gradient(135deg, #7f1d1d, #991b1b); color: #fca5a5; border: 2px solid #ef4444; box-shadow: 0 0 60px rgba(239, 68, 68, 0.5); }
+        .filter-badge { display: inline-block; padding: 6px 12px; border-radius: 8px; font-size: 9px; font-weight: 900; letter-spacing: 1.5px; margin: 4px; text-transform: uppercase; }
         .filter-pass { background: rgba(34, 197, 94, 0.15); color: #4ade80; border: 1px solid rgba(34, 197, 94, 0.5); }
         .filter-fail { background: rgba(239, 68, 68, 0.15); color: #fca5a5; border: 1px solid rgba(239, 68, 68, 0.5); }
-        
-        .indicator-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
-        .indicator-item { 
-            text-align: center; padding: 12px 6px; 
-            background: #0a1525; border-radius: 12px;
-            border: 1px solid var(--border);
-        }
-        .indicator-label { 
-            display: block; color: var(--text-gray); font-size: 9px; 
-            font-weight: 800; letter-spacing: 1.5px; 
-            margin-bottom: 6px; text-transform: uppercase;
-        }
-        .indicator-value { font-size: 15px; font-weight: 900; color: var(--text-white); }
+        .indicator-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+        .indicator-item { text-align: center; padding: 12px 4px; background: #0a1525; border-radius: 12px; border: 1px solid var(--border); }
+        .indicator-label { display: block; color: var(--text-gray); font-size: 8px; font-weight: 800; letter-spacing: 1px; margin-bottom: 6px; text-transform: uppercase; }
+        .indicator-value { font-size: 13px; font-weight: 900; color: var(--text-white); }
         .indicator-value.blue { color: var(--accent-blue); }
         .indicator-value.yellow { color: var(--accent-yellow); }
-        
         .snr-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 15px; }
-        .snr-box { 
-            background: var(--bg-card); padding: 14px 8px; 
-            border-radius: 12px; text-align: center; 
-            border: 1px solid var(--border);
-        }
+        .snr-box { background: var(--bg-card); padding: 14px 8px; border-radius: 12px; text-align: center; border: 1px solid var(--border); }
         .snr-box .label { font-size: 10px; margin-bottom: 6px; font-weight: 900; letter-spacing: 1.5px; }
         .snr-box .value { font-size: 15px; font-weight: 900; }
         .snr-box.red .label { color: #ef4444; } 
@@ -135,126 +55,47 @@
         .snr-box.blue .label { color: #3b82f6; }
         .snr-box.yellow { background: linear-gradient(135deg, #fbbf24, #f59e0b); border: none; } 
         .snr-box.yellow .label, .snr-box.yellow .value { color: #050810; }
-        
-        .table-container { 
-            background: var(--bg-card); border-radius: 14px; 
-            overflow: hidden; border: 1px solid var(--border);
-        }
+        .table-container { background: var(--bg-card); border-radius: 14px; overflow: hidden; border: 1px solid var(--border); }
         table { width: 100%; border-collapse: collapse; font-size: 13px; }
-        th { 
-            background: #0a1525; padding: 12px; 
-            color: var(--text-gray); text-align: left; font-size: 10px; 
-            letter-spacing: 1.5px; font-weight: 900; text-transform: uppercase;
-        }
+        th { background: #0a1525; padding: 12px; color: var(--text-gray); text-align: left; font-size: 10px; letter-spacing: 1.5px; font-weight: 900; text-transform: uppercase; }
         td { padding: 12px; border-bottom: 1px solid var(--border); }
         .highlight-row { background: linear-gradient(90deg, rgba(251,191,36,0.2), transparent); color: var(--accent-yellow); font-weight: 900; }
         .text-green { color: var(--text-green); } 
         .text-red { color: var(--text-red); }
-        
-        #chart, #chart-backtest { 
-            width: 100%; background: #0a1525; 
-            border-radius: 14px; border: 1px solid var(--border);
-            overflow: hidden;
-        }
+        #chart, #chart-backtest { width: 100%; background: #0a1525; border-radius: 14px; border: 1px solid var(--border); overflow: hidden; }
         #chart { height: 420px; }
         #chart-backtest { height: 260px; }
-        
-        .poc-banner { 
-            background: linear-gradient(135deg, #fbbf24, #f59e0b); 
-            color: #050810; font-weight: 900; text-align: center; 
-            padding: 16px; border-radius: 14px; margin-bottom: 15px; 
-            font-size: 16px; letter-spacing: 2px;
-        }
-        
-        .sell-power { 
-            background: linear-gradient(135deg, #7f1d1d, #991b1b); 
-            padding: 16px; border-radius: 14px; margin-bottom: 15px;
-            border: 1px solid #ef4444;
-        }
+        .poc-banner { background: linear-gradient(135deg, #fbbf24, #f59e0b); color: #050810; font-weight: 900; text-align: center; padding: 16px; border-radius: 14px; margin-bottom: 15px; font-size: 16px; letter-spacing: 2px; }
+        .sell-power { background: linear-gradient(135deg, #7f1d1d, #991b1b); padding: 16px; border-radius: 14px; margin-bottom: 15px; border: 1px solid #ef4444; }
         .sell-power h3 { margin: 0; color: #fca5a5; font-size: 14px; letter-spacing: 2px; font-weight: 900; }
         .sell-power p { margin: 6px 0 0 0; font-size: 12px; color: #f87171; }
-        
         .ai-input-container { display: flex; gap: 8px; margin-top: 15px; }
-        .ai-input { 
-            flex: 1; padding: 14px 18px; border-radius: 25px; 
-            border: 1px solid var(--border); 
-            background: var(--bg-card); color: white; 
-            font-size: 14px; outline: none;
-        }
+        .ai-input { flex: 1; padding: 14px 18px; border-radius: 25px; border: 1px solid var(--border); background: var(--bg-card); color: white; font-size: 14px; outline: none; }
         .ai-input:focus { border-color: var(--accent-blue); }
         .ai-input::placeholder { color: #64748b; }
-        .ai-send-btn { 
-            background: linear-gradient(135deg, #2196F3, #1976D2); 
-            color: white; padding: 14px 22px; border-radius: 25px; 
-            border: none; cursor: pointer; font-weight: 900; 
-            font-size: 13px; letter-spacing: 1.5px;
-        }
-        .ai-result-box { 
-            margin-top: 15px; padding: 18px; 
-            background: #0a1525; border-radius: 14px; 
-            border-left: 3px solid var(--accent-blue); 
-            display: none;
-        }
+        .ai-send-btn { background: linear-gradient(135deg, #2196F3, #1976D2); color: white; padding: 14px 22px; border-radius: 25px; border: none; cursor: pointer; font-weight: 900; font-size: 13px; letter-spacing: 1.5px; }
+        .ai-result-box { margin-top: 15px; padding: 18px; background: #0a1525; border-radius: 14px; border-left: 3px solid var(--accent-blue); display: none; }
         .ai-result-header { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
         .ai-result-header span { font-size: 22px; }
-        .ai-result-header b { 
-            color: var(--accent-blue); font-size: 11px; 
-            text-transform: uppercase; letter-spacing: 2.5px; font-weight: 900;
-        }
+        .ai-result-header b { color: var(--accent-blue); font-size: 11px; text-transform: uppercase; letter-spacing: 2.5px; font-weight: 900; }
         .ai-result-text { color: #cbd5e1; font-size: 14px; line-height: 1.8; margin: 0; }
-        
-        .strategy-card { 
-            background: linear-gradient(135deg, #1a2332 0%, #0f172a 100%); 
-            padding: 22px; border-radius: 18px; 
-            border: 1px solid var(--border);
-            box-shadow: 0 8px 40px rgba(0,0,0,0.5);
-        }
+        .strategy-card { background: linear-gradient(135deg, #1a2332 0%, #0f172a 100%); padding: 22px; border-radius: 18px; border: 1px solid var(--border); box-shadow: 0 8px 40px rgba(0,0,0,0.5); }
         .strategy-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 18px; }
         .strategy-title { margin: 0; color: var(--text-white); font-size: 17px; font-weight: 900; }
         .strategy-meta { margin: 6px 0 0 0; font-size: 11px; color: var(--text-gray); letter-spacing: 1px; font-weight: 700; }
-        .strategy-badge { 
-            background: rgba(34, 197, 94, 0.15); color: #4ade80; 
-            padding: 6px 12px; border-radius: 8px; font-size: 9px; 
-            font-weight: 900; letter-spacing: 1.5px; border: 1px solid rgba(34, 197, 94, 0.5);
-        }
-        .stat-grid { 
-            display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; 
-            margin-bottom: 18px; background: #0a1525; 
-            padding: 16px 10px; border-radius: 14px; 
-            border: 1px solid var(--border);
-        }
+        .strategy-badge { background: rgba(34, 197, 94, 0.15); color: #4ade80; padding: 6px 12px; border-radius: 8px; font-size: 9px; font-weight: 900; letter-spacing: 1.5px; border: 1px solid rgba(34, 197, 94, 0.5); }
+        .stat-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; margin-bottom: 18px; background: #0a1525; padding: 16px 10px; border-radius: 14px; border: 1px solid var(--border); }
         .stat-item { text-align: center; }
         .stat-label { margin: 0; font-size: 9px; color: var(--text-gray); letter-spacing: 1.5px; font-weight: 900; }
         .stat-value { margin: 8px 0 0 0; font-size: 17px; font-weight: 900; }
         .stat-value.green { color: var(--text-green); }
         .stat-divider { border-left: 1px solid var(--border); border-right: 1px solid var(--border); }
-        .ai-comment-box { 
-            background: rgba(56, 189, 248, 0.08); padding: 16px; 
-            border-radius: 14px; border-left: 3px solid var(--accent-blue); 
-            margin-top: 15px;
-        }
+        .ai-comment-box { background: rgba(56, 189, 248, 0.08); padding: 16px; border-radius: 14px; border-left: 3px solid var(--accent-blue); margin-top: 15px; }
         .ai-comment-label { margin: 0 0 8px 0; font-size: 10px; color: var(--accent-blue); font-weight: 900; letter-spacing: 2px; }
         .ai-comment-text { margin: 0; font-size: 13px; color: #cbd5e1; line-height: 1.7; }
-        .btn-primary { 
-            background: linear-gradient(135deg, #2196F3, #1976D2); 
-            color: white; padding: 16px; border-radius: 12px; 
-            border: none; cursor: pointer; width: 100%; 
-            margin-top: 15px; font-weight: 900; letter-spacing: 2px;
-            font-size: 13px;
-        }
-        
-        #bottom-nav { 
-            position: fixed; bottom: 0; left: 0; width: 100%; 
-            background: #050810; border-top: 1px solid var(--border); 
-            display: flex; justify-content: space-around; 
-            padding: 12px 0 15px; z-index: 100; 
-        }
-        .nav-item { 
-            display: flex; flex-direction: column; align-items: center; 
-            color: #64748b; font-size: 9px; cursor: pointer; 
-            background: none; border: none; width: 20%; 
-            letter-spacing: 1.5px; font-weight: 900;
-        }
+        .btn-primary { background: linear-gradient(135deg, #2196F3, #1976D2); color: white; padding: 16px; border-radius: 12px; border: none; cursor: pointer; width: 100%; margin-top: 15px; font-weight: 900; letter-spacing: 2px; font-size: 13px; }
+        #bottom-nav { position: fixed; bottom: 0; left: 0; width: 100%; background: #050810; border-top: 1px solid var(--border); display: flex; justify-content: space-around; padding: 12px 0 15px; z-index: 100; }
+        .nav-item { display: flex; flex-direction: column; align-items: center; color: #64748b; font-size: 9px; cursor: pointer; background: none; border: none; width: 20%; letter-spacing: 1.5px; font-weight: 900; }
         .nav-item.active { color: var(--accent-yellow); } 
         .nav-item span { margin-top: 5px; }
     </style>
@@ -264,16 +105,46 @@
         <img src="logo.png" alt="Borneo Pro Trade Logo">
         <h1>BORNEO PRO TRADE V3</h1>
         <select id="market-selector" onchange="tukarMarket()">
-            <option value="XAU/USD">XAUUSD (Gold)</option>
-            <option value="BTCUSDT">BTCUSDT (Bitcoin)</option>
-            <option value="EUR/USD">EURUSD (Euro)</option>
+            <optgroup label="━━━ METALS ━━━">
+                <option value="XAU/USD">XAU/USD (Gold)</option>
+                <option value="XAG/USD">XAG/USD (Silver)</option>
+            </optgroup>
+            <optgroup label="━━━ FOREX MAJOR ━━━">
+                <option value="EUR/USD">EUR/USD (Euro)</option>
+                <option value="GBP/USD">GBP/USD (Pound)</option>
+                <option value="USD/JPY">USD/JPY (Yen)</option>
+                <option value="AUD/USD">AUD/USD (Aussie)</option>
+                <option value="USD/CAD">USD/CAD (Loonie)</option>
+                <option value="USD/CHF">USD/CHF (Swiss)</option>
+                <option value="NZD/USD">NZD/USD (Kiwi)</option>
+            </optgroup>
+            <optgroup label="━━━ FOREX CROSS ━━━">
+                <option value="EUR/GBP">EUR/GBP</option>
+                <option value="EUR/JPY">EUR/JPY</option>
+                <option value="EUR/AUD">EUR/AUD</option>
+                <option value="GBP/JPY">GBP/JPY</option>
+                <option value="GBP/AUD">GBP/AUD</option>
+                <option value="AUD/JPY">AUD/JPY</option>
+            </optgroup>
+            <optgroup label="━━━ INDICES ━━━">
+                <option value="SPX500">SPX500 (S&P 500)</option>
+                <option value="NAS100">NAS100 (Nasdaq)</option>
+                <option value="US30">US30 (Dow Jones)</option>
+                <option value="DE30">DE30 (DAX)</option>
+                <option value="JP225">JP225 (Nikkei)</option>
+            </optgroup>
+            <optgroup label="━━━ COMMODITIES ━━━">
+                <option value="WTICO">WTICO (Oil WTI)</option>
+                <option value="BCO">BCO (Oil Brent)</option>
+                <option value="NATGAS">NATGAS</option>
+            </optgroup>
         </select>
     </div>
 
     <div id="screen-signal" class="screen active">
         <div class="price-display">
             <h2 class="price-value" id="main-price-signal">Loading...</h2>
-            <p class="price-change">↑ +12.64 (+0.30%) • Today</p>
+            <p class="price-change" id="price-change">-</p>
             <span class="live-badge">● LIVE</span>
         </div>
         <div id="signal-box" class="signal-box wait">WAIT</div>
@@ -287,7 +158,9 @@
                 <div class="indicator-item"><span class="indicator-label">EMA 50</span><span class="indicator-value" id="ema50">-</span></div>
                 <div class="indicator-item"><span class="indicator-label">RSI</span><span class="indicator-value yellow" id="rsi">-</span></div>
                 <div class="indicator-item"><span class="indicator-label">ATR %</span><span class="indicator-value yellow" id="atr">-</span></div>
-                <div class="indicator-item"><span class="indicator-label">Session</span><span class="indicator-value blue" id="session">-</span></div>
+                <div class="indicator-item"><span class="indicator-label">SESSION</span><span class="indicator-value blue" id="session">-</span></div>
+                <div class="indicator-item"><span class="indicator-label">SPREAD</span><span class="indicator-value" id="spread" style="color: #22c55e;">-</span></div>
+                <div class="indicator-item"><span class="indicator-label">BID</span><span class="indicator-value" id="bid" style="color: #22c55e;">-</span></div>
             </div>
             <p id="status" style="font-size: 11px; color: gray; margin-top: 15px; text-align: center;">Waiting for data...</p>
         </div>
@@ -392,6 +265,21 @@
                 document.getElementById('session').innerText = data.session;
                 document.getElementById('status').innerText = "Updated: " + data.masa;
                 
+                const spreadEl = document.getElementById('spread');
+                spreadEl.innerText = data.spread || '0';
+                const spreadNum = parseFloat(data.spread) || 0;
+                let spreadThreshold = 0.00030;
+                if (marketAktif.includes('XAU')) spreadThreshold = 0.30;
+                else if (marketAktif.includes('XAG')) spreadThreshold = 0.02;
+                else if (marketAktif.includes('JPY')) spreadThreshold = 0.003;
+                else if (['SPX500','NAS100','US30','DE30','JP225'].some(s => marketAktif.includes(s))) spreadThreshold = 2.0;
+                
+                if (spreadNum < spreadThreshold) spreadEl.style.color = '#22c55e';
+                else if (spreadNum < spreadThreshold * 2) spreadEl.style.color = '#fbbf24';
+                else spreadEl.style.color = '#ef4444';
+                
+                document.getElementById('bid').innerText = data.bid || '-';
+                
                 const filterBox = document.getElementById('filter-status');
                 let badges = '';
                 badges += `<span class="filter-badge ${!data.filtered ? 'filter-pass' : 'filter-fail'}">SIGNAL ${data.filtered ? 'FILTERED' : 'ACTIVE'}</span>`;
@@ -427,7 +315,17 @@
             const harga = document.getElementById('main-price-signal').innerText;
             const soalan = document.getElementById('soalan-ai').value;
             if (harga === "Loading..." || !soalan) { alert("Please wait for data and type your question."); return; }
-            const data = { price: harga, ema9: document.getElementById('ema9').innerText, ema21: document.getElementById('ema21').innerText, rsi: document.getElementById('rsi').innerText, atr: document.getElementById('atr').innerText, session: document.getElementById('session').innerText, signal_time: Date.now() / 1000, soalan };
+            const data = { 
+                price: harga, 
+                ema9: document.getElementById('ema9').innerText, 
+                ema21: document.getElementById('ema21').innerText, 
+                rsi: document.getElementById('rsi').innerText, 
+                atr: document.getElementById('atr').innerText, 
+                session: document.getElementById('session').innerText, 
+                spread: document.getElementById('spread').innerText,
+                signal_time: Date.now() / 1000, 
+                soalan 
+            };
             const box = document.getElementById('hasil-ai');
             const text = document.getElementById('hasil-ai-text');
             box.style.display = 'block'; box.style.borderLeftColor = '#fbbf24';
@@ -484,8 +382,8 @@
             } catch (e) { document.getElementById('bt-ai-comment').innerText = "Connection error."; }
         }
 
-        setInterval(dapatkanSignal, 10000);
-        setInterval(dapatkanMarketData, 10000);
+        setInterval(dapatkanSignal, 15000);
+        setInterval(dapatkanMarketData, 15000);
         setInterval(dapatkanCandleData, 60000);
         dapatkanSignal(); dapatkanMarketData();
     </script>
