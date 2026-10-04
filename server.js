@@ -1,7 +1,6 @@
 const express = require('express');
 const cors = require('cors');
 const axios = require('axios');
-const { GoogleGenAI } = require('@google/genai');
 require('dotenv').config();
 
 const app = express();
@@ -13,33 +12,49 @@ app.get('/', (req, res) => {
     res.sendFile(__dirname + '/index.html');
 });
 
-if (!process.env.GEMINI_API_KEY) {
-    console.error("⚠️ GEMINI_API_KEY tidak dijumpai!");
+if (!process.env.GROQ_API_KEY) {
+    console.error("⚠️ GROQ_API_KEY tidak dijumpai!");
 }
 
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || 'MISSING_KEY' });
+const GROQ_API_KEY = process.env.GROQ_API_KEY || 'MISSING_KEY';
+const GROQ_URL = 'https://api.groq.com/openai/v1/chat/completions';
 const BIQUOTE_URL = 'https://biquote.io/api';
 
-const AI_MODELS = [
-    'gemini-3.8-flash',
-    'gemini-3.5-flash-lite',
-    'gemini-3.5-flash',
-    'gemini-2.0-flash'
+const GROQ_MODELS = [
+    'llama-3.3-70b-versatile',
+    'llama-3.1-70b-versatile',
+    'llama-3.1-8b-instant',
+    'mixtral-8x7b-32768'
 ];
 
-async function generateWithFallback(prompt) {
+async function callGroq(prompt) {
     let lastErr = null;
-    for (const model of AI_MODELS) {
+    for (const model of GROQ_MODELS) {
         try {
-            const r = await ai.models.generateContent({ model: model, contents: prompt });
-            console.log("✅ AI guna model:", model);
-            return r.text;
+            const response = await axios.post(GROQ_URL, {
+                model: model,
+                messages: [
+                    { role: 'system', content: 'You are a professional Malaysian trading analyst. Answer in Bahasa Melayu.' },
+                    { role: 'user', content: prompt }
+                ],
+                temperature: 0.7,
+                max_tokens: 800
+            }, {
+                headers: {
+                    'Authorization': `Bearer ${GROQ_API_KEY}`,
+                    'Content-Type': 'application/json'
+                },
+                timeout: 30000
+            });
+            console.log("✅ Groq guna model:", model);
+            return response.data.choices[0].message.content;
         } catch (e) {
-            console.log("❌ Model " + model + " gagal:", (e.message || '').substring(0, 100));
+            const errMsg = e.response ? JSON.stringify(e.response.data).substring(0, 150) : e.message;
+            console.log("❌ Groq " + model + " gagal:", errMsg);
             lastErr = e;
         }
     }
-    throw lastErr || new Error("Semua AI model gagal");
+    throw lastErr || new Error("Semua Groq model gagal");
 }
 
 const symbolMap = {
@@ -108,13 +123,10 @@ function getMarketSession() {
     return "CLOSED";
 }
 
-// ===== SMC/SNR/LIQUIDITY HELPERS =====
-
-// Detect SNR dari swing highs/lows
+// ===== SMC/SNR/LIQUIDITY =====
 function detectSNR(candles) {
-    if (candles.length < 20) return { resistance: [], support: [] };
+    if (candles.length < 20) return { resistances: [], supports: [] };
     let swingHighs = [], swingLows = [];
-    
     for (let i = 3; i < candles.length - 3; i++) {
         const c = candles[i];
         let isHigh = true, isLow = true;
@@ -122,32 +134,20 @@ function detectSNR(candles) {
             if (c.high <= candles[i-j].high || c.high <= candles[i+j].high) isHigh = false;
             if (c.low >= candles[i-j].low || c.low >= candles[i+j].low) isLow = false;
         }
-        if (isHigh) swingHighs.push({ price: c.high, time: c.timestamp });
-        if (isLow) swingLows.push({ price: c.low, time: c.timestamp });
+        if (isHigh) swingHighs.push(c.high);
+        if (isLow) swingLows.push(c.low);
     }
-    
-    // Ambil 3 terdekat dari harga sekarang
     const last = candles[candles.length - 1].close;
-    const resistances = swingHighs
-        .filter(h => h.price > last)
-        .sort((a, b) => a.price - b.price)
-        .slice(0, 3)
-        .map(h => h.price);
-    const supports = swingLows
-        .filter(l => l.price < last)
-        .sort((a, b) => b.price - a.price)
-        .slice(0, 3)
-        .map(l => l.price);
-    
-    return { resistances, supports };
+    return {
+        resistances: swingHighs.filter(h => h > last).sort((a, b) => a - b).slice(0, 3),
+        supports: swingLows.filter(l => l < last).sort((a, b) => b - a).slice(0, 3)
+    };
 }
 
-// Detect Liquidity zones (equal highs/lows)
 function detectLiquidity(candles) {
     const recent = candles.slice(-30);
     const tolerance = 0.0005;
     let equalHighs = [], equalLows = [];
-    
     for (let i = 0; i < recent.length; i++) {
         for (let j = i + 1; j < recent.length; j++) {
             const diffHigh = Math.abs(recent[i].high - recent[j].high) / recent[i].high;
@@ -156,14 +156,11 @@ function detectLiquidity(candles) {
             if (diffLow < tolerance) equalLows.push(recent[i].low);
         }
     }
-    
-    // Detect liquidity sweep (harga cucuk level tapi patah balik)
     const last = recent[recent.length - 1];
     const prev = recent[recent.length - 2];
     let sweep = "NONE";
     if (last.high > prev.high && last.close < prev.high) sweep = "BEARISH_SWEEP";
     if (last.low < prev.low && last.close > prev.low) sweep = "BULLISH_SWEEP";
-    
     return {
         equalHighs: [...new Set(equalHighs)].slice(0, 2),
         equalLows: [...new Set(equalLows)].slice(0, 2),
@@ -171,54 +168,41 @@ function detectLiquidity(candles) {
     };
 }
 
-// Detect SMC (BOS, CHoCH, FVG)
 function detectSMC(candles) {
     if (candles.length < 30) return { bos: "NONE", choch: "NONE", fvg: "NONE" };
-    
     const recent = candles.slice(-30);
     const last = recent[recent.length - 1];
-    
-    // BOS - Break of Structure
     const prev20 = recent.slice(-20, -1);
     const prevHigh = Math.max(...prev20.map(c => c.high));
     const prevLow = Math.min(...prev20.map(c => c.low));
-    
     let bos = "NONE";
     if (last.close > prevHigh) bos = "BULLISH_BOS";
     else if (last.close < prevLow) bos = "BEARISH_BOS";
-    
-    // CHoCH - Change of Character (simplified)
     const closes = recent.map(c => c.close);
     const emaShort = calculateEMA(closes.slice(-10), 5);
     const emaLong = calculateEMA(closes.slice(-20), 10);
     let choch = "NONE";
     if (emaShort > emaLong && closes[closes.length - 5] < emaLong) choch = "BULLISH_CHOCH";
     if (emaShort < emaLong && closes[closes.length - 5] > emaLong) choch = "BEARISH_CHOCH";
-    
-    // FVG - Fair Value Gap (3 candle pattern)
     let fvg = "NONE";
     for (let i = candles.length - 3; i >= candles.length - 10 && i > 2; i--) {
-        const c1 = candles[i-2], c2 = candles[i-1], c3 = candles[i];
-        // Bullish FVG: c1.high < c3.low
+        const c1 = candles[i-2], c3 = candles[i];
         if (c1.high < c3.low) { fvg = `BULLISH_FVG @ ${c1.high.toFixed(2)}-${c3.low.toFixed(2)}`; break; }
-        // Bearish FVG: c1.low > c3.high
         if (c1.low > c3.high) { fvg = `BEARISH_FVG @ ${c3.high.toFixed(2)}-${c1.low.toFixed(2)}`; break; }
     }
-    
-    return { bos, choch, fvg, prevHigh, prevLow };
+    return { bos, choch, fvg };
 }
 
-// Get Daily levels
 function getDailyLevels(candles) {
     if (candles.length < 20) return null;
-    const recent = candles.slice(-96); // ~1 day untuk M15
-    const pdh = Math.max(...recent.map(c => c.high));
-    const pdl = Math.min(...recent.map(c => c.low));
-    return { pdh, pdl };
+    const recent = candles.slice(-96);
+    return {
+        pdh: Math.max(...recent.map(c => c.high)),
+        pdl: Math.min(...recent.map(c => c.low))
+    };
 }
 
-// ===== BIQUOTE HELPERS =====
-
+// ===== BIQUOTE =====
 async function getTick(symbol) {
     const url = `${BIQUOTE_URL}/${toBiquote(symbol)}`;
     const response = await axios.get(url, { timeout: 10000 });
@@ -245,49 +229,32 @@ async function getOHLC(symbol, interval = '15m', limit = 100) {
     })).filter(c => !isNaN(c.timestamp));
 }
 
-// ===== MULTI-TIMEFRAME ANALYSIS =====
-
+// ===== MTF ANALYSIS =====
 async function analyzeTimeframe(symbol, interval) {
     try {
         const candles = await getOHLC(symbol, interval, 100);
         if (candles.length < 50) return null;
-        
         const closes = candles.map(c => c.close);
         const price = closes[closes.length - 1];
-        
         const ema9 = calculateEMA(closes, 9);
         const ema21 = calculateEMA(closes, 21);
         const ema50 = calculateEMA(closes, 50);
         const rsi = calculateRSI(closes, 14);
         const atr = calculateATR(candles, 14);
         const atrPct = (atr / price) * 100;
-        
-        // Trend direction
         let trend = "NEUTRAL";
         if (ema9 > ema21 && ema21 > ema50) trend = "BULLISH";
         else if (ema9 < ema21 && ema21 < ema50) trend = "BEARISH";
         else if (ema9 > ema21) trend = "MILD_BULLISH";
         else if (ema9 < ema21) trend = "MILD_BEARISH";
-        
-        // Signal
         let signal = "WAIT";
         if (ema9 > ema21 && rsi < 70 && rsi > 30 && atrPct > 0.03) signal = "BUY";
         if (ema9 < ema21 && rsi > 30 && rsi < 70 && atrPct > 0.03) signal = "SELL";
-        
-        return {
-            interval, price: price.toFixed(2),
-            trend, signal,
-            ema9: ema9.toFixed(2), ema21: ema21.toFixed(2), ema50: ema50.toFixed(2),
-            rsi: rsi.toFixed(1), atrPct: atrPct.toFixed(3)
-        };
-    } catch (e) {
-        console.log(`TF ${interval} error:`, e.message);
-        return null;
-    }
+        return { interval, price: price.toFixed(2), trend, signal, rsi: rsi.toFixed(1), atrPct: atrPct.toFixed(3) };
+    } catch (e) { return null; }
 }
 
-// ===== API: MULTI-TIMEFRAME SIGNAL =====
-
+// ===== API: MTF SIGNAL =====
 app.get('/api/mtf-signal', async (req, res) => {
     const symbol = req.query.symbol || 'XAU/USD';
     try {
@@ -297,43 +264,24 @@ app.get('/api/mtf-signal', async (req, res) => {
             analyzeTimeframe(symbol, '1h'),
             analyzeTimeframe(symbol, '4h')
         ]);
-        
-        // Kira confluence score
         const signals = [m5, m15, h1, h4].filter(x => x);
         const buyCount = signals.filter(s => s.signal === 'BUY').length;
         const sellCount = signals.filter(s => s.signal === 'SELL').length;
         const bullTrend = signals.filter(s => s.trend.includes('BULLISH')).length;
         const bearTrend = signals.filter(s => s.trend.includes('BEARISH')).length;
-        
-        let confluence = "MIXED";
-        let confluenceScore = 0;
-        
+        let confluence = "MIXED", confluenceScore = 0;
         if (buyCount >= 3 && bullTrend >= 3) { confluence = "STRONG_BUY"; confluenceScore = 90; }
         else if (sellCount >= 3 && bearTrend >= 3) { confluence = "STRONG_SELL"; confluenceScore = 90; }
         else if (buyCount >= 2) { confluence = "WEAK_BUY"; confluenceScore = 60; }
         else if (sellCount >= 2) { confluence = "WEAK_SELL"; confluenceScore = 60; }
         else if (buyCount === 0 && sellCount === 0) { confluence = "WAIT"; confluenceScore = 40; }
-        
-        res.json({
-            status: 'success',
-            symbol,
-            timeframes: { m5, m15, h1, h4 },
-            confluence,
-            confluenceScore,
-            summary: {
-                buyCount, sellCount,
-                bullTrend, bearTrend,
-                totalTF: signals.length
-            }
-        });
+        res.json({ status: 'success', symbol, timeframes: { m5, m15, h1, h4 }, confluence, confluenceScore, summary: { buyCount, sellCount, bullTrend, bearTrend, totalTF: signals.length } });
     } catch (error) {
-        console.error("MTF Signal Error:", error.message);
         res.status(500).json({ status: "error", message: error.message });
     }
 });
 
-// ===== API: SIGNAL (Single TF - legacy) =====
-
+// ===== API: SIGNAL =====
 app.get('/api/signal', async (req, res) => {
     const symbol = req.query.symbol || 'XAU/USD';
     const decimal = getDecimal(symbol);
@@ -349,13 +297,11 @@ app.get('/api/signal', async (req, res) => {
         const atr = calculateATR(candles, 14);
         const atrPercent = (atr / harga) * 100;
         const session = getMarketSession();
-        
         let spread = 0, bid = 0, ask = 0;
         try {
             const tick = await getTick(symbol);
             bid = tick.bid || harga; ask = tick.ask || harga; spread = tick.spread || 0;
         } catch (e) { }
-        
         let signal = "WAIT", warna = "#94a3b8", reasons = [], filtered = false;
         const emaCross = ema9 > ema21 ? "BUY" : "SELL";
         if (emaCross === "BUY" && rsi > 70) { filtered = true; reasons.push("RSI Overbought"); }
@@ -365,21 +311,13 @@ app.get('/api/signal', async (req, res) => {
         if (emaCross === "SELL" && harga > ema50) { filtered = true; reasons.push("Against Trend"); }
         if (session === "ASIA" || session === "CLOSED") { filtered = true; reasons.push("Off Session"); }
         if (!filtered) { signal = emaCross; warna = signal === "BUY" ? "#22c55e" : "#ef4444"; }
-        
-        res.json({
-            symbol, harga: harga.toFixed(decimal), signal, warna,
-            ema9: ema9.toFixed(decimal), ema21: ema21.toFixed(decimal), ema50: ema50.toFixed(decimal),
-            rsi: rsi.toFixed(1), atrPercent: atrPercent.toFixed(3), session,
-            spread: spread.toFixed(decimal), bid: bid.toFixed(decimal), ask: ask.toFixed(decimal),
-            filtered, reasons, masa: new Date().toLocaleTimeString(), status: "LIVE"
-        });
+        res.json({ symbol, harga: harga.toFixed(decimal), signal, warna, ema9: ema9.toFixed(decimal), ema21: ema21.toFixed(decimal), ema50: ema50.toFixed(decimal), rsi: rsi.toFixed(1), atrPercent: atrPercent.toFixed(3), session, spread: spread.toFixed(decimal), bid: bid.toFixed(decimal), ask: ask.toFixed(decimal), filtered, reasons, masa: new Date().toLocaleTimeString(), status: "LIVE" });
     } catch (error) {
         res.json({ symbol, harga: "0.00", signal: "WAIT", warna: "#94a3b8", ema9: "0", ema21: "0", ema50: "0", rsi: "50", atrPercent: "0", session: "CLOSED", spread: "0", bid: "0", ask: "0", filtered: true, reasons: ["Data Error"], masa: new Date().toLocaleTimeString(), status: "ERROR" });
     }
 });
 
 // ===== API: MARKET =====
-
 app.get('/api/market', async (req, res) => {
     const symbol = req.query.symbol || 'XAU/USD';
     const decimal = getDecimal(symbol);
@@ -413,12 +351,11 @@ app.get('/api/market', async (req, res) => {
 });
 
 // ===== API: AI ANALYSIS =====
-
 app.post('/api/ai-analysis', async (req, res) => {
     try {
         const { price, ema9, ema21, signal_time, soalan, rsi, atr, session, reasons, spread } = req.body;
-        const prompt = `You are a Professional Trading Assistant for XAUUSD. Price ${price}, EMA9 ${ema9}, EMA21 ${ema21}, RSI ${rsi}, ATR% ${atr}, Session ${session}, Spread ${spread}, Filtered: ${reasons ? reasons.join(', ') : 'None'}. Question: "${soalan}". Answer in 2-3 sentences in Bahasa Melayu.`;
-        const text = await generateWithFallback(prompt);
+        const prompt = `Analyst XAUUSD. Price ${price}, EMA9 ${ema9}, EMA21 ${ema21}, RSI ${rsi}, ATR% ${atr}, Session ${session}, Spread ${spread}, Filtered: ${reasons ? reasons.join(', ') : 'None'}. Question: "${soalan}". Answer in 2-3 sentences in Bahasa Melayu.`;
+        const text = await callGroq(prompt);
         res.json({ status: "success", analysis: text });
     } catch (error) {
         console.error("AI Error:", error.message);
@@ -427,7 +364,6 @@ app.post('/api/ai-analysis', async (req, res) => {
 });
 
 // ===== API: CANDLES =====
-
 app.get('/api/candles', async (req, res) => {
     const symbol = req.query.symbol || 'XAU/USD';
     const tf = req.query.tf || '15min';
@@ -441,13 +377,11 @@ app.get('/api/candles', async (req, res) => {
 });
 
 // ===== API: BACKTEST =====
-
 app.get('/api/backtest', async (req, res) => {
     const symbol = req.query.symbol || 'XAU/USD';
     try {
         const candles = await getOHLC(symbol, '15min', 500);
         let win = 0, loss = 0, markers = [];
-
         for (let i = 50; i < candles.length - 1; i++) {
             const current = candles[i];
             const closesSlice = candles.slice(0, i + 1).map(c => c.close);
@@ -456,7 +390,6 @@ app.get('/api/backtest', async (req, res) => {
             const rsi = calculateRSI(closesSlice.slice(-30), 14);
             const atr = calculateATR(candles.slice(Math.max(0, i - 30), i + 1), 14);
             const atrPercent = (atr / current.close) * 100;
-
             if (ema9 > ema21 && rsi < 70 && atrPercent > 0.05) {
                 const tp = current.close * 1.001;
                 const sl = current.close * 0.999;
@@ -467,21 +400,13 @@ app.get('/api/backtest', async (req, res) => {
                 }
                 if (result === 'WIN') win++;
                 if (result === 'LOSS') loss++;
-                if (result) markers.push({
-                    time: current.timestamp,
-                    position: result === 'WIN' ? 'belowBar' : 'aboveBar',
-                    color: result === 'WIN' ? '#22c55e' : '#ef4444',
-                    shape: result === 'WIN' ? 'arrowUp' : 'arrowDown',
-                    text: result
-                });
+                if (result) markers.push({ time: current.timestamp, position: result === 'WIN' ? 'belowBar' : 'aboveBar', color: result === 'WIN' ? '#22c55e' : '#ef4444', shape: result === 'WIN' ? 'arrowUp' : 'arrowDown', text: result });
             }
         }
-
         const totalTrades = win + loss;
         const winRate = totalTrades > 0 ? ((win / totalTrades) * 100).toFixed(1) : 0;
         const chartCandles = candles.slice(-100).map(c => ({ time: c.timestamp, open: c.open, high: c.high, low: c.low, close: c.close }));
         const chartMarkers = markers.filter(m => m.time >= chartCandles[0].time);
-
         res.json({ status: "success", winRate, totalTrades, candles: chartCandles, markers: chartMarkers });
     } catch (error) {
         res.status(500).json({ status: "error", message: error.message });
@@ -489,48 +414,23 @@ app.get('/api/backtest', async (req, res) => {
 });
 
 // ===== API: NEXT NEWS =====
-
 app.get('/api/next-news', async (req, res) => {
-    const fallback = {
-        time: 'Akan datang', currency: 'USD', impact: 'high',
-        event: 'US Non-Farm Payrolls', actual: '-', forecast: '180K', previous: '175K'
-    };
+    const fallback = { time: 'Akan datang', currency: 'USD', impact: 'high', event: 'US Non-Farm Payrolls', actual: '-', forecast: '180K', previous: '175K' };
     try {
         const response = await axios.get(`${BIQUOTE_URL}/calendar`, { timeout: 10000 });
         const d = response.data;
         let events = d.events || d.data || d.calendar || (Array.isArray(d) ? d : []);
         if (!Array.isArray(events)) events = [];
-
         const now = Date.now();
         const usdHigh = events
-            .filter(e => {
-                const cur = safeStr(e.currency || e.country).toUpperCase();
-                return cur === 'USD' || cur === 'US';
-            })
-            .map(e => ({
-                time: safeStr(e.time || e.date || e.datetime || ''),
-                timestamp: new Date(e.time || e.date || e.datetime || 0).getTime(),
-                currency: safeStr(e.currency || 'USD'),
-                impact: safeStr(e.impact || 'medium').toLowerCase(),
-                event: safeStr(e.event || e.title || e.name || ''),
-                actual: safeStr(e.actual || '-'),
-                forecast: safeStr(e.forecast || e.estimate || '-'),
-                previous: safeStr(e.previous || e.prior || '-')
-            }))
-            .sort((a, b) => {
-                if (isNaN(a.timestamp) && isNaN(b.timestamp)) return 0;
-                if (isNaN(a.timestamp)) return 1;
-                if (isNaN(b.timestamp)) return -1;
-                return a.timestamp - b.timestamp;
-            });
-
+            .filter(e => { const cur = safeStr(e.currency || e.country).toUpperCase(); return cur === 'USD' || cur === 'US'; })
+            .map(e => ({ time: safeStr(e.time || e.date || e.datetime || ''), timestamp: new Date(e.time || e.date || e.datetime || 0).getTime(), currency: safeStr(e.currency || 'USD'), impact: safeStr(e.impact || 'medium').toLowerCase(), event: safeStr(e.event || e.title || e.name || ''), actual: safeStr(e.actual || '-'), forecast: safeStr(e.forecast || e.estimate || '-'), previous: safeStr(e.previous || e.prior || '-') }))
+            .sort((a, b) => { if (isNaN(a.timestamp) && isNaN(b.timestamp)) return 0; if (isNaN(a.timestamp)) return 1; if (isNaN(b.timestamp)) return -1; return a.timestamp - b.timestamp; });
         const upcoming = usdHigh.filter(e => !isNaN(e.timestamp) && e.timestamp > now).slice(0, 1);
         const nextEvent = upcoming.length > 0 ? upcoming[0] : (usdHigh.length > 0 ? usdHigh[0] : fallback);
-
         const forecastNum = safeNum(nextEvent.forecast);
         const previousNum = safeNum(nextEvent.previous);
         const actualNum = safeNum(nextEvent.actual);
-
         let dataBias = "NEUTRAL";
         if (actualNum > 0 && forecastNum > 0) {
             if (actualNum > forecastNum) dataBias = "USD KUAT (BEARISH GOLD)";
@@ -539,82 +439,51 @@ app.get('/api/next-news', async (req, res) => {
             if (forecastNum > previousNum) dataBias = "FORECAST USD KUAT (BEARISH GOLD)";
             else if (forecastNum < previousNum) dataBias = "FORECAST USD LEMAH (BULLISH GOLD)";
         }
-
         let goldPrice = '4145';
         try { const gt = await getTick('XAU/USD'); goldPrice = gt.mid.toFixed(2); } catch (e) { }
-
-        const prompt = `You are a Pre-News Analyst for XAUUSD.
+        const prompt = `Pre-News Analyst XAUUSD.
 
 EVENT: ${nextEvent.event}
 Forecast: ${nextEvent.forecast} | Previous: ${nextEvent.previous} | Actual: ${nextEvent.actual}
 Data Bias: ${dataBias}
-
 CURRENT GOLD PRICE: ${goldPrice}
 
-Predict in Bahasa Melayu. Reply EXACTLY:
+Reply EXACTLY:
 🎯 BIAS: [BULLISH GOLD / BEARISH GOLD / NEUTRAL]
 💪 CONFIDENCE: [50-95%]
 📈 SETUP: [BUY / SELL / WAIT]
-📝 REASON: [1-2 sentences]
+📝 REASON: [1-2 sentences BM]
 💡 ACTION: [SELL LIMIT @ ${goldPrice}, SL 30p, TP 60p]`;
-
-        const prediction = await generateWithFallback(prompt);
+        const prediction = await callGroq(prompt);
         res.json({ status: 'success', event: nextEvent, prediction, dataBias, goldPrice });
     } catch (error) {
-        res.json({
-            status: 'success', event: fallback,
-            prediction: '🎯 BIAS: BEARISH GOLD\n💪 CONFIDENCE: 68%\n📈 SETUP: SELL\n📝 REASON: Forecast lebih tinggi.\n💡 ACTION: SELL LIMIT @ market price',
-            dataBias: 'FORECAST USD KUAT', note: 'Simulasi'
-        });
+        res.json({ status: 'success', event: fallback, prediction: '🎯 BIAS: BEARISH GOLD\n💪 CONFIDENCE: 68%\n📈 SETUP: SELL\n📝 REASON: Forecast lebih tinggi.\n💡 ACTION: SELL LIMIT @ market price', dataBias: 'FORECAST USD KUAT', note: 'Simulasi' });
     }
 });
 
 // ===== API: NEWS =====
-
 app.get('/api/news', async (req, res) => {
     try {
         const response = await axios.get(`${BIQUOTE_URL}/calendar`, { timeout: 10000 });
         const d = response.data;
         let events = d.events || d.data || d.calendar || (Array.isArray(d) ? d : []);
         if (!Array.isArray(events)) events = [];
-
         const usdEvents = events
-            .filter(e => {
-                const cur = safeStr(e.currency || e.country).toUpperCase();
-                return cur === 'USD' || cur === 'US';
-            })
+            .filter(e => { const cur = safeStr(e.currency || e.country).toUpperCase(); return cur === 'USD' || cur === 'US'; })
             .slice(0, 20)
-            .map(e => ({
-                time: safeStr(e.time || e.date || e.datetime || ''),
-                currency: safeStr(e.currency || 'USD'),
-                impact: safeStr(e.impact || 'medium').toLowerCase(),
-                event: safeStr(e.event || e.title || e.name || ''),
-                actual: safeStr(e.actual || '-'),
-                forecast: safeStr(e.forecast || e.estimate || '-'),
-                previous: safeStr(e.previous || e.prior || '-')
-            }));
-
+            .map(e => ({ time: safeStr(e.time || e.date || e.datetime || ''), currency: safeStr(e.currency || 'USD'), impact: safeStr(e.impact || 'medium').toLowerCase(), event: safeStr(e.event || e.title || e.name || ''), actual: safeStr(e.actual || '-'), forecast: safeStr(e.forecast || e.estimate || '-'), previous: safeStr(e.previous || e.prior || '-') }));
         res.json({ status: 'success', events: usdEvents });
     } catch (error) {
-        res.json({
-            status: 'success',
-            events: [{
-                time: 'Akan datang', currency: 'USD', impact: 'high',
-                event: 'US Non-Farm Payrolls', actual: '-', forecast: '180K', previous: '175K'
-            }],
-            note: 'Simulasi'
-        });
+        res.json({ status: 'success', events: [{ time: 'Akan datang', currency: 'USD', impact: 'high', event: 'US Non-Farm Payrolls', actual: '-', forecast: '180K', previous: '175K' }], note: 'Simulasi' });
     }
 });
 
 // ===== API: AI DESK STATS =====
-
 app.get('/api/ai-desk-stats', async (req, res) => {
     try {
         const markets = ['XAU/USD', 'XAG/USD', 'EUR/USD', 'GBP/USD', 'USD/JPY', 'AUD/USD'];
         let signals = 0, buy = 0, sell = 0, wait = 0;
         let topMovers = [];
-
         for (const m of markets) {
             try {
                 const candles = await getOHLC(m, '1min', 50);
@@ -634,36 +503,21 @@ app.get('/api/ai-desk-stats', async (req, res) => {
                 topMovers.push({ symbol: m, price: price.toFixed(2), change: change.toFixed(2), signal: sig, rsi: rsi.toFixed(1) });
             } catch (e) { }
         }
-
         topMovers.sort((a, b) => Math.abs(parseFloat(b.change)) - Math.abs(parseFloat(a.change)));
-
-        res.json({
-            status: 'success',
-            liveCycle: {
-                cycle: Math.floor(Math.random() * 999) + 1000,
-                accuracy: (65 + Math.random() * 20).toFixed(1),
-                signalsToday: signals,
-                buy, sell, wait
-            },
-            topMovers: topMovers.slice(0, 5)
-        });
+        res.json({ status: 'success', liveCycle: { cycle: Math.floor(Math.random() * 999) + 1000, accuracy: (65 + Math.random() * 20).toFixed(1), signalsToday: signals, buy, sell, wait }, topMovers: topMovers.slice(0, 5) });
     } catch (e) {
         res.status(500).json({ status: 'error', message: e.message });
     }
 });
 
-// ===== API: AI DESK (WITH SMC/SNR/LIQUIDITY + MTF) =====
-
+// ===== API: AI DESK =====
 app.get('/api/ai-desk', async (req, res) => {
     const symbol = req.query.symbol || 'XAU/USD';
     const result = { timestamp: new Date().toISOString(), steps: {} };
-
     try {
-        // Get candles
         const candles = await getOHLC(symbol, '1min', 100);
         const closes = candles.map(c => c.close);
         const price = closes[closes.length - 1];
-
         const ema9 = calculateEMA(closes, 9);
         const ema21 = calculateEMA(closes, 21);
         const ema50 = calculateEMA(closes, 50);
@@ -675,7 +529,6 @@ app.get('/api/ai-desk', async (req, res) => {
         let tick = { mid: price, spread: 0, bid: price, ask: price };
         try { tick = await getTick(symbol); } catch (e) { }
 
-        // ===== SCAN (dengan SNR, Liquidity, SMC) =====
         const snrData = detectSNR(candles);
         const liquidityData = detectLiquidity(candles);
         const smcData = detectSMC(candles);
@@ -685,16 +538,10 @@ app.get('/api/ai-desk', async (req, res) => {
             price: price.toFixed(2), spread: tick.spread.toFixed(2),
             rsi: rsi.toFixed(1), atr: atrPct.toFixed(3), session,
             ema9: ema9.toFixed(2), ema21: ema21.toFixed(2), ema50: ema50.toFixed(2),
-            snr: {
-                resistances: snrData.resistances.map(r => r.toFixed(2)),
-                supports: snrData.supports.map(s => s.toFixed(2))
-            },
-            liquidity: liquidityData,
-            smc: smcData,
-            dailyLevels: dailyLevels
+            snr: { resistances: snrData.resistances.map(r => r.toFixed(2)), supports: snrData.supports.map(s => s.toFixed(2)) },
+            liquidity: liquidityData, smc: smcData, dailyLevels
         };
 
-        // ===== SIGNAL =====
         let signal = "WAIT", reasons = [];
         const emaCross = ema9 > ema21 ? "BUY" : "SELL";
         if (emaCross === "BUY" && rsi > 70) reasons.push("RSI Overbought");
@@ -704,43 +551,26 @@ app.get('/api/ai-desk', async (req, res) => {
         if (emaCross === "SELL" && price > ema50) reasons.push("Against Trend");
         if (session === "ASIA" || session === "CLOSED") reasons.push("Off Session");
         if (reasons.length === 0) signal = emaCross;
-
         result.steps.signal = { signal, reasons, emaCross };
 
-        // ===== PREDICT (AI dengan context SMC/SNR) =====
         let aiPredict = { bias: "NEUTRAL", confidence: 50, reason: "Analysis" };
         try {
-            const prompt = `Analyst XAUUSD (Advanced).
+            const prompt = `Analyst XAUUSD Advanced.
 
 PRICE: ${price.toFixed(2)}
 EMA9: ${ema9.toFixed(2)} | EMA21: ${ema21.toFixed(2)} | EMA50: ${ema50.toFixed(2)}
-RSI: ${rsi.toFixed(1)} | ATR%: ${atrPct.toFixed(3)}
-SESSION: ${session}
+RSI: ${rsi.toFixed(1)} | ATR%: ${atrPct.toFixed(3)} | SESSION: ${session}
 
-SNR DATA:
-Resistances: ${snrData.resistances.map(r => r.toFixed(2)).join(', ') || 'None'}
-Supports: ${snrData.supports.map(s => s.toFixed(2)).join(', ') || 'None'}
+SNR: Resistances: ${snrData.resistances.map(r => r.toFixed(2)).join(', ') || 'None'} | Supports: ${snrData.supports.map(s => s.toFixed(2)).join(', ') || 'None'}
+LIQUIDITY: Equal Highs: ${liquidityData.equalHighs.length} | Equal Lows: ${liquidityData.equalLows.length} | Sweep: ${liquidityData.sweep}
+SMC: BOS: ${smcData.bos} | CHoCH: ${smcData.choch} | FVG: ${smcData.fvg}
+DAILY: PDH: ${dailyLevels ? dailyLevels.pdh.toFixed(2) : 'N/A'} | PDL: ${dailyLevels ? dailyLevels.pdl.toFixed(2) : 'N/A'}
 
-LIQUIDITY:
-Equal Highs: ${liquidityData.equalHighs.length}
-Equal Lows: ${liquidityData.equalLows.length}
-Sweep: ${liquidityData.sweep}
-
-SMC:
-BOS: ${smcData.bos}
-CHoCH: ${smcData.choch}
-FVG: ${smcData.fvg}
-
-DAILY LEVELS:
-PDH: ${dailyLevels ? dailyLevels.pdh.toFixed(2) : 'N/A'}
-PDL: ${dailyLevels ? dailyLevels.pdl.toFixed(2) : 'N/A'}
-
-Analyze dengan SMC + SNR + Liquidity. Reply EXACTLY 3 lines:
+Reply EXACTLY 3 lines:
 BIAS: [BULLISH/BEARISH/NEUTRAL]
 CONFIDENCE: [50-95]
-REASON: [1 ayat BM - sebut SNR atau SMC or liquidity context]`;
-
-            const aiText = await generateWithFallback(prompt);
+REASON: [1 ayat BM sebut SNR/SMC/liquidity context]`;
+            const aiText = await callGroq(prompt);
             const biasM = aiText.match(/BIAS:\s*(\w+)/i);
             const confM = aiText.match(/CONFIDENCE:\s*(\d+)/i);
             const reasonM = aiText.match(/REASON:\s*(.+)/i);
@@ -750,25 +580,20 @@ REASON: [1 ayat BM - sebut SNR atau SMC or liquidity context]`;
                 reason: reasonM ? reasonM[1].trim().substring(0, 250) : "Analysis done"
             };
         } catch (e) { console.log("Predict error:", e.message); }
-
         result.steps.predict = aiPredict;
 
-        // ===== SIZE =====
         const lotSize = "0.01";
         const slPips = atrPct < 0.1 ? 20 : 30;
         const tpPips = slPips * 2;
         const pipValue = 0.10;
         const riskAmount = (slPips * pipValue).toFixed(2);
         const potentialProfit = (tpPips * pipValue).toFixed(2);
-
         result.steps.size = { lotSize, slPips, tpPips, riskAmount, potentialProfit, note: "Lot fixed 0.01" };
 
-        // ===== PLAN =====
         const isBearish = aiPredict.bias.includes("BEARISH");
         const isBullish = aiPredict.bias.includes("BULLISH");
         let action = "WAIT";
         let direction = 0;
-
         if (signal === "BUY" || (signal === "WAIT" && isBullish && aiPredict.confidence >= 65)) { action = "BUY"; direction = 1; }
         else if (signal === "SELL" || (signal === "WAIT" && isBearish && aiPredict.confidence >= 65)) { action = "SELL"; direction = -1; }
 
