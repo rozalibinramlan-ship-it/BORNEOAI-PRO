@@ -20,25 +20,30 @@ if (!process.env.GEMINI_API_KEY) {
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || 'MISSING_KEY' });
 const BIQUOTE_URL = 'https://biquote.io/api';
 
-// Senarai model — akan cuba satu-satu
+// ===== SENARAI MODEL (DIBERSIHKAN) =====
 const AI_MODELS = [
-    'gemini-2.5-flash',
-    'gemini-2.5-pro',
-    'gemini-2.0-flash',
-    'gemini-2.0-flash-exp',
-    'gemini-2.0-flash-001',
-    'gemini-2.0-flash-lite',
-    'gemini-1.5-flash',
-    'gemini-1.5-flash-latest',
-    'gemini-1.5-flash-002',
-    'gemini-1.5-flash-001',
-    'gemini-1.5-pro',
-    'gemini-1.5-pro-latest',
-    'gemini-flash-latest',
-    'gemini-pro'
+    'gemini-2.5-flash'
 ];
 
+// ===== CALL AI (TAMBAH CACHE) =====
+let workingModel = null;
+
 async function callAI(prompt) {
+    // Kalau dah tahu model mana berjaya, terus guna
+    if (workingModel) {
+        try {
+            const r = await ai.models.generateContent({ 
+                model: workingModel, 
+                contents: prompt 
+            });
+            return r.text;
+        } catch (e) {
+            console.log("❌ " + workingModel + " gagal, reset...");
+            workingModel = null;
+        }
+    }
+    
+    // Cuba satu-satu
     let lastErr = null;
     for (const model of AI_MODELS) {
         try {
@@ -47,6 +52,7 @@ async function callAI(prompt) {
                 contents: prompt 
             });
             console.log("✅ AI guna model:", model);
+            workingModel = model;
             return r.text;
         } catch (e) {
             const errMsg = (e.message || '').substring(0, 120);
@@ -123,7 +129,6 @@ function getMarketSession() {
     return "CLOSED";
 }
 
-// Simple SNR
 function detectSNR(candles) {
     if (candles.length < 20) return { resistance: 0, support: 0 };
     const recent = candles.slice(-50);
@@ -163,35 +168,25 @@ async function getOHLC(symbol, interval = '15m', limit = 100) {
     })).filter(c => !isNaN(c.timestamp));
 }
 
-// ===== API: TEST AI MODELS =====
+// ===== API: TEST AI (RINGKAS) =====
 app.get('/api/test-ai', async (req, res) => {
-    const results = [];
-    for (const model of AI_MODELS) {
-        try {
-            const r = await ai.models.generateContent({
-                model: model,
-                contents: 'Reply with only: OK'
-            });
-            results.push({
-                model: model,
-                status: '✅ WORKS',
-                reply: r.text ? r.text.substring(0, 30) : '(empty)'
-            });
-        } catch (e) {
-            results.push({
-                model: model,
-                status: '❌ FAIL',
-                error: (e.message || '').substring(0, 80)
-            });
-        }
+    try {
+        const r = await ai.models.generateContent({
+            model: AI_MODELS[0],
+            contents: 'Reply with only: OK'
+        });
+        res.json({ 
+            status: 'OK',
+            model: AI_MODELS[0],
+            reply: r.text ? r.text.substring(0, 30) : '(empty)'
+        });
+    } catch (e) {
+        res.json({ 
+            status: 'FAIL',
+            model: AI_MODELS[0],
+            error: (e.message || '').substring(0, 200)
+        });
     }
-    const working = results.filter(r => r.status === '✅ WORKS');
-    res.json({ 
-        total: results.length,
-        working: working.length,
-        bestModel: working[0] ? working[0].model : 'NONE',
-        results 
-    });
 });
 
 // ===== API: SIGNAL =====
