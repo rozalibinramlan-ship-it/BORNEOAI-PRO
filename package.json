@@ -1,7 +1,7 @@
 {
   "name": "borneo-pro-trade",
   "version": "1.0.0",
-  "description": "Borneo Pro Trade V3",
+  "description": "Borneo Pro Trade V3 - AI Trading Signal",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"
