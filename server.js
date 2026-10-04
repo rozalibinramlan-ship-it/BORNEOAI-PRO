@@ -16,6 +16,24 @@ app.get('/', (req, res) => {
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 const BIQUOTE_URL = 'https://biquote.io/api';
 
+// Senarai model AI — cuba satu-satu kalau gagal
+const AI_MODELS = ['gemini-3.8-flash', 'gemini-2.5-flash', 'gemini-1.5-flash', 'gemini-2.0-flash-lite'];
+
+async function generateWithFallback(prompt) {
+    let lastErr = null;
+    for (const model of AI_MODELS) {
+        try {
+            const r = await ai.models.generateContent({ model, contents: prompt });
+            console.log("✅ AI guna model:", model);
+            return r.text;
+        } catch (e) {
+            console.log("❌ Model " + model + " gagal:", e.message.substring(0, 100));
+            lastErr = e;
+        }
+    }
+    throw lastErr || new Error("Semua AI model gagal");
+}
+
 const symbolMap = {
     'XAU/USD': 'xauusd', 'XAG/USD': 'xagusd',
     'EUR/USD': 'eurusd', 'GBP/USD': 'gbpusd', 'USD/JPY': 'usdjpy',
@@ -180,16 +198,17 @@ app.get('/api/market', async (req, res) => {
     } catch (error) { res.status(500).json({ status: "error", message: error.message }); }
 });
 
-// ===== API AI ANALYSIS =====
+// ===== API AI ANALYSIS (dengan fallback) =====
 app.post('/api/ai-analysis', async (req, res) => {
     try {
         const { price, ema9, ema21, signal_time, soalan, rsi, atr, session, reasons, spread } = req.body;
         const prompt = `You are a Professional Trading Assistant for XAUUSD. Price ${price}, EMA9 ${ema9}, EMA21 ${ema21}, RSI ${rsi}, ATR% ${atr}, Session ${session}, Spread ${spread}, Filtered: ${reasons ? reasons.join(', ') : 'None'}. Question: "${soalan}". Answer in 2-3 sentences in Bahasa Melayu.`;
-        const response = await ai.models.generateContent({ model: 'gemini-3.8-flash', contents: prompt });
-        res.json({ status: "success", analysis: response.text });
+        
+        const text = await generateWithFallback(prompt);
+        res.json({ status: "success", analysis: text });
     } catch (error) {
         console.error("AI Error:", error.message);
-        res.status(500).json({ status: "error", message: "AI unavailable." });
+        res.status(500).json({ status: "error", message: "AI temporarily busy. Cuba lagi." });
     }
 });
 
@@ -237,7 +256,7 @@ app.get('/api/backtest', async (req, res) => {
     } catch (error) { res.status(500).json({ status: "error", message: error.message }); }
 });
 
-// ===== API NEXT NEWS (Pre-News Prediction) - FIXED =====
+// ===== API NEXT NEWS (Pre-News Prediction) =====
 app.get('/api/next-news', async (req, res) => {
     const fallback = {
         time: 'Akan datang',
@@ -306,32 +325,27 @@ Predict in Bahasa Melayu. Reply EXACTLY in this format (no other text):
 📝 REASON: [1-2 sentences]
 💡 ACTION: [specific - e.g., BUY LIMIT @ 4140, SL 30p, TP 60p]`;
         
-        const aiResponse = await ai.models.generateContent({ model: 'gemini-3.8-flash', contents: prompt });
+        const prediction = await generateWithFallback(prompt);
         
         res.json({
             status: 'success',
             event: nextEvent,
-            prediction: aiResponse.text,
+            prediction: prediction,
             dataBias
         });
     } catch (error) {
         console.error("Next News Error:", error.message);
-        try {
-            const prompt = `You are a Pre-News Analyst for XAUUSD. EVENT: US Non-Farm Payrolls. Forecast: 180K, Previous: 175K. Reply EXACTLY (Bahasa Melayu):
-🎯 BIAS: [BULLISH GOLD / BEARISH GOLD / NEUTRAL]
-💪 CONFIDENCE: [50-95%]
-📈 SETUP: [BUY / SELL / WAIT]
-📝 REASON: [1-2 sentences]
-💡 ACTION: [specific action]`;
-            const aiResponse = await ai.models.generateContent({ model: 'gemini-3.8-flash', contents: prompt });
-            res.json({ status: 'success', event: fallback, prediction: aiResponse.text, dataBias: 'FORECAST USD KUAT (BEARISH GOLD)', note: 'Simulasi' });
-        } catch (e2) {
-            res.json({ status: 'success', event: fallback, prediction: '🎯 BIAS: BEARISH GOLD\n💪 CONFIDENCE: 68%\n📈 SETUP: SELL\n📝 REASON: Forecast lebih tinggi dari previous.\n💡 ACTION: SELL LIMIT @ 4145', dataBias: 'FORECAST USD KUAT', note: 'Simulasi' });
-        }
+        res.json({ 
+            status: 'success', 
+            event: fallback, 
+            prediction: '🎯 BIAS: BEARISH GOLD\n💪 CONFIDENCE: 68%\n📈 SETUP: SELL\n📝 REASON: Forecast lebih tinggi dari previous, USD dijangka kuat.\n💡 ACTION: SELL LIMIT @ 4145, SL 30 pips, TP 60 pips', 
+            dataBias: 'FORECAST USD KUAT (BEARISH GOLD)', 
+            note: 'AI busy — guna prediction lalai' 
+        });
     }
 });
 
-// ===== API NEWS (Full List) - FIXED =====
+// ===== API NEWS (Full List) =====
 app.get('/api/news', async (req, res) => {
     try {
         const response = await axios.get(`${BIQUOTE_URL}/calendar`, { timeout: 10000 });
