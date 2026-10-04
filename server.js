@@ -20,9 +20,9 @@ if (!process.env.GEMINI_API_KEY) {
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || 'MISSING_KEY' });
 const BIQUOTE_URL = 'https://biquote.io/api';
 
-// ===== SENARAI MODEL (DIBERSIHKAN) =====
+// ===== SENARAI MODEL (MODEL BARU DARI GOOGLE) =====
 const AI_MODELS = [
-    'gemini-2.5-flash'
+    'gemini-3.8-flash'
 ];
 
 // ===== CALL AI (TAMBAH CACHE) =====
@@ -168,7 +168,7 @@ async function getOHLC(symbol, interval = '15m', limit = 100) {
     })).filter(c => !isNaN(c.timestamp));
 }
 
-// ===== API: TEST AI (RINGKAS) =====
+// ===== API: TEST AI =====
 app.get('/api/test-ai', async (req, res) => {
     try {
         const r = await ai.models.generateContent({
