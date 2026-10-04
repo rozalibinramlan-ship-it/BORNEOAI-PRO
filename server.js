@@ -1,6 +1,7 @@
 const express = require('express');
 const cors = require('cors');
 const axios = require('axios');
+const { GoogleGenAI } = require('@google/genai');
 require('dotenv').config();
 
 const app = express();
@@ -12,49 +13,33 @@ app.get('/', (req, res) => {
     res.sendFile(__dirname + '/index.html');
 });
 
-if (!process.env.GROQ_API_KEY) {
-    console.error("⚠️ GROQ_API_KEY tidak dijumpai!");
+if (!process.env.GEMINI_API_KEY) {
+    console.error("⚠️ GEMINI_API_KEY tidak dijumpai!");
 }
 
-const GROQ_API_KEY = process.env.GROQ_API_KEY || 'MISSING_KEY';
-const GROQ_URL = 'https://api.groq.com/openai/v1/chat/completions';
+const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || 'MISSING_KEY' });
 const BIQUOTE_URL = 'https://biquote.io/api';
 
-const GROQ_MODELS = [
-    'llama-3.3-70b-versatile',
-    'llama-3.1-70b-versatile',
-    'llama-3.1-8b-instant',
-    'mixtral-8x7b-32768'
+const AI_MODELS = [
+    'gemini-3.5-flash-lite',
+    'gemini-3.5-flash',
+    'gemini-3.8-flash',
+    'gemini-2.0-flash'
 ];
 
-async function callGroq(prompt) {
+async function callAI(prompt) {
     let lastErr = null;
-    for (const model of GROQ_MODELS) {
+    for (const model of AI_MODELS) {
         try {
-            const response = await axios.post(GROQ_URL, {
-                model: model,
-                messages: [
-                    { role: 'system', content: 'You are a professional Malaysian trading analyst. Answer in Bahasa Melayu.' },
-                    { role: 'user', content: prompt }
-                ],
-                temperature: 0.7,
-                max_tokens: 800
-            }, {
-                headers: {
-                    'Authorization': `Bearer ${GROQ_API_KEY}`,
-                    'Content-Type': 'application/json'
-                },
-                timeout: 30000
-            });
-            console.log("✅ Groq guna model:", model);
-            return response.data.choices[0].message.content;
+            const r = await ai.models.generateContent({ model: model, contents: prompt });
+            console.log("✅ AI guna model:", model);
+            return r.text;
         } catch (e) {
-            const errMsg = e.response ? JSON.stringify(e.response.data).substring(0, 150) : e.message;
-            console.log("❌ Groq " + model + " gagal:", errMsg);
+            console.log("❌ " + model + " gagal:", (e.message || '').substring(0, 100));
             lastErr = e;
         }
     }
-    throw lastErr || new Error("Semua Groq model gagal");
+    throw lastErr || new Error("Semua model gagal");
 }
 
 const symbolMap = {
@@ -123,7 +108,6 @@ function getMarketSession() {
     return "CLOSED";
 }
 
-// ===== SMC/SNR/LIQUIDITY =====
 function detectSNR(candles) {
     if (candles.length < 20) return { resistances: [], supports: [] };
     let swingHighs = [], swingLows = [];
@@ -161,11 +145,7 @@ function detectLiquidity(candles) {
     let sweep = "NONE";
     if (last.high > prev.high && last.close < prev.high) sweep = "BEARISH_SWEEP";
     if (last.low < prev.low && last.close > prev.low) sweep = "BULLISH_SWEEP";
-    return {
-        equalHighs: [...new Set(equalHighs)].slice(0, 2),
-        equalLows: [...new Set(equalLows)].slice(0, 2),
-        sweep
-    };
+    return { equalHighs: [...new Set(equalHighs)].slice(0, 2), equalLows: [...new Set(equalLows)].slice(0, 2), sweep };
 }
 
 function detectSMC(candles) {
@@ -196,13 +176,9 @@ function detectSMC(candles) {
 function getDailyLevels(candles) {
     if (candles.length < 20) return null;
     const recent = candles.slice(-96);
-    return {
-        pdh: Math.max(...recent.map(c => c.high)),
-        pdl: Math.min(...recent.map(c => c.low))
-    };
+    return { pdh: Math.max(...recent.map(c => c.high)), pdl: Math.min(...recent.map(c => c.low)) };
 }
 
-// ===== BIQUOTE =====
 async function getTick(symbol) {
     const url = `${BIQUOTE_URL}/${toBiquote(symbol)}`;
     const response = await axios.get(url, { timeout: 10000 });
@@ -229,7 +205,6 @@ async function getOHLC(symbol, interval = '15m', limit = 100) {
     })).filter(c => !isNaN(c.timestamp));
 }
 
-// ===== MTF ANALYSIS =====
 async function analyzeTimeframe(symbol, interval) {
     try {
         const candles = await getOHLC(symbol, interval, 100);
@@ -274,11 +249,8 @@ app.get('/api/mtf-signal', async (req, res) => {
         else if (sellCount >= 3 && bearTrend >= 3) { confluence = "STRONG_SELL"; confluenceScore = 90; }
         else if (buyCount >= 2) { confluence = "WEAK_BUY"; confluenceScore = 60; }
         else if (sellCount >= 2) { confluence = "WEAK_SELL"; confluenceScore = 60; }
-        else if (buyCount === 0 && sellCount === 0) { confluence = "WAIT"; confluenceScore = 40; }
-        res.json({ status: 'success', symbol, timeframes: { m5, m15, h1, h4 }, confluence, confluenceScore, summary: { buyCount, sellCount, bullTrend, bearTrend, totalTF: signals.length } });
-    } catch (error) {
-        res.status(500).json({ status: "error", message: error.message });
-    }
+        res.json({ status: 'success', symbol, timeframes: { m5, m15, h1, h4 }, confluence, confluenceScore, summary: { buyCount, sellCount, bullTrend, bearTrend } });
+    } catch (error) { res.status(500).json({ status: "error", message: error.message }); }
 });
 
 // ===== API: SIGNAL =====
@@ -345,9 +317,7 @@ app.get('/api/market', async (req, res) => {
             ],
             time: new Date().toLocaleTimeString()
         });
-    } catch (error) {
-        res.status(500).json({ status: "error", message: error.message });
-    }
+    } catch (error) { res.status(500).json({ status: "error", message: error.message }); }
 });
 
 // ===== API: AI ANALYSIS =====
@@ -355,12 +325,9 @@ app.post('/api/ai-analysis', async (req, res) => {
     try {
         const { price, ema9, ema21, signal_time, soalan, rsi, atr, session, reasons, spread } = req.body;
         const prompt = `Analyst XAUUSD. Price ${price}, EMA9 ${ema9}, EMA21 ${ema21}, RSI ${rsi}, ATR% ${atr}, Session ${session}, Spread ${spread}, Filtered: ${reasons ? reasons.join(', ') : 'None'}. Question: "${soalan}". Answer in 2-3 sentences in Bahasa Melayu.`;
-        const text = await callGroq(prompt);
+        const text = await callAI(prompt);
         res.json({ status: "success", analysis: text });
-    } catch (error) {
-        console.error("AI Error:", error.message);
-        res.status(500).json({ status: "error", message: "AI busy. Cuba lagi." });
-    }
+    } catch (error) { res.status(500).json({ status: "error", message: "AI busy." }); }
 });
 
 // ===== API: CANDLES =====
@@ -371,9 +338,7 @@ app.get('/api/candles', async (req, res) => {
         const candles = await getOHLC(symbol, tf, 100);
         const formatted = candles.map(c => ({ time: c.timestamp, open: c.open, high: c.high, low: c.low, close: c.close }));
         res.json({ status: "success", candles: formatted });
-    } catch (error) {
-        res.status(500).json({ status: "error", message: error.message });
-    }
+    } catch (error) { res.status(500).json({ status: "error", message: error.message }); }
 });
 
 // ===== API: BACKTEST =====
@@ -408,9 +373,7 @@ app.get('/api/backtest', async (req, res) => {
         const chartCandles = candles.slice(-100).map(c => ({ time: c.timestamp, open: c.open, high: c.high, low: c.low, close: c.close }));
         const chartMarkers = markers.filter(m => m.time >= chartCandles[0].time);
         res.json({ status: "success", winRate, totalTrades, candles: chartCandles, markers: chartMarkers });
-    } catch (error) {
-        res.status(500).json({ status: "error", message: error.message });
-    }
+    } catch (error) { res.status(500).json({ status: "error", message: error.message }); }
 });
 
 // ===== API: NEXT NEWS =====
@@ -441,20 +404,8 @@ app.get('/api/next-news', async (req, res) => {
         }
         let goldPrice = '4145';
         try { const gt = await getTick('XAU/USD'); goldPrice = gt.mid.toFixed(2); } catch (e) { }
-        const prompt = `Pre-News Analyst XAUUSD.
-
-EVENT: ${nextEvent.event}
-Forecast: ${nextEvent.forecast} | Previous: ${nextEvent.previous} | Actual: ${nextEvent.actual}
-Data Bias: ${dataBias}
-CURRENT GOLD PRICE: ${goldPrice}
-
-Reply EXACTLY:
-🎯 BIAS: [BULLISH GOLD / BEARISH GOLD / NEUTRAL]
-💪 CONFIDENCE: [50-95%]
-📈 SETUP: [BUY / SELL / WAIT]
-📝 REASON: [1-2 sentences BM]
-💡 ACTION: [SELL LIMIT @ ${goldPrice}, SL 30p, TP 60p]`;
-        const prediction = await callGroq(prompt);
+        const prompt = `Pre-News Analyst XAUUSD.\nEVENT: ${nextEvent.event}\nForecast: ${nextEvent.forecast} | Previous: ${nextEvent.previous} | Actual: ${nextEvent.actual}\nData Bias: ${dataBias}\nCURRENT GOLD PRICE: ${goldPrice}\n\nReply EXACTLY:\n🎯 BIAS: [BULLISH GOLD / BEARISH GOLD / NEUTRAL]\n💪 CONFIDENCE: [50-95%]\n📈 SETUP: [BUY / SELL / WAIT]\n📝 REASON: [1-2 sentences BM]\n💡 ACTION: [SELL LIMIT @ ${goldPrice}, SL 30p, TP 60p]`;
+        const prediction = await callAI(prompt);
         res.json({ status: 'success', event: nextEvent, prediction, dataBias, goldPrice });
     } catch (error) {
         res.json({ status: 'success', event: fallback, prediction: '🎯 BIAS: BEARISH GOLD\n💪 CONFIDENCE: 68%\n📈 SETUP: SELL\n📝 REASON: Forecast lebih tinggi.\n💡 ACTION: SELL LIMIT @ market price', dataBias: 'FORECAST USD KUAT', note: 'Simulasi' });
@@ -505,9 +456,7 @@ app.get('/api/ai-desk-stats', async (req, res) => {
         }
         topMovers.sort((a, b) => Math.abs(parseFloat(b.change)) - Math.abs(parseFloat(a.change)));
         res.json({ status: 'success', liveCycle: { cycle: Math.floor(Math.random() * 999) + 1000, accuracy: (65 + Math.random() * 20).toFixed(1), signalsToday: signals, buy, sell, wait }, topMovers: topMovers.slice(0, 5) });
-    } catch (e) {
-        res.status(500).json({ status: 'error', message: e.message });
-    }
+    } catch (e) { res.status(500).json({ status: 'error', message: e.message }); }
 });
 
 // ===== API: AI DESK =====
@@ -525,15 +474,12 @@ app.get('/api/ai-desk', async (req, res) => {
         const atr = calculateATR(candles, 14);
         const atrPct = (atr / price) * 100;
         const session = getMarketSession();
-
         let tick = { mid: price, spread: 0, bid: price, ask: price };
         try { tick = await getTick(symbol); } catch (e) { }
-
         const snrData = detectSNR(candles);
         const liquidityData = detectLiquidity(candles);
         const smcData = detectSMC(candles);
         const dailyLevels = getDailyLevels(await getOHLC(symbol, '15min', 96));
-
         result.steps.scan = {
             price: price.toFixed(2), spread: tick.spread.toFixed(2),
             rsi: rsi.toFixed(1), atr: atrPct.toFixed(3), session,
@@ -541,7 +487,6 @@ app.get('/api/ai-desk', async (req, res) => {
             snr: { resistances: snrData.resistances.map(r => r.toFixed(2)), supports: snrData.supports.map(s => s.toFixed(2)) },
             liquidity: liquidityData, smc: smcData, dailyLevels
         };
-
         let signal = "WAIT", reasons = [];
         const emaCross = ema9 > ema21 ? "BUY" : "SELL";
         if (emaCross === "BUY" && rsi > 70) reasons.push("RSI Overbought");
@@ -552,25 +497,10 @@ app.get('/api/ai-desk', async (req, res) => {
         if (session === "ASIA" || session === "CLOSED") reasons.push("Off Session");
         if (reasons.length === 0) signal = emaCross;
         result.steps.signal = { signal, reasons, emaCross };
-
         let aiPredict = { bias: "NEUTRAL", confidence: 50, reason: "Analysis" };
         try {
-            const prompt = `Analyst XAUUSD Advanced.
-
-PRICE: ${price.toFixed(2)}
-EMA9: ${ema9.toFixed(2)} | EMA21: ${ema21.toFixed(2)} | EMA50: ${ema50.toFixed(2)}
-RSI: ${rsi.toFixed(1)} | ATR%: ${atrPct.toFixed(3)} | SESSION: ${session}
-
-SNR: Resistances: ${snrData.resistances.map(r => r.toFixed(2)).join(', ') || 'None'} | Supports: ${snrData.supports.map(s => s.toFixed(2)).join(', ') || 'None'}
-LIQUIDITY: Equal Highs: ${liquidityData.equalHighs.length} | Equal Lows: ${liquidityData.equalLows.length} | Sweep: ${liquidityData.sweep}
-SMC: BOS: ${smcData.bos} | CHoCH: ${smcData.choch} | FVG: ${smcData.fvg}
-DAILY: PDH: ${dailyLevels ? dailyLevels.pdh.toFixed(2) : 'N/A'} | PDL: ${dailyLevels ? dailyLevels.pdl.toFixed(2) : 'N/A'}
-
-Reply EXACTLY 3 lines:
-BIAS: [BULLISH/BEARISH/NEUTRAL]
-CONFIDENCE: [50-95]
-REASON: [1 ayat BM sebut SNR/SMC/liquidity context]`;
-            const aiText = await callGroq(prompt);
+            const prompt = `Analyst XAUUSD Advanced.\nPRICE: ${price.toFixed(2)}\nEMA9: ${ema9.toFixed(2)} EMA21: ${ema21.toFixed(2)} EMA50: ${ema50.toFixed(2)}\nRSI: ${rsi.toFixed(1)} ATR%: ${atrPct.toFixed(3)} SESSION: ${session}\nSNR: R: ${snrData.resistances.map(r => r.toFixed(2)).join(', ') || 'None'} S: ${snrData.supports.map(s => s.toFixed(2)).join(', ') || 'None'}\nLIQUIDITY: EH: ${liquidityData.equalHighs.length} EL: ${liquidityData.equalLows.length} Sweep: ${liquidityData.sweep}\nSMC: BOS: ${smcData.bos} CHoCH: ${smcData.choch} FVG: ${smcData.fvg}\nDAILY: PDH: ${dailyLevels ? dailyLevels.pdh.toFixed(2) : 'N/A'} PDL: ${dailyLevels ? dailyLevels.pdl.toFixed(2) : 'N/A'}\n\nReply EXACTLY 3 lines:\nBIAS: [BULLISH/BEARISH/NEUTRAL]\nCONFIDENCE: [50-95]\nREASON: [1 ayat BM sebut SNR/SMC/liquidity]`;
+            const aiText = await callAI(prompt);
             const biasM = aiText.match(/BIAS:\s*(\w+)/i);
             const confM = aiText.match(/CONFIDENCE:\s*(\d+)/i);
             const reasonM = aiText.match(/REASON:\s*(.+)/i);
@@ -581,38 +511,23 @@ REASON: [1 ayat BM sebut SNR/SMC/liquidity context]`;
             };
         } catch (e) { console.log("Predict error:", e.message); }
         result.steps.predict = aiPredict;
-
         const lotSize = "0.01";
         const slPips = atrPct < 0.1 ? 20 : 30;
         const tpPips = slPips * 2;
         const pipValue = 0.10;
         const riskAmount = (slPips * pipValue).toFixed(2);
         const potentialProfit = (tpPips * pipValue).toFixed(2);
-        result.steps.size = { lotSize, slPips, tpPips, riskAmount, potentialProfit, note: "Lot fixed 0.01" };
-
+        result.steps.size = { lotSize, slPips, tpPips, riskAmount, potentialProfit };
         const isBearish = aiPredict.bias.includes("BEARISH");
         const isBullish = aiPredict.bias.includes("BULLISH");
-        let action = "WAIT";
-        let direction = 0;
+        let action = "WAIT", direction = 0;
         if (signal === "BUY" || (signal === "WAIT" && isBullish && aiPredict.confidence >= 65)) { action = "BUY"; direction = 1; }
         else if (signal === "SELL" || (signal === "WAIT" && isBearish && aiPredict.confidence >= 65)) { action = "SELL"; direction = -1; }
-
         const pipSize = 0.01;
-        const entryPrice = direction === 1 ? price - slPips * pipSize * 0.3 :
-                          direction === -1 ? price + slPips * pipSize * 0.3 : price;
+        const entryPrice = direction === 1 ? price - slPips * pipSize * 0.3 : direction === -1 ? price + slPips * pipSize * 0.3 : price;
         const slPrice = direction === 1 ? entryPrice - slPips * pipSize : entryPrice + slPips * pipSize;
         const tpPrice = direction === 1 ? entryPrice + tpPips * pipSize : entryPrice - tpPips * pipSize;
-
-        result.steps.plan = {
-            action, direction,
-            entry: entryPrice.toFixed(2),
-            sl: slPrice.toFixed(2),
-            tp: tpPrice.toFixed(2),
-            rr: "1:2", slPips, tpPips,
-            currentPrice: price.toFixed(2),
-            lotSize: lotSize
-        };
-
+        result.steps.plan = { action, direction, entry: entryPrice.toFixed(2), sl: slPrice.toFixed(2), tp: tpPrice.toFixed(2), rr: "1:2", slPips, tpPips, currentPrice: price.toFixed(2), lotSize };
         res.json({ status: "success", ...result });
     } catch (e) {
         console.error("AI Desk Error:", e.message);
