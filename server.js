@@ -20,22 +20,37 @@ if (!process.env.GEMINI_API_KEY) {
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || 'MISSING_KEY' });
 const BIQUOTE_URL = 'https://biquote.io/api';
 
+// Senarai model — akan cuba satu-satu
 const AI_MODELS = [
+    'gemini-2.5-flash',
+    'gemini-2.5-pro',
     'gemini-2.0-flash',
+    'gemini-2.0-flash-exp',
+    'gemini-2.0-flash-001',
+    'gemini-2.0-flash-lite',
     'gemini-1.5-flash',
-    'gemini-1.5-flash-8b',
-    'gemini-3.5-flash-lite'
+    'gemini-1.5-flash-latest',
+    'gemini-1.5-flash-002',
+    'gemini-1.5-flash-001',
+    'gemini-1.5-pro',
+    'gemini-1.5-pro-latest',
+    'gemini-flash-latest',
+    'gemini-pro'
 ];
 
 async function callAI(prompt) {
     let lastErr = null;
     for (const model of AI_MODELS) {
         try {
-            const r = await ai.models.generateContent({ model: model, contents: prompt });
+            const r = await ai.models.generateContent({ 
+                model: model, 
+                contents: prompt 
+            });
             console.log("✅ AI guna model:", model);
             return r.text;
         } catch (e) {
-            console.log("❌ " + model + " gagal:", (e.message || '').substring(0, 100));
+            const errMsg = (e.message || '').substring(0, 120);
+            console.log("❌ " + model + " gagal:", errMsg);
             lastErr = e;
         }
     }
@@ -108,7 +123,7 @@ function getMarketSession() {
     return "CLOSED";
 }
 
-// ===== SIMPLE SNR DETECTION =====
+// Simple SNR
 function detectSNR(candles) {
     if (candles.length < 20) return { resistance: 0, support: 0 };
     const recent = candles.slice(-50);
@@ -117,16 +132,11 @@ function detectSNR(candles) {
     const lows = recent.map(c => c.low);
     const maxHigh = Math.max(...highs);
     const minLow = Math.min(...lows);
-    
-    // Cari resistance terdekat (atas harga)
     const resistance = highs.filter(h => h > last).sort((a, b) => a - b)[0] || maxHigh;
-    // Cari support terdekat (bawah harga)
     const support = lows.filter(l => l < last).sort((a, b) => b - a)[0] || minLow;
-    
     return { resistance, support };
 }
 
-// ===== BIQUOTE =====
 async function getTick(symbol) {
     const url = `${BIQUOTE_URL}/${toBiquote(symbol)}`;
     const response = await axios.get(url, { timeout: 10000 });
@@ -152,6 +162,37 @@ async function getOHLC(symbol, interval = '15m', limit = 100) {
         close: parseFloat(c.close || 0)
     })).filter(c => !isNaN(c.timestamp));
 }
+
+// ===== API: TEST AI MODELS =====
+app.get('/api/test-ai', async (req, res) => {
+    const results = [];
+    for (const model of AI_MODELS) {
+        try {
+            const r = await ai.models.generateContent({
+                model: model,
+                contents: 'Reply with only: OK'
+            });
+            results.push({
+                model: model,
+                status: '✅ WORKS',
+                reply: r.text ? r.text.substring(0, 30) : '(empty)'
+            });
+        } catch (e) {
+            results.push({
+                model: model,
+                status: '❌ FAIL',
+                error: (e.message || '').substring(0, 80)
+            });
+        }
+    }
+    const working = results.filter(r => r.status === '✅ WORKS');
+    res.json({ 
+        total: results.length,
+        working: working.length,
+        bestModel: working[0] ? working[0].model : 'NONE',
+        results 
+    });
+});
 
 // ===== API: SIGNAL =====
 app.get('/api/signal', async (req, res) => {
@@ -224,10 +265,13 @@ app.get('/api/market', async (req, res) => {
 app.post('/api/ai-analysis', async (req, res) => {
     try {
         const { price, ema9, ema21, signal_time, soalan, rsi, atr, session, reasons, spread } = req.body;
-        const prompt = `Analyst XAUUSD. Price ${price}, EMA9 ${ema9}, EMA21 ${ema21}, RSI ${rsi}, ATR% ${atr}, Session ${session}, Spread ${spread}, Filtered: ${reasons ? reasons.join(', ') : 'None'}. Question: "${soalan}". Answer in 2-3 sentences in Bahasa Melayu.`;
+        const prompt = `Analyst XAUUSD. Price: ${price}. EMA9: ${ema9}, EMA21: ${ema21}. RSI: ${rsi}. ATR%: ${atr}. Session: ${session}. Spread: ${spread}. Filtered: ${reasons ? reasons.join(', ') : 'None'}. Question: "${soalan}". Answer in 2-3 sentences in Bahasa Melayu.`;
         const text = await callAI(prompt);
         res.json({ status: "success", analysis: text });
-    } catch (error) { res.status(500).json({ status: "error", message: "AI busy." }); }
+    } catch (error) {
+        console.error("AI Analysis error:", error.message);
+        res.status(500).json({ status: "error", message: "AI busy." });
+    }
 });
 
 // ===== API: CANDLES =====
@@ -308,6 +352,7 @@ app.get('/api/next-news', async (req, res) => {
         const prediction = await callAI(prompt);
         res.json({ status: 'success', event: nextEvent, prediction, dataBias, goldPrice });
     } catch (error) {
+        console.error("Next News error:", error.message);
         res.json({ status: 'success', event: fallback, prediction: '🎯 BIAS: BEARISH GOLD\n💪 CONFIDENCE: 68%\n📈 SETUP: SELL\n📝 REASON: Forecast lebih tinggi.\n💡 ACTION: SELL LIMIT @ market price', dataBias: 'FORECAST USD KUAT', note: 'Simulasi' });
     }
 });
@@ -359,7 +404,7 @@ app.get('/api/ai-desk-stats', async (req, res) => {
     } catch (e) { res.status(500).json({ status: 'error', message: e.message }); }
 });
 
-// ===== API: AI DESK (SIMPLE + SNR) =====
+// ===== API: AI DESK =====
 app.get('/api/ai-desk', async (req, res) => {
     const symbol = req.query.symbol || 'XAU/USD';
     const result = { timestamp: new Date().toISOString(), steps: {} };
@@ -377,7 +422,6 @@ app.get('/api/ai-desk', async (req, res) => {
         let tick = { mid: price, spread: 0, bid: price, ask: price };
         try { tick = await getTick(symbol); } catch (e) { }
         
-        // SNR detection
         const snr = detectSNR(candles);
         const distToResistance = ((snr.resistance - price) / price * 100).toFixed(2);
         const distToSupport = ((price - snr.support) / price * 100).toFixed(2);
@@ -405,10 +449,9 @@ app.get('/api/ai-desk', async (req, res) => {
         if (reasons.length === 0) signal = emaCross;
         result.steps.signal = { signal, reasons, emaCross };
         
-        // AI Predict with SNR (SHORT prompt)
         let aiPredict = { bias: "NEUTRAL", confidence: 50, reason: "Technical only" };
         try {
-            const prompt = `XAUUSD Analyst. Price: ${price.toFixed(2)}. RSI: ${rsi.toFixed(1)}. EMA9: ${ema9.toFixed(2)}, EMA21: ${ema21.toFixed(2)}. Session: ${session}. Support: ${snr.support.toFixed(2)} (${distToSupport}% bawah). Resistance: ${snr.resistance.toFixed(2)} (${distToResistance}% atas). Reply exactly 3 lines:
+            const prompt = `XAUUSD Analyst. Price: ${price.toFixed(2)}. RSI: ${rsi.toFixed(1)}. EMA9: ${ema9.toFixed(2)}, EMA21: ${ema21.toFixed(2)}. Session: ${session}. Support: ${snr.support.toFixed(2)} (${distToSupport}%). Resistance: ${snr.resistance.toFixed(2)} (${distToResistance}%). Reply exactly 3 lines:
 BIAS: [BULLISH/BEARISH/NEUTRAL]
 CONFIDENCE: [50-95]
 REASON: [1 ayat BM, sebut SNR]`;
@@ -423,11 +466,10 @@ REASON: [1 ayat BM, sebut SNR]`;
             };
         } catch (e) {
             console.log("AI error:", e.message);
-            // Fallback: guna teknikal
             aiPredict = {
                 bias: ema9 > ema21 ? "BULLISH" : "BEARISH",
                 confidence: 55,
-                reason: `AI unavailable. Teknikal: EMA9 ${ema9 > ema21 ? '>' : '<'} EMA21. Support: ${snr.support.toFixed(2)}, Resistance: ${snr.resistance.toFixed(2)}.`
+                reason: `AI offline. Teknikal: EMA9 ${ema9 > ema21 ? '>' : '<'} EMA21. Support: ${snr.support.toFixed(2)}, Resistance: ${snr.resistance.toFixed(2)}.`
             };
         }
         result.steps.predict = aiPredict;
