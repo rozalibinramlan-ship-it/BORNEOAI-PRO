@@ -16,7 +16,6 @@ app.get('/', (req, res) => {
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 const BIQUOTE_URL = 'https://biquote.io/api';
 
-// Updated models - Google retired old ones
 const AI_MODELS = ['gemini-3.8-flash', 'gemini-3.5-flash-lite', 'gemini-3.5-flash', 'gemini-2.0-flash'];
 
 async function generateWithFallback(prompt) {
@@ -234,8 +233,8 @@ app.get('/api/backtest', async (req, res) => {
             }
         }
         const totalTrades = win + loss;
-        const winRate = totalTrades > 0 ? ((win / totalTrades) * 100calendar).toFixed(1) : 0;
-       `, const chartCandles = candles.slice {(-100).filter(c => !isNaN(c.timestamp)).map(c => ({ time: c.timestamp, open: c.open, high: c.high, low: c.low, close: c.close }));
+        const winRate = totalTrades > 0 ? ((win / totalTrades) * 100).toFixed(1) : 0;
+        const chartCandles = candles.slice(-100).filter(c => !isNaN(c.timestamp)).map(c => ({ time: c.timestamp, open: c.open, high: c.high, low: c.low, close: c.close }));
         const chartMarkers = markers.filter(m => m.time >= chartCandles[0].time);
         res.json({ status: "success", winRate, totalTrades, candles: chartCandles, markers: chartMarkers });
     } catch (error) { res.status(500).json({ status: "error", message: error.message }); }
@@ -245,7 +244,7 @@ app.get('/api/backtest', async (req, res) => {
 app.get('/api/next-news', async (req, res) => {
     const fallback = { time: 'Akan datang', currency: 'USD', impact: 'high', event: 'US Non-Farm Payrolls', actual: '-', forecast: '180K', previous: '175K' };
     try {
-        const response = await axios.get(`${BIQUOTE_URL}/ timeout: 10000 });
+        const response = await axios.get(`${BIQUOTE_URL}/calendar`, { timeout: 10000 });
         const d = response.data;
         let events = d.events || d.data || d.calendar || (Array.isArray(d) ? d : []);
         if (!Array.isArray(events)) events = [];
@@ -320,9 +319,9 @@ app.get('/api/ai-desk-stats', async (req, res) => {
                 const price = closes[closes.length - 1];
                 const kiraEMA = (arr, t) => { let e = arr[0]; let k = 2/(t+1); for (let i = 1; i < arr.length; i++) e = (arr[i]*k) + (e*(1-k)); return e; };
                 const ema9 = kiraEMA(closes, 9), ema21 = kiraEMA(closes, 21);
-                const rsi =70 calculateRSI(closes, 14));
-                let sig = ema9 > ema ||21 ? 'BUY' : 'SE (LL';
-                if ((sig === 'BUY'sig && rsi >  === 'SELL' && rsi < 30)) sig = 'WAIT';
+                const rsi = calculateRSI(closes, 14);
+                let sig = ema9 > ema21 ? 'BUY' : 'SELL';
+                if ((sig === 'BUY' && rsi > 70) || (sig === 'SELL' && rsi < 30)) sig = 'WAIT';
                 signals++;
                 if (sig === 'BUY') buy++;
                 else if (sig === 'SELL') sell++;
@@ -345,7 +344,7 @@ app.get('/api/ai-desk-stats', async (req, res) => {
     } catch(e) { res.status(500).json({ status: 'error', message: e.message }); }
 });
 
-// ===== AI DESK (6-Step Pipeline) =====
+// ===== AI DESK =====
 app.get('/api/ai-desk', async (req, res) => {
     const symbol = req.query.symbol || 'XAU/USD';
     const result = { timestamp: new Date().toISOString(), steps: {} };
