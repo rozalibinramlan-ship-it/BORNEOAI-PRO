@@ -190,6 +190,7 @@ td { padding: 12px; border-bottom: 1px solid var(--border); }
   </select>
 </div>
 
+<!-- SCREEN 1: SIGNAL -->
 <div id="screen-signal" class="screen active">
   <div class="price-display"><h2 class="price-value" id="main-price-signal">Loading...</h2><span class="live-badge">● LIVE</span></div>
   <div id="signal-box" class="signal-box wait">WAIT</div>
@@ -222,6 +223,7 @@ td { padding: 12px; border-bottom: 1px solid var(--border); }
   </div>
 </div>
 
+<!-- SCREEN 2: LEVELS -->
 <div id="screen-levels" class="screen">
   <div class="poc-banner">☆ POC <span id="poc-val">-</span></div>
   <p class="card-title">AUTO SNR LEVELS</p>
@@ -240,16 +242,19 @@ td { padding: 12px; border-bottom: 1px solid var(--border); }
   <div class="table-container"><table><thead><tr><th>PRICE</th><th>VOL</th><th>DELTA</th></tr></thead><tbody id="footprint-summary"></tbody></table></div>
 </div>
 
+<!-- SCREEN 3: CHART -->
 <div id="screen-chart" class="screen">
   <h2 style="text-align:center; letter-spacing:3px; font-size:14px; color:var(--text-gray);">CHART</h2>
   <div id="chart"></div>
 </div>
 
+<!-- SCREEN 4: NEWS -->
 <div id="screen-news" class="screen">
   <h2 style="text-align:center; color:var(--accent-yellow); margin-top:0; letter-spacing:3px; font-size:14px;">📰 NEWS</h2>
   <div id="news-list"><div style="text-align:center; padding:30px; color:#38bdf8;">⏳ Memuatkan...</div></div>
 </div>
 
+<!-- SCREEN 5: AI DESK -->
 <div id="screen-desk" class="screen">
   <div class="desk-container">
     <div class="desk-topbar">
@@ -328,6 +333,7 @@ td { padding: 12px; border-bottom: 1px solid var(--border); }
   </div>
 </div>
 
+<!-- SCREEN 6: STRATEGY -->
 <div id="screen-strategy" class="screen">
   <h2 style="text-align:center; color:var(--accent-yellow); margin-top:0; letter-spacing:3px; font-size:14px;">STRATEGY AI</h2>
   <div class="glass-card">
@@ -347,8 +353,10 @@ td { padding: 12px; border-bottom: 1px solid var(--border); }
   </div>
 </div>
 
+<!-- TP Popup -->
 <div class="tp-popup" id="tp-popup">🎯 TP HIT<br><span id="tp-pips">+0 pips</span></div>
 
+<!-- BOTTOM NAV -->
 <nav id="bottom-nav">
   <button class="nav-item active" onclick="switchTab('signal', this)">📈<span>SIGNAL</span></button>
   <button class="nav-item" onclick="switchTab('levels', this)">⭐<span>LEVELS</span></button>
@@ -531,11 +539,22 @@ async function jalankanBacktest() {
       backtestSeries = backtestChart.addCandlestickSeries({ upColor: '#22c55e', downColor: '#ef4444', borderVisible: false, wickUpColor: '#22c55e', wickDownColor: '#ef4444' });
       backtestSeries.setData(data.candles);
       backtestSeries.setMarkers(data.markers);
-      const aiRes = await fetch('/api/ai-analysis', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ price: "Backtest", ema9: "N/A", ema21: "N/A", signal_time: Date.now() / 1000, soalan: `Strategy Win Rate ${data.winRate}% with ${data.totalTrades} signals. Give a brief review.` }) });
-      const aiData = await aiRes.json();
-      document.getElementById('bt-ai-comment').innerText = aiData.analysis || "Analysis not available.";
+      // AI COMMENTARY with fallback
+      try {
+        const aiRes = await fetch('/api/ai-analysis', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ price: "Backtest", ema9: "N/A", ema21: "N/A", signal_time: Date.now() / 1000, soalan: `Strategy Win Rate ${data.winRate}% with ${data.totalTrades} signals. Give a brief review in Bahasa Melayu.` }) });
+        const aiData = await aiRes.json();
+        if (aiData.status === 'success' && aiData.analysis) {
+          document.getElementById('bt-ai-comment').innerText = aiData.analysis;
+        } else {
+          document.getElementById('bt-ai-comment').innerText = `📊 Backtest selesai: ${data.winRate}% win rate dari ${data.totalTrades} signal. Strategy guna TP/SL 0.1% pada XAUUSD. AI commentary tak available — cuba tekan RUN BACKTEST sekali lagi.`;
+        }
+      } catch (err) {
+        document.getElementById('bt-ai-comment').innerText = `📊 Backtest selesai: ${data.winRate}% win rate dari ${data.totalTrades} signal. Strategy guna TP/SL 0.1% pada XAUUSD. AI commentary tak available — cuba tekan RUN BACKTEST sekali lagi.`;
+      }
     }
-  } catch (e) { document.getElementById('bt-ai-comment').innerText = "Connection error."; }
+  } catch (e) {
+    document.getElementById('bt-ai-comment').innerText = "❌ Connection error. Cuba lagi.";
+  }
 }
 
 /* GRAPH ANIMATION */
@@ -642,7 +661,6 @@ async function runAIDesk() {
       document.getElementById('r-lot').innerText = s.size.lotSize + ' lot';
       document.getElementById('r-reason').innerText = s.predict.reason;
       
-      // ===== FIX: SL/TP hanya bila bukan WAIT =====
       if (s.plan.action === 'WAIT') {
         document.getElementById('r-entry').innerText = '-';
         document.getElementById('r-sl').innerText = '-';

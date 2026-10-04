@@ -13,30 +13,25 @@ app.get('/', (req, res) => {
     res.sendFile(__dirname + '/index.html');
 });
 
-// ===== AI SETUP =====
 if (!process.env.GEMINI_API_KEY) {
-    console.error("⚠️ GEMINI_API_KEY tidak dijumpai! Set dalam .env atau Render Environment.");
+    console.error("⚠️ GEMINI_API_KEY tidak dijumpai!");
 }
 
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || 'MISSING_KEY' });
 const BIQUOTE_URL = 'https://biquote.io/api';
 
-// ===== MODEL YANG SEBENAR WUJUD =====
 const AI_MODELS = [
-    'gemini-2.0-flash-exp',
-    'gemini-1.5-flash',
-    'gemini-1.5-flash-8b',
-    'gemini-1.5-pro'
+    'gemini-3.8-flash',
+    'gemini-3.5-flash-lite',
+    'gemini-3.5-flash',
+    'gemini-2.0-flash'
 ];
 
 async function generateWithFallback(prompt) {
     let lastErr = null;
     for (const model of AI_MODELS) {
         try {
-            const r = await ai.models.generateContent({
-                model: model,
-                contents: prompt
-            });
+            const r = await ai.models.generateContent({ model: model, contents: prompt });
             console.log("✅ AI guna model:", model);
             return r.text;
         } catch (e) {
@@ -47,7 +42,6 @@ async function generateWithFallback(prompt) {
     throw lastErr || new Error("Semua AI model gagal");
 }
 
-// ===== SYMBOL MAP =====
 const symbolMap = {
     'XAU/USD': 'xauusd', 'XAG/USD': 'xagusd',
     'EUR/USD': 'eurusd', 'GBP/USD': 'gbpusd', 'USD/JPY': 'usdjpy',
@@ -59,9 +53,7 @@ const symbolMap = {
     'WTICO': 'wtiusd', 'BCO': 'brentusd', 'NATGAS': 'natgas'
 };
 
-function toBiquote(s) {
-    return symbolMap[s] || s.replace('/', '').toLowerCase();
-}
+function toBiquote(s) { return symbolMap[s] || s.replace('/', '').toLowerCase(); }
 
 function getDecimal(s) {
     if (s.includes('JPY')) return 3;
@@ -84,8 +76,7 @@ function calculateRSI(closes, period = 14) {
     let gains = 0, losses = 0;
     for (let i = closes.length - period; i < closes.length; i++) {
         const diff = closes[i] - closes[i - 1];
-        if (diff >= 0) gains += diff;
-        else losses -= diff;
+        if (diff >= 0) gains += diff; else losses -= diff;
     }
     const avgGain = gains / period, avgLoss = losses / period;
     if (avgLoss === 0) return 100;
@@ -110,7 +101,6 @@ function getMarketSession() {
     return "CLOSED";
 }
 
-// ===== API HELPERS =====
 async function getTick(symbol) {
     const url = `${BIQUOTE_URL}/${toBiquote(symbol)}`;
     const response = await axios.get(url, { timeout: 10000 });
@@ -183,33 +173,14 @@ app.get('/api/signal', async (req, res) => {
         }
 
         res.json({
-            symbol,
-            harga: harga.toFixed(decimal),
-            signal, warna,
-            ema9: ema9.toFixed(decimal),
-            ema21: ema21.toFixed(decimal),
-            ema50: ema50.toFixed(decimal),
-            rsi: rsi.toFixed(1),
-            atrPercent: atrPercent.toFixed(3),
-            session,
-            spread: spread.toFixed(decimal),
-            bid: bid.toFixed(decimal),
-            ask: ask.toFixed(decimal),
-            filtered, reasons,
-            masa: new Date().toLocaleTimeString(),
-            status: "LIVE"
+            symbol, harga: harga.toFixed(decimal), signal, warna,
+            ema9: ema9.toFixed(decimal), ema21: ema21.toFixed(decimal), ema50: ema50.toFixed(decimal),
+            rsi: rsi.toFixed(1), atrPercent: atrPercent.toFixed(3), session,
+            spread: spread.toFixed(decimal), bid: bid.toFixed(decimal), ask: ask.toFixed(decimal),
+            filtered, reasons, masa: new Date().toLocaleTimeString(), status: "LIVE"
         });
     } catch (error) {
-        res.json({
-            symbol, harga: "0.00",
-            signal: "WAIT", warna: "#94a3b8",
-            ema9: "0", ema21: "0", ema50: "0",
-            rsi: "50", atrPercent: "0",
-            session: "CLOSED", spread: "0", bid: "0", ask: "0",
-            filtered: true, reasons: ["Data Error"],
-            masa: new Date().toLocaleTimeString(),
-            status: "ERROR"
-        });
+        res.json({ symbol, harga: "0.00", signal: "WAIT", warna: "#94a3b8", ema9: "0", ema21: "0", ema50: "0", rsi: "50", atrPercent: "0", session: "CLOSED", spread: "0", bid: "0", ask: "0", filtered: true, reasons: ["Data Error"], masa: new Date().toLocaleTimeString(), status: "ERROR" });
     }
 });
 
@@ -222,21 +193,14 @@ app.get('/api/market', async (req, res) => {
         const harga = tick.mid;
         const variance = harga * 0.001;
         res.json({
-            symbol,
-            harga: harga.toFixed(decimal),
-            bid: tick.bid.toFixed(decimal),
-            ask: tick.ask.toFixed(decimal),
-            spread: tick.spread.toFixed(decimal),
+            symbol, harga: harga.toFixed(decimal),
+            bid: tick.bid.toFixed(decimal), ask: tick.ask.toFixed(decimal), spread: tick.spread.toFixed(decimal),
             poc: (harga + variance * 2).toFixed(decimal),
             snr: {
-                r3: (harga + variance * 30).toFixed(decimal),
-                r2: (harga + variance * 20).toFixed(decimal),
-                r1: (harga + variance * 10).toFixed(decimal),
-                poc: (harga + variance * 2).toFixed(decimal),
-                vah: (harga + variance * 5).toFixed(decimal),
-                val: (harga - variance * 5).toFixed(decimal),
-                s1: (harga - variance * 10).toFixed(decimal),
-                s2: (harga - variance * 20).toFixed(decimal),
+                r3: (harga + variance * 30).toFixed(decimal), r2: (harga + variance * 20).toFixed(decimal),
+                r1: (harga + variance * 10).toFixed(decimal), poc: (harga + variance * 2).toFixed(decimal),
+                vah: (harga + variance * 5).toFixed(decimal), val: (harga - variance * 5).toFixed(decimal),
+                s1: (harga - variance * 10).toFixed(decimal), s2: (harga - variance * 20).toFixed(decimal),
                 s3: (harga - variance * 30).toFixed(decimal)
             },
             footprint: [
@@ -280,7 +244,7 @@ app.get('/api/candles', async (req, res) => {
     }
 });
 
-// ===== API: BACKTEST =====
+// ===== API: BACKTEST (FIXED TP/SL) =====
 app.get('/api/backtest', async (req, res) => {
     const symbol = req.query.symbol || 'XAU/USD';
     try {
@@ -305,7 +269,9 @@ app.get('/api/backtest', async (req, res) => {
             const atrPercent = (atr / current.close) * 100;
 
             if (ema9 > ema21 && rsi < 70 && atrPercent > 0.05) {
-                const tp = current.close * 1.01, sl = current.close * 0.99;
+                // FIX: TP/SL 0.1% untuk XAUUSD realistic
+                const tp = current.close * 1.001;
+                const sl = current.close * 0.999;
                 let result = null;
                 for (let j = i + 1; j < candles.length; j++) {
                     if (candles[j].high >= tp) { result = 'WIN'; break; }
@@ -586,11 +552,8 @@ REASON: [1 ayat BM]`;
         let action = "WAIT";
         let direction = 0;
 
-        if (signal === "BUY" || (signal === "WAIT" && isBullish && aiPredict.confidence >= 65)) {
-            action = "BUY"; direction = 1;
-        } else if (signal === "SELL" || (signal === "WAIT" && isBearish && aiPredict.confidence >= 65)) {
-            action = "SELL"; direction = -1;
-        }
+        if (signal === "BUY" || (signal === "WAIT" && isBullish && aiPredict.confidence >= 65)) { action = "BUY"; direction = 1; }
+        else if (signal === "SELL" || (signal === "WAIT" && isBearish && aiPredict.confidence >= 65)) { action = "SELL"; direction = -1; }
 
         const pipSize = 0.01;
         const entryPrice = direction === 1 ? price - slPips * pipSize * 0.3 :
