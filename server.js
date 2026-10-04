@@ -14,7 +14,6 @@ app.get('/', (req, res) => {
 });
 
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
-
 const BIQUOTE_URL = 'https://biquote.io/api';
 
 const symbolMap = {
@@ -76,14 +75,7 @@ async function getTick(symbol) {
     const ask = parseFloat(d.ask || 0);
     const mid = parseFloat(d.mid || (bid + ask) / 2 || d.last || 0);
     const spread = parseFloat(d.spread || (ask - bid) || 0);
-    return {
-        bid, ask, mid, spread,
-        marketState: d.marketState || 'unknown',
-        stale: d.stale || false,
-        timestamp: d.timestamp || d.lastQuoteAt,
-        direction: d.direction || 'NEUTRAL',
-        dayDiffPercent: d.dayDiffPercent || 0
-    };
+    return { bid, ask, mid, spread, marketState: d.marketState || 'unknown', stale: d.stale || false };
 }
 
 async function getOHLC(symbol, interval = '15m', limit = 100) {
@@ -97,11 +89,11 @@ async function getOHLC(symbol, interval = '15m', limit = 100) {
         open: parseFloat(c.open || 0),
         high: parseFloat(c.high || 0),
         low: parseFloat(c.low || 0),
-        close: parseFloat(c.close || 0),
-        isOpen: c.isOpen || false
+        close: parseFloat(c.close || 0)
     }));
 }
 
+// ===== API SIGNAL =====
 app.get('/api/signal', async (req, res) => {
     const symbol = req.query.symbol || 'XAU/USD';
     const decimal = getDecimal(symbol);
@@ -121,10 +113,8 @@ app.get('/api/signal', async (req, res) => {
         let spread = 0, bid = 0, ask = 0;
         try {
             const tick = await getTick(symbol);
-            bid = tick.bid || harga;
-            ask = tick.ask || harga;
-            spread = tick.spread || 0;
-        } catch (e) { console.log("Tick error:", e.message); }
+            bid = tick.bid || harga; ask = tick.ask || harga; spread = tick.spread || 0;
+        } catch (e) {}
         
         let signal = "WAIT", warna = "#94a3b8", reasons = [], filtered = false;
         const emaCross = ema9 > ema21 ? "BUY" : "SELL";
@@ -141,14 +131,14 @@ app.get('/api/signal', async (req, res) => {
             ema9: ema9.toFixed(decimal), ema21: ema21.toFixed(decimal), ema50: ema50.toFixed(decimal),
             rsi: rsi.toFixed(1), atrPercent: atrPercent.toFixed(3), session,
             spread: spread.toFixed(decimal), bid: bid.toFixed(decimal), ask: ask.toFixed(decimal),
-            filtered, reasons, masa: new Date().toLocaleTimeString(), status: "LIVE", source: "Biquote"
+            filtered, reasons, masa: new Date().toLocaleTimeString(), status: "LIVE"
         });
     } catch (error) {
-        console.error("Signal Error:", error.message);
-        res.json({ symbol, harga: "0.00", signal: "WAIT", warna: "#94a3b8", ema9: "0", ema21: "0", ema50: "0", rsi: "50", atrPercent: "0", session: "CLOSED", spread: "0", bid: "0", ask: "0", filtered: true, reasons: ["Data Error"], masa: new Date().toLocaleTimeString(), status: "ERROR", source: "Biquote" });
+        res.json({ symbol, harga: "0.00", signal: "WAIT", warna: "#94a3b8", ema9: "0", ema21: "0", ema50: "0", rsi: "50", atrPercent: "0", session: "CLOSED", spread: "0", bid: "0", ask: "0", filtered: true, reasons: ["Data Error"], masa: new Date().toLocaleTimeString(), status: "ERROR" });
     }
 });
 
+// ===== API MARKET =====
 app.get('/api/market', async (req, res) => {
     const symbol = req.query.symbol || 'XAU/USD';
     const decimal = getDecimal(symbol);
@@ -157,9 +147,8 @@ app.get('/api/market', async (req, res) => {
         const harga = tick.mid;
         const variance = harga * 0.001;
         res.json({
-            symbol, harga: harga.toFixed(decimal),
-            bid: tick.bid.toFixed(decimal), ask: tick.ask.toFixed(decimal), spread: tick.spread.toFixed(decimal),
-            change: (tick.dayDiffPercent || 0).toFixed(2) + "%", poc: (harga + variance*2).toFixed(decimal),
+            symbol, harga: harga.toFixed(decimal), bid: tick.bid.toFixed(decimal), ask: tick.ask.toFixed(decimal),
+            spread: tick.spread.toFixed(decimal), poc: (harga + variance*2).toFixed(decimal),
             snr: {
                 r3: (harga + variance*30).toFixed(decimal), r2: (harga + variance*20).toFixed(decimal),
                 r1: (harga + variance*10).toFixed(decimal), poc: (harga + variance*2).toFixed(decimal),
@@ -176,38 +165,33 @@ app.get('/api/market', async (req, res) => {
             ],
             time: new Date().toLocaleTimeString()
         });
-    } catch (error) {
-        console.error("Market Error:", error.message);
-        res.status(500).json({ status: "error", message: error.message });
-    }
+    } catch (error) { res.status(500).json({ status: "error", message: error.message }); }
 });
 
+// ===== API AI ANALYSIS =====
 app.post('/api/ai-analysis', async (req, res) => {
     try {
         const { price, ema9, ema21, signal_time, soalan, rsi, atr, session, reasons, spread } = req.body;
-        const prompt = `You are a Professional Trading Assistant for XAUUSD (Biquote data). Current Data: Price ${price}, EMA9 ${ema9}, EMA21 ${ema21}, RSI ${rsi}, ATR% ${atr}, Session ${session}, Spread ${spread}, Filtered: ${reasons ? reasons.join(', ') : 'None'}. User Question: "${soalan}". Answer in 2-3 sentences in Bahasa Melayu.`;
+        const prompt = `You are a Professional Trading Assistant for XAUUSD. Price ${price}, EMA9 ${ema9}, EMA21 ${ema21}, RSI ${rsi}, ATR% ${atr}, Session ${session}, Spread ${spread}, Filtered: ${reasons ? reasons.join(', ') : 'None'}. Question: "${soalan}". Answer in 2-3 sentences in Bahasa Melayu.`;
         const response = await ai.models.generateContent({ model: 'gemini-3.8-flash', contents: prompt });
         res.json({ status: "success", analysis: response.text });
     } catch (error) {
         console.error("AI Error:", error.message);
-        res.status(500).json({ status: "error", message: "AI service temporarily unavailable." });
+        res.status(500).json({ status: "error", message: "AI unavailable." });
     }
 });
 
+// ===== API CANDLES =====
 app.get('/api/candles', async (req, res) => {
     const symbol = req.query.symbol || 'XAU/USD';
     try {
         const candles = await getOHLC(symbol, '15m', 100);
-        const formatted = candles
-            .filter(c => !isNaN(c.timestamp))
-            .map(c => ({
-                time: c.timestamp,
-                open: c.open, high: c.high, low: c.low, close: c.close
-            }));
+        const formatted = candles.filter(c => !isNaN(c.timestamp)).map(c => ({ time: c.timestamp, open: c.open, high: c.high, low: c.low, close: c.close }));
         res.json({ status: "success", candles: formatted });
     } catch (error) { res.status(500).json({ status: "error", message: error.message }); }
 });
 
+// ===== API BACKTEST =====
 app.get('/api/backtest', async (req, res) => {
     const symbol = req.query.symbol || 'XAU/USD';
     try {
@@ -230,23 +214,142 @@ app.get('/api/backtest', async (req, res) => {
                 }
                 if (result === 'WIN') win++;
                 if (result === 'LOSS') loss++;
-                if (result) markers.push({
-                    time: current.timestamp,
-                    position: result === 'WIN' ? 'belowBar' : 'aboveBar',
-                    color: result === 'WIN' ? '#22c55e' : '#ef4444',
-                    shape: result === 'WIN' ? 'arrowUp' : 'arrowDown',
-                    text: result
-                });
+                if (result) markers.push({ time: current.timestamp, position: result === 'WIN' ? 'belowBar' : 'aboveBar', color: result === 'WIN' ? '#22c55e' : '#ef4444', shape: result === 'WIN' ? 'arrowUp' : 'arrowDown', text: result });
             }
         }
         const totalTrades = win + loss;
         const winRate = totalTrades > 0 ? ((win / totalTrades) * 100).toFixed(1) : 0;
-        const chartCandles = candles.slice(-100)
-            .filter(c => !isNaN(c.timestamp))
-            .map(c => ({ time: c.timestamp, open: c.open, high: c.high, low: c.low, close: c.close }));
+        const chartCandles = candles.slice(-100).filter(c => !isNaN(c.timestamp)).map(c => ({ time: c.timestamp, open: c.open, high: c.high, low: c.low, close: c.close }));
         const chartMarkers = markers.filter(m => m.time >= chartCandles[0].time);
         res.json({ status: "success", winRate, totalTrades, candles: chartCandles, markers: chartMarkers });
     } catch (error) { res.status(500).json({ status: "error", message: error.message }); }
+});
+
+// ===== API NEXT NEWS (Pre-News Prediction) =====
+app.get('/api/next-news', async (req, res) => {
+    let fallback = {
+        time: 'Akan datang',
+        currency: 'USD',
+        impact: 'high',
+        event: 'US Non-Farm Payrolls',
+        actual: '-',
+        forecast: '180K',
+        previous: '175K'
+    };
+    
+    try {
+        const response = await axios.get(`${BIQUOTE_URL}/calendar`, { timeout: 10000 });
+        const d = response.data;
+        let events = d.events || d.data || d.calendar || (Array.isArray(d) ? d : []);
+        if (!Array.isArray(events)) events = [];
+        
+        const now = Date.now();
+        const usdHigh = events
+            .filter(e => {
+                const cur = (e.currency || e.country || '').toUpperCase();
+                const imp = (e.impact || e.importance || '').toLowerCase();
+                return (cur === 'USD' || cur === 'US') && (imp === 'high' || imp === 'medium');
+            })
+            .map(e => ({
+                time: e.time || e.date || e.datetime || '',
+                timestamp: new Date(e.time || e.date || e.datetime || 0).getTime(),
+                currency: e.currency || 'USD',
+                impact: (e.impact || 'medium').toLowerCase(),
+                event: e.event || e.title || e.name || '',
+                actual: e.actual || '-',
+                forecast: e.forecast || e.estimate || '-',
+                previous: e.previous || e.prior || '-'
+            }))
+            .filter(e => !isNaN(e.timestamp))
+            .sort((a, b) => a.timestamp - b.timestamp);
+        
+        const upcoming = usdHigh.filter(e => e.timestamp > now).slice(0, 1);
+        const nextEvent = upcoming.length > 0 ? upcoming[0] : (usdHigh.length > 0 ? usdHigh[0] : fallback);
+        
+        const forecastNum = parseFloat((nextEvent.forecast || '').replace(/[^0-9.-]/g, '')) || 0;
+        const previousNum = parseFloat((nextEvent.previous || '').replace(/[^0-9.-]/g, '')) || 0;
+        
+        let dataBias = "NEUTRAL";
+        if (nextEvent.actual !== '-' && nextEvent.actual !== '') {
+            const actualNum = parseFloat((nextEvent.actual || '').replace(/[^0-9.-]/g, '')) || 0;
+            if (actualNum > forecastNum) dataBias = "USD KUAT (BEARISH GOLD)";
+            else if (actualNum < forecastNum) dataBias = "USD LEMAH (BULLISH GOLD)";
+        } else if (forecastNum > 0 && previousNum > 0) {
+            if (forecastNum > previousNum) dataBias = "FORECAST USD KUAT (BEARISH GOLD)";
+            else if (forecastNum < previousNum) dataBias = "FORECAST USD LEMAH (BULLISH GOLD)";
+        }
+        
+        const prompt = `You are a Pre-News Analyst for XAUUSD.
+EVENT: ${nextEvent.event}
+Forecast: ${nextEvent.forecast} | Previous: ${nextEvent.previous} | Actual: ${nextEvent.actual}
+Data Bias: ${dataBias}
+
+Predict in Bahasa Melayu. Reply EXACTLY in this format (no other text):
+🎯 BIAS: [BULLISH GOLD / BEARISH GOLD / NEUTRAL]
+💪 CONFIDENCE: [50-95%]
+📈 SETUP: [BUY / SELL / WAIT]
+📝 REASON: [1-2 sentences]
+💡 ACTION: [specific - e.g., BUY LIMIT @ 4140, SL 30p, TP 60p]`;
+        
+        const aiResponse = await ai.models.generateContent({ model: 'gemini-3.8-flash', contents: prompt });
+        
+        res.json({
+            status: 'success',
+            event: nextEvent,
+            prediction: aiResponse.text,
+            dataBias
+        });
+    } catch (error) {
+        console.error("Next News Error:", error.message);
+        try {
+            const prompt = `You are a Pre-News Analyst for XAUUSD. EVENT: US Non-Farm Payrolls. Forecast: 180K, Previous: 175K. Reply EXACTLY (Bahasa Melayu):
+🎯 BIAS: [BULLISH GOLD / BEARISH GOLD / NEUTRAL]
+💪 CONFIDENCE: [50-95%]
+📈 SETUP: [BUY / SELL / WAIT]
+📝 REASON: [1-2 sentences]
+💡 ACTION: [specific action]`;
+            const aiResponse = await ai.models.generateContent({ model: 'gemini-3.8-flash', contents: prompt });
+            res.json({ status: 'success', event: fallback, prediction: aiResponse.text, dataBias: 'FORECAST USD KUAT (BEARISH GOLD)', note: 'Simulasi' });
+        } catch (e2) {
+            res.json({ status: 'success', event: fallback, prediction: '🎯 BIAS: BEARISH GOLD\n💪 CONFIDENCE: 68%\n📈 SETUP: SELL\n📝 REASON: Forecast lebih tinggi dari previous.\n💡 ACTION: SELL LIMIT @ 4145', dataBias: 'FORECAST USD KUAT', note: 'Simulasi' });
+        }
+    }
+});
+
+// ===== API NEWS (Full List) =====
+app.get('/api/news', async (req, res) => {
+    try {
+        const response = await axios.get(`${BIQUOTE_URL}/calendar`, { timeout: 10000 });
+        const d = response.data;
+        let events = d.events || d.data || d.calendar || (Array.isArray(d) ? d : []);
+        if (!Array.isArray(events)) events = [];
+        
+        const usdEvents = events
+            .filter(e => {
+                const cur = (e.currency || e.country || '').toUpperCase();
+                return cur === 'USD' || cur === 'US';
+            })
+            .slice(0, 20)
+            .map(e => ({
+                time: e.time || e.date || e.datetime || '',
+                currency: e.currency || 'USD',
+                impact: (e.impact || 'medium').toLowerCase(),
+                event: e.event || e.title || e.name || '',
+                actual: e.actual || '-',
+                forecast: e.forecast || e.estimate || '-',
+                previous: e.previous || e.prior || '-'
+            }));
+        
+        res.json({ status: 'success', events: usdEvents });
+    } catch (error) {
+        res.json({ status: 'success', events: [
+            { time: 'Akan datang', currency: 'USD', impact: 'high', event: 'US Non-Farm Payrolls', actual: '-', forecast: '180K', previous: '175K' },
+            { time: 'Akan datang', currency: 'USD', impact: 'high', event: 'Fed Interest Rate Decision', actual: '-', forecast: '5.25%', previous: '5.25%' },
+            { time: 'Akan datang', currency: 'USD', impact: 'medium', event: 'US Initial Jobless Claims', actual: '-', forecast: '220K', previous: '218K' },
+            { time: 'Akan datang', currency: 'USD', impact: 'high', event: 'US CPI m/m', actual: '-', forecast: '0.3%', previous: '0.2%' },
+            { time: 'Akan datang', currency: 'USD', impact: 'medium', event: 'US Retail Sales m/m', actual: '-', forecast: '0.4%', previous: '0.3%' }
+        ], note: 'Simulasi' });
+    }
 });
 
 const PORT = process.env.PORT || 3000;

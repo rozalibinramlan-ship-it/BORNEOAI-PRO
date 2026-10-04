@@ -8,15 +8,9 @@
     <style>
         * { box-sizing: border-box; }
         :root { 
-            --bg-dark: #050810;
-            --bg-card: #141e30;
-            --border: #1f2d42;
-            --accent-yellow: #fbbf24; 
-            --accent-blue: #38bdf8;
-            --text-green: #22c55e; 
-            --text-red: #ef4444; 
-            --text-gray: #94a3b8; 
-            --text-white: #f1f5f9;
+            --bg-dark: #050810; --bg-card: #141e30; --border: #1f2d42;
+            --accent-yellow: #fbbf24; --accent-blue: #38bdf8;
+            --text-green: #22c55e; --text-red: #ef4444; --text-gray: #94a3b8; --text-white: #f1f5f9;
         }
         body { background: #050810; color: var(--text-white); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif; margin: 0; padding: 0; padding-bottom: 80px; overflow-x: hidden; min-height: 100vh; }
         .header { padding: 25px 15px 15px; text-align: center; border-bottom: 1px solid var(--border); background: #0a1525; }
@@ -50,9 +44,7 @@
         .snr-box { background: var(--bg-card); padding: 14px 8px; border-radius: 12px; text-align: center; border: 1px solid var(--border); }
         .snr-box .label { font-size: 10px; margin-bottom: 6px; font-weight: 900; letter-spacing: 1.5px; }
         .snr-box .value { font-size: 15px; font-weight: 900; }
-        .snr-box.red .label { color: #ef4444; } 
-        .snr-box.green .label { color: #22c55e; } 
-        .snr-box.blue .label { color: #3b82f6; }
+        .snr-box.red .label { color: #ef4444; } .snr-box.green .label { color: #22c55e; } .snr-box.blue .label { color: #3b82f6; }
         .snr-box.yellow { background: linear-gradient(135deg, #fbbf24, #f59e0b); border: none; } 
         .snr-box.yellow .label, .snr-box.yellow .value { color: #050810; }
         .table-container { background: var(--bg-card); border-radius: 14px; overflow: hidden; border: 1px solid var(--border); }
@@ -60,11 +52,9 @@
         th { background: #0a1525; padding: 12px; color: var(--text-gray); text-align: left; font-size: 10px; letter-spacing: 1.5px; font-weight: 900; text-transform: uppercase; }
         td { padding: 12px; border-bottom: 1px solid var(--border); }
         .highlight-row { background: linear-gradient(90deg, rgba(251,191,36,0.2), transparent); color: var(--accent-yellow); font-weight: 900; }
-        .text-green { color: var(--text-green); } 
-        .text-red { color: var(--text-red); }
+        .text-green { color: var(--text-green); } .text-red { color: var(--text-red); }
         #chart, #chart-backtest { width: 100%; background: #0a1525; border-radius: 14px; border: 1px solid var(--border); overflow: hidden; }
-        #chart { height: 420px; }
-        #chart-backtest { height: 260px; }
+        #chart { height: 420px; } #chart-backtest { height: 260px; }
         .poc-banner { background: linear-gradient(135deg, #fbbf24, #f59e0b); color: #050810; font-weight: 900; text-align: center; padding: 16px; border-radius: 14px; margin-bottom: 15px; font-size: 16px; letter-spacing: 2px; }
         .sell-power { background: linear-gradient(135deg, #7f1d1d, #991b1b); padding: 16px; border-radius: 14px; margin-bottom: 15px; border: 1px solid #ef4444; }
         .sell-power h3 { margin: 0; color: #fca5a5; font-size: 14px; letter-spacing: 2px; font-weight: 900; }
@@ -78,7 +68,7 @@
         .ai-result-header { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
         .ai-result-header span { font-size: 22px; }
         .ai-result-header b { color: var(--accent-blue); font-size: 11px; text-transform: uppercase; letter-spacing: 2.5px; font-weight: 900; }
-        .ai-result-text { color: #cbd5e1; font-size: 14px; line-height: 1.8; margin: 0; }
+        .ai-result-text { color: #cbd5e1; font-size: 14px; line-height: 1.8; margin: 0; white-space: pre-wrap; }
         .strategy-card { background: linear-gradient(135deg, #1a2332 0%, #0f172a 100%); padding: 22px; border-radius: 18px; border: 1px solid var(--border); box-shadow: 0 8px 40px rgba(0,0,0,0.5); }
         .strategy-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 18px; }
         .strategy-title { margin: 0; color: var(--text-white); font-size: 17px; font-weight: 900; }
@@ -94,6 +84,37 @@
         .ai-comment-label { margin: 0 0 8px 0; font-size: 10px; color: var(--accent-blue); font-weight: 900; letter-spacing: 2px; }
         .ai-comment-text { margin: 0; font-size: 13px; color: #cbd5e1; line-height: 1.7; }
         .btn-primary { background: linear-gradient(135deg, #2196F3, #1976D2); color: white; padding: 16px; border-radius: 12px; border: none; cursor: pointer; width: 100%; margin-top: 15px; font-weight: 900; letter-spacing: 2px; font-size: 13px; }
+        
+        /* NEWS STYLES */
+        .news-item { background: var(--bg-card); border: 1px solid var(--border); border-radius: 14px; padding: 16px; margin-bottom: 12px; cursor: pointer; transition: all 0.2s; border-left: 4px solid var(--accent-yellow); }
+        .news-item:hover { background: #1a2a44; transform: translateX(3px); }
+        .news-item.high { border-left-color: #ef4444; }
+        .news-item.medium { border-left-color: #fbbf24; }
+        .news-item.low { border-left-color: #10b981; }
+        .news-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+        .news-time { font-size: 11px; color: var(--accent-blue); font-weight: 900; }
+        .news-currency { background: rgba(56, 189, 248, 0.15); color: var(--accent-blue); padding: 3px 8px; border-radius: 4px; font-size: 10px; font-weight: 900; }
+        .news-event { font-size: 14px; color: var(--text-white); font-weight: 700; margin-bottom: 10px; }
+        .news-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 10px; }
+        .news-stat { text-align: center; background: #0a1525; padding: 8px 4px; border-radius: 8px; }
+        .news-stat-label { font-size: 9px; color: var(--text-gray); font-weight: 700; }
+        .news-stat-value { font-size: 13px; font-weight: 900; margin-top: 4px; color: var(--text-white); }
+        .news-stat-value.actual { color: var(--accent-yellow); }
+        .prediction-box { margin-top: 15px; padding: 16px; background: #0a1525; border-radius: 12px; border-left: 3px solid var(--accent-blue); }
+        .prediction-title { font-size: 11px; color: var(--accent-blue); font-weight: 900; letter-spacing: 2px; margin-bottom: 10px; }
+        .prediction-text { font-size: 13px; color: #cbd5e1; line-height: 1.7; white-space: pre-wrap; margin: 0; }
+        
+        /* PRE-NEWS CARD */
+        .pre-news-event { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; padding-bottom: 12px; border-bottom: 1px solid var(--border); }
+        .pre-news-name { font-size: 13px; color: var(--text-white); font-weight: 800; }
+        .pre-news-time { font-size: 10px; color: var(--accent-blue); font-weight: 700; letter-spacing: 1px; }
+        .pre-news-prediction { font-size: 12px; color: #cbd5e1; line-height: 1.7; white-space: pre-wrap; margin: 0; background: rgba(0,0,0,0.3); padding: 12px; border-radius: 8px; }
+        .pre-news-data { display: flex; gap: 8px; margin-bottom: 10px; }
+        .pre-news-data-item { flex: 1; text-align: center; background: rgba(0,0,0,0.3); padding: 6px; border-radius: 6px; }
+        .pre-news-data-label { font-size: 8px; color: var(--text-gray); font-weight: 700; letter-spacing: 1px; }
+        .pre-news-data-value { font-size: 12px; font-weight: 900; color: var(--text-white); margin-top: 3px; }
+        .pre-news-data-value.actual { color: var(--accent-yellow); }
+        
         #bottom-nav { position: fixed; bottom: 0; left: 0; width: 100%; background: #050810; border-top: 1px solid var(--border); display: flex; justify-content: space-around; padding: 12px 0 15px; z-index: 100; }
         .nav-item { display: flex; flex-direction: column; align-items: center; color: #64748b; font-size: 9px; cursor: pointer; background: none; border: none; width: 20%; letter-spacing: 1.5px; font-weight: 900; }
         .nav-item.active { color: var(--accent-yellow); } 
@@ -165,6 +186,13 @@
             <p id="status" style="font-size: 11px; color: gray; margin-top: 15px; text-align: center;">Waiting for data...</p>
         </div>
         
+        <div id="pre-news-card" class="glass-card" style="border-left: 4px solid #fbbf24; background: linear-gradient(135deg, #1a1f30, #0f1520);">
+            <p class="card-title" style="color: #fbbf24;">📰 PRE-NEWS PREDICTION</p>
+            <div id="pre-news-content">
+                <p style="text-align: center; color: #64748b; font-size: 12px; padding: 10px;">⏳ Memuatkan berita...</p>
+            </div>
+        </div>
+        
         <div class="ai-input-container">
             <input type="text" id="soalan-ai" class="ai-input" placeholder="Ask about this signal...">
             <button onclick="tanyaAI()" class="ai-send-btn">Ask AI</button>
@@ -199,6 +227,14 @@
         <div id="chart"></div>
     </div>
 
+    <div id="screen-news" class="screen">
+        <h2 style="text-align: center; color: var(--accent-yellow); margin-top: 0; letter-spacing: 3px; font-size: 14px;">📰 NEWS</h2>
+        <p style="text-align: center; font-size: 11px; color: var(--text-gray); margin-bottom: 15px;">Tap pada berita untuk AI prediction</p>
+        <div id="news-list">
+            <div style="text-align:center; padding:30px; color:#38bdf8; font-weight:700;">⏳ Memuatkan berita...</div>
+        </div>
+    </div>
+
     <div id="screen-strategi" class="screen">
         <h2 style="text-align: center; color: var(--accent-yellow); margin-top: 0; letter-spacing: 3px; font-size: 14px;">STRATEGY AI</h2>
         <div class="strategy-card">
@@ -228,6 +264,7 @@
         <button class="nav-item active" onclick="switchTab('signal', this)">📈<span>SIGNAL</span></button>
         <button class="nav-item" onclick="switchTab('levels', this)">⭐<span>LEVELS</span></button>
         <button class="nav-item" onclick="switchTab('chart', this)">📉<span>CHART</span></button>
+        <button class="nav-item" onclick="switchTab('news', this)">📰<span>NEWS</span></button>
         <button class="nav-item" onclick="switchTab('strategi', this)">⚡<span>STRATEGY</span></button>
     </nav>
 
@@ -235,6 +272,7 @@
         let marketAktif = 'XAU/USD';
         let chart = null; let candleSeries = null;
         let backtestChart = null; let backtestSeries = null;
+        let newsLoaded = false;
         
         function switchTab(tabName, element) {
             document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
@@ -243,6 +281,9 @@
             element.classList.add('active');
             if(tabName === 'chart' && chart) {
                 setTimeout(() => { chart.applyOptions({ width: document.getElementById('chart').clientWidth }); dapatkanCandleData(); }, 100);
+            }
+            if(tabName === 'news' && !newsLoaded) {
+                loadNews();
             }
         }
 
@@ -316,15 +357,10 @@
             const soalan = document.getElementById('soalan-ai').value;
             if (harga === "Loading..." || !soalan) { alert("Please wait for data and type your question."); return; }
             const data = { 
-                price: harga, 
-                ema9: document.getElementById('ema9').innerText, 
-                ema21: document.getElementById('ema21').innerText, 
-                rsi: document.getElementById('rsi').innerText, 
-                atr: document.getElementById('atr').innerText, 
-                session: document.getElementById('session').innerText, 
-                spread: document.getElementById('spread').innerText,
-                signal_time: Date.now() / 1000, 
-                soalan 
+                price: harga, ema9: document.getElementById('ema9').innerText, ema21: document.getElementById('ema21').innerText,
+                rsi: document.getElementById('rsi').innerText, atr: document.getElementById('atr').innerText,
+                session: document.getElementById('session').innerText, spread: document.getElementById('spread').innerText,
+                signal_time: Date.now() / 1000, soalan 
             };
             const box = document.getElementById('hasil-ai');
             const text = document.getElementById('hasil-ai-text');
@@ -382,10 +418,112 @@
             } catch (e) { document.getElementById('bt-ai-comment').innerText = "Connection error."; }
         }
 
+        // ===== PRE-NEWS PREDICTION (on Signal screen) =====
+        async function loadPreNews() {
+            const content = document.getElementById('pre-news-content');
+            try {
+                const res = await fetch('/api/next-news');
+                const data = await res.json();
+                
+                if (data.status === 'success' && data.event) {
+                    const e = data.event;
+                    content.innerHTML = `
+                        <div class="pre-news-event">
+                            <span class="pre-news-name">${e.event}</span>
+                            <span class="pre-news-time">${e.time || 'Akan datang'}</span>
+                        </div>
+                        <div class="pre-news-data">
+                            <div class="pre-news-data-item"><div class="pre-news-data-label">ACTUAL</div><div class="pre-news-data-value actual">${e.actual}</div></div>
+                            <div class="pre-news-data-item"><div class="pre-news-data-label">FORECAST</div><div class="pre-news-data-value">${e.forecast}</div></div>
+                            <div class="pre-news-data-item"><div class="pre-news-data-label">PREVIOUS</div><div class="pre-news-data-value">${e.previous}</div></div>
+                        </div>
+                        <p class="pre-news-prediction">${data.prediction}</p>
+                        ${data.note ? `<p style="font-size:10px; color:#fbbf24; margin-top:8px; text-align:center;">⚠️ ${data.note}</p>` : ''}
+                    `;
+                } else {
+                    content.innerHTML = '<p style="text-align:center; color:#64748b; font-size:12px; padding:10px;">Tiada berita USD akan datang.</p>';
+                }
+            } catch (err) {
+                content.innerHTML = '<p style="text-align:center; color:#ef4444; font-size:12px; padding:10px;">❌ Gagal memuatkan berita.</p>';
+            }
+        }
+
+        // ===== NEWS (Full List) =====
+        async function loadNews() {
+            newsLoaded = true;
+            const list = document.getElementById('news-list');
+            list.innerHTML = '<div style="text-align:center; padding:30px; color:#38bdf8; font-weight:700;">⏳ Memuatkan berita...</div>';
+            
+            try {
+                const res = await fetch('/api/news');
+                const data = await res.json();
+                
+                if (data.status === 'success' && data.events.length > 0) {
+                    list.innerHTML = '';
+                    if (data.note) {
+                        list.innerHTML = `<div style="text-align:center; font-size:11px; color:#fbbf24; margin-bottom:15px;">⚠️ ${data.note}</div>`;
+                    }
+                    data.events.forEach((e, idx) => {
+                        const div = document.createElement('div');
+                        div.className = 'news-item ' + (e.impact || 'medium');
+                        div.onclick = () => pilihBerita(idx, e);
+                        div.innerHTML = `
+                            <div class="news-header">
+                                <span class="news-time">${e.time || 'Akan datang'}</span>
+                                <span class="news-currency">${e.currency}</span>
+                            </div>
+                            <div class="news-event">${e.event}</div>
+                            <div class="news-stats">
+                                <div class="news-stat"><div class="news-stat-label">ACTUAL</div><div class="news-stat-value actual">${e.actual}</div></div>
+                                <div class="news-stat"><div class="news-stat-label">FORECAST</div><div class="news-stat-value">${e.forecast}</div></div>
+                                <div class="news-stat"><div class="news-stat-label">PREVIOUS</div><div class="news-stat-value">${e.previous}</div></div>
+                            </div>
+                        `;
+                        list.appendChild(div);
+                    });
+                } else {
+                    list.innerHTML = '<div style="text-align:center; padding:30px; color:#94a3b8;">Tiada berita USD pada masa ini.</div>';
+                }
+            } catch (err) {
+                list.innerHTML = '<div style="text-align:center; padding:30px; color:#ef4444;">❌ Gagal memuatkan berita.</div>';
+            }
+        }
+
+        async function pilihBerita(idx, event) {
+            const existing = document.getElementById('prediction-box-' + idx);
+            if (existing) { existing.remove(); return; }
+            
+            const list = document.getElementById('news-list');
+            const items = list.querySelectorAll('.news-item');
+            const item = items[idx];
+            
+            const box = document.createElement('div');
+            box.id = 'prediction-box-' + idx;
+            box.className = 'prediction-box';
+            box.innerHTML = `
+                <div class="prediction-title">🤖 AI PRE-NEWS PREDICTION</div>
+                <p class="prediction-text" id="prediction-text-${idx}">⏳ AI sedang menganalisis...</p>
+            `;
+            item.appendChild(box);
+            
+            try {
+                const res = await fetch('/api/next-news');
+                const data = await res.json();
+                if (data.status === 'success' && data.prediction) {
+                    document.getElementById('prediction-text-' + idx).innerText = data.prediction;
+                } else {
+                    document.getElementById('prediction-text-' + idx).innerText = "❌ AI unavailable.";
+                }
+            } catch (e) {
+                document.getElementById('prediction-text-' + idx).innerText = "❌ Connection error.";
+            }
+        }
+
         setInterval(dapatkanSignal, 15000);
         setInterval(dapatkanMarketData, 15000);
         setInterval(dapatkanCandleData, 60000);
-        dapatkanSignal(); dapatkanMarketData();
+        setInterval(loadPreNews, 300000);
+        dapatkanSignal(); dapatkanMarketData(); loadPreNews();
     </script>
 </body>
 </html>
