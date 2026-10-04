@@ -1,6 +1,6 @@
 const express = require('express');
-const axios = require('axios');
 const cors = require('cors');
+const axios = require('axios');
 const { GoogleGenAI } = require('@google/genai'); 
 require('dotenv').config();
 
@@ -14,7 +14,30 @@ app.get('/', (req, res) => {
 });
 
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
-const TWELVE_DATA_KEY = '9232c8d947f1486a9562da7d78b8f5c4';
+
+const BIQUOTE_URL = 'https://biquote.io/api';
+
+// ===== SYMBOL MAPPING =====
+const symbolMap = {
+    'XAU/USD': 'xauusd', 'XAG/USD': 'xagusd',
+    'EUR/USD': 'eurusd', 'GBP/USD': 'gbpusd', 'USD/JPY': 'usdjpy',
+    'AUD/USD': 'audusd', 'USD/CAD': 'usdcad', 'USD/CHF': 'usdchf', 'NZD/USD': 'nzdusd',
+    'EUR/GBP': 'eurgbp', 'EUR/JPY': 'eurjpy', 'EUR/AUD': 'euraud',
+    'GBP/JPY': 'gbpjpy', 'GBP/AUD': 'gbpaud', 'AUD/JPY': 'audjpy',
+    'SPX500': 'spx500', 'NAS100': 'nas100', 'US30': 'us30',
+    'DE30': 'de30', 'JP225': 'jp225',
+    'WTICO': 'wtiusd', 'BCO': 'brentusd', 'NATGAS': 'natgas'
+};
+
+function toBiquote(s) { return symbolMap[s] || s.replace('/', '').toLowerCase(); }
+
+function getDecimal(s) {
+    if (s.includes('JPY')) return 3;
+    if (['SPX500','NAS100','US30','DE30','JP225'].some(x => s.includes(x))) return 1;
+    if (['WTICO','BCO','NATGAS'].some(x => s.includes(x))) return 3;
+    if (s.includes('XAU') || s.includes('XAG')) return 2;
+    return 5;
+}
 
 function calculateRSI(closes, period = 14) {
     if (closes.length < period + 1) return 50;
@@ -23,7 +46,7 @@ function calculateRSI(closes, period = 14) {
         const diff = closes[i] - closes[i - 1];
         if (diff >= 0) gains += diff; else losses -= diff;
     }
-    const avgGain = gains / period; const avgLoss = losses / period;
+    const avgGain = gains / period, avgLoss = losses / period;
     if (avgLoss === 0) return 100;
     return 100 - (100 / (1 + (avgGain / avgLoss)));
 }
@@ -32,80 +55,137 @@ function calculateATR(candles, period = 14) {
     if (candles.length < period + 1) return 0;
     let trs = [];
     for (let i = candles.length - period; i < candles.length; i++) {
-        const high = candles[i].high; const low = candles[i].low; const prevClose = candles[i - 1].close;
-        trs.push(Math.max(high - low, Math.abs(high - prevClose), Math.abs(low - prevClose)));
+        const h = candles[i].high, l = candles[i].low, pc = candles[i-1].close;
+        trs.push(Math.max(h-l, Math.abs(h-pc), Math.abs(l-pc)));
     }
-    return trs.reduce((a, b) => a + b, 0) / period;
+    return trs.reduce((a,b) => a+b, 0) / period;
 }
 
 function getMarketSession() {
-    const hour = new Date().getUTCHours();
-    if (hour >= 7 && hour < 16) return "LONDON";
-    if (hour >= 12 && hour < 21) return "NEW YORK";
-    if (hour >= 0 && hour < 7) return "ASIA";
+    const h = new Date().getUTCHours();
+    if (h >= 7 && h < 16) return "LONDON";
+    if (h >= 12 && h < 21) return "NEW YORK";
+    if (h >= 0 && h < 7) return "ASIA";
     return "CLOSED";
 }
 
+// Helper: ambil tick dari Biquote
+async function getTick(symbol) {
+    const url = `${BIQUOTE_URL}/${toBiquote(symbol)}`;
+    const response = await axios.get(url, { timeout: 10000 });
+    const d = response.data;
+    return {
+        bid: parseFloat(d.bid || d.Bid || 0),
+        ask: parseFloat(d.ask || d.Ask || 0),
+        mid: parseFloat(d.mid || d.Mid || d.price || d.Price || 0),
+        spread: parseFloat(d.spread || d.Spread || 0),
+        raw: d
+    };
+}
+
+// Helper: ambil OHLC candles
+async function getOHLC(symbol, interval = '15m', limit = 100) {
+    const url = `${BIQUOTE_URL}/${toBiquote(symbol)}/ohlc?interval=${interval}&limit=${limit}`;
+    const response = await axios.get(url, { timeout: 10000 });
+    let data = response.data;
+    if (data.data && Array.isArray(data.data)) data = data.data;
+    if (!Array.isArray(data)) data = [];
+    return data.map(c => ({
+        time: c.time || c.timestamp || c.date,
+        open: parseFloat(c.open || c.o || 0),
+        high: parseFloat(c.high || c.h || 0),
+        low: parseFloat(c.low || c.l || 0),
+        close: parseFloat(c.close || c.c || 0)
+    }));
+}
+
+// ===== API SIGNAL =====
 app.get('/api/signal', async (req, res) => {
-    const symbol = req.query.symbol || 'XAU/USD'; 
+    const symbol = req.query.symbol || 'XAU/USD';
+    const decimal = getDecimal(symbol);
     try {
-        const response = await axios.get(`https://api.twelvedata.com/time_series?symbol=${symbol}&interval=1min&outputsize=100&apikey=${TWELVE_DATA_KEY}`);
-        if (response.data.status === 'error') throw new Error("API Limit");
-        const values = response.data.values;
-        const candles = values.map(v => ({
-            time: v.datetime, open: parseFloat(v.open),
-            high: parseFloat(v.high), low: parseFloat(v.low), close: parseFloat(v.close)
-        })).reverse();
+        const candles = await getOHLC(symbol, '1m', 100);
+        if (candles.length < 50) throw new Error("Data tak cukup");
         const closes = candles.map(c => c.close);
-        const hargaTerkini = closes[closes.length - 1];
+        const harga = closes[closes.length - 1];
+        
         const kiraEMA = (arr, t) => { let e = arr[0]; let k = 2/(t+1); for (let i = 1; i < arr.length; i++) e = (arr[i]*k) + (e*(1-k)); return e; };
-        const ema9 = kiraEMA(closes, 9); const ema21 = kiraEMA(closes, 21); const ema50 = kiraEMA(closes, 50);
+        const ema9 = kiraEMA(closes, 9), ema21 = kiraEMA(closes, 21), ema50 = kiraEMA(closes, 50);
         const rsi = calculateRSI(closes, 14);
         const atr = calculateATR(candles, 14);
-        const atrPercent = (atr / hargaTerkini) * 100;
+        const atrPercent = (atr / harga) * 100;
         const session = getMarketSession();
         
-        let signal = "WAIT"; let warna = "#94a3b8"; let reasons = []; let filtered = false;
+        let spread = 0, bid = 0, ask = 0;
+        try {
+            const tick = await getTick(symbol);
+            bid = tick.bid || harga;
+            ask = tick.ask || harga;
+            spread = tick.spread || (ask - bid);
+        } catch (e) { console.log("Tick error:", e.message); }
+        
+        let signal = "WAIT", warna = "#94a3b8", reasons = [], filtered = false;
         const emaCross = ema9 > ema21 ? "BUY" : "SELL";
         if (emaCross === "BUY" && rsi > 70) { filtered = true; reasons.push("RSI Overbought"); }
         if (emaCross === "SELL" && rsi < 30) { filtered = true; reasons.push("RSI Oversold"); }
         if (atrPercent < 0.05) { filtered = true; reasons.push("Low Volatility"); }
-        if (emaCross === "BUY" && hargaTerkini < ema50) { filtered = true; reasons.push("Against Trend"); }
-        if (emaCross === "SELL" && hargaTerkini > ema50) { filtered = true; reasons.push("Against Trend"); }
+        if (emaCross === "BUY" && harga < ema50) { filtered = true; reasons.push("Against Trend"); }
+        if (emaCross === "SELL" && harga > ema50) { filtered = true; reasons.push("Against Trend"); }
         if (session === "ASIA" || session === "CLOSED") { filtered = true; reasons.push("Off Session"); }
         if (!filtered) { signal = emaCross; warna = signal === "BUY" ? "#22c55e" : "#ef4444"; }
         
-        let decimal = 2; if (symbol.includes('EUR') || symbol.includes('GBP')) decimal = 4;
-        res.json({ symbol, harga: hargaTerkini.toFixed(decimal), signal, warna, ema9: ema9.toFixed(decimal), ema21: ema21.toFixed(decimal), ema50: ema50.toFixed(decimal), rsi: rsi.toFixed(1), atrPercent: atrPercent.toFixed(3), session, filtered, reasons, masa: new Date().toLocaleTimeString(), status: "LIVE" });
+        res.json({
+            symbol, harga: harga.toFixed(decimal), signal, warna,
+            ema9: ema9.toFixed(decimal), ema21: ema21.toFixed(decimal), ema50: ema50.toFixed(decimal),
+            rsi: rsi.toFixed(1), atrPercent: atrPercent.toFixed(3), session,
+            spread: spread.toFixed(decimal), bid: bid.toFixed(decimal), ask: ask.toFixed(decimal),
+            filtered, reasons, masa: new Date().toLocaleTimeString(), status: "LIVE", source: "Biquote"
+        });
     } catch (error) {
-        res.json({ symbol, harga: "4140.04", signal: "WAIT", warna: "#94a3b8", ema9: "4138.34", ema21: "4137.22", ema50: "4135.00", rsi: "50", atrPercent: "0.1", session: "LONDON", filtered: true, reasons: ["Simulation"], masa: new Date().toLocaleTimeString(), status: "SIMULASI" });
+        console.error("Signal Error:", error.message);
+        res.json({ symbol, harga: "0.00", signal: "WAIT", warna: "#94a3b8", ema9: "0", ema21: "0", ema50: "0", rsi: "50", atrPercent: "0", session: "CLOSED", spread: "0", bid: "0", ask: "0", filtered: true, reasons: ["Data Error"], masa: new Date().toLocaleTimeString(), status: "ERROR", source: "Biquote" });
     }
 });
 
+// ===== API MARKET =====
 app.get('/api/market', async (req, res) => {
-    const symbol = req.query.symbol || 'XAU/USD'; 
+    const symbol = req.query.symbol || 'XAU/USD';
+    const decimal = getDecimal(symbol);
     try {
-        const response = await axios.get(`https://api.twelvedata.com/price?symbol=${symbol}&apikey=${TWELVE_DATA_KEY}`);
-        if (response.data.status === 'error') throw new Error("API Limit");
-        const hargaTerkini = parseFloat(response.data.price);
-        let decimal = 2; if (symbol.includes('EUR') || symbol.includes('GBP')) decimal = 4;
-        const variance = Math.random() * (hargaTerkini * 0.001);
+        const tick = await getTick(symbol);
+        const harga = tick.mid;
+        const variance = harga * 0.001;
         res.json({
-            symbol, harga: hargaTerkini.toFixed(decimal), change: "-0.23% • 24h", poc: (hargaTerkini + (variance * 2)).toFixed(decimal),
-            snr: { r3: (hargaTerkini + (variance * 30)).toFixed(decimal), r2: (hargaTerkini + (variance * 20)).toFixed(decimal), r1: (hargaTerkini + (variance * 10)).toFixed(decimal), poc: (hargaTerkini + (variance * 2)).toFixed(decimal), vah: (hargaTerkini + (variance * 5)).toFixed(decimal), val: (hargaTerkini - (variance * 5)).toFixed(decimal), s1: (hargaTerkini - (variance * 10)).toFixed(decimal), s2: (hargaTerkini - (variance * 20)).toFixed(decimal), s3: (hargaTerkini - (variance * 30)).toFixed(decimal) },
-            footprint: [ { price: (hargaTerkini + (variance * 10)).toFixed(decimal), vol: 128, delta: 64 }, { price: (hargaTerkini + (variance * 5)).toFixed(decimal), vol: 96, delta: -18 }, { price: (hargaTerkini + (variance * 2)).toFixed(decimal), vol: 312, delta: 110, is_poc: true }, { price: hargaTerkini.toFixed(decimal), vol: 205, delta: -72 }, { price: (hargaTerkini - (variance * 5)).toFixed(decimal), vol: 143, delta: 31 } ],
+            symbol, harga: harga.toFixed(decimal),
+            bid: tick.bid.toFixed(decimal), ask: tick.ask.toFixed(decimal), spread: tick.spread.toFixed(decimal),
+            change: "LIVE", poc: (harga + variance*2).toFixed(decimal),
+            snr: {
+                r3: (harga + variance*30).toFixed(decimal), r2: (harga + variance*20).toFixed(decimal),
+                r1: (harga + variance*10).toFixed(decimal), poc: (harga + variance*2).toFixed(decimal),
+                vah: (harga + variance*5).toFixed(decimal), val: (harga - variance*5).toFixed(decimal),
+                s1: (harga - variance*10).toFixed(decimal), s2: (harga - variance*20).toFixed(decimal),
+                s3: (harga - variance*30).toFixed(decimal)
+            },
+            footprint: [
+                { price: (harga + variance*10).toFixed(decimal), vol: 128, delta: 64 },
+                { price: (harga + variance*5).toFixed(decimal), vol: 96, delta: -18 },
+                { price: (harga + variance*2).toFixed(decimal), vol: 312, delta: 110, is_poc: true },
+                { price: harga.toFixed(decimal), vol: 205, delta: -72 },
+                { price: (harga - variance*5).toFixed(decimal), vol: 143, delta: 31 }
+            ],
             time: new Date().toLocaleTimeString()
         });
     } catch (error) {
-        res.json({ symbol, harga: "4140.04", change: "-0.23%", poc: "4142.5", snr: { r3: "4170", r2: "4160", r1: "4150", poc: "4142.5", vah: "4145", val: "4135", s1: "4130", s2: "4120", s3: "4110" }, footprint: [{ price: "4150", vol: 128, delta: 64 }, { price: "4145", vol: 96, delta: -18 }, { price: "4142.5", vol: 312, delta: 110, is_poc: true }, { price: "4140", vol: 205, delta: -72 }, { price: "4135", vol: 143, delta: 31 }], time: new Date().toLocaleTimeString() });
+        console.error("Market Error:", error.message);
+        res.status(500).json({ status: "error", message: error.message });
     }
 });
 
+// ===== API AI =====
 app.post('/api/ai-analysis', async (req, res) => {
     try {
-        const { price, ema9, ema21, signal_time, soalan, rsi, atr, session, reasons } = req.body;
-        const prompt = `You are a Professional Trading Assistant for XAUUSD. Current Data: Price ${price}, EMA9 ${ema9}, EMA21 ${ema21}, RSI ${rsi}, ATR% ${atr}, Session ${session}, Filtered: ${reasons ? reasons.join(', ') : 'None'}. User Question: "${soalan}". Answer in 2-3 sentences in Bahasa Melayu.`;
-        
+        const { price, ema9, ema21, signal_time, soalan, rsi, atr, session, reasons, spread } = req.body;
+        const prompt = `You are a Professional Trading Assistant for XAUUSD (Biquote data). Current Data: Price ${price}, EMA9 ${ema9}, EMA21 ${ema21}, RSI ${rsi}, ATR% ${atr}, Session ${session}, Spread ${spread}, Filtered: ${reasons ? reasons.join(', ') : 'None'}. User Question: "${soalan}". Answer in 2-3 sentences in Bahasa Melayu.`;
         const response = await ai.models.generateContent({ model: 'gemini-3.8-flash', contents: prompt });
         res.json({ status: "success", analysis: response.text });
     } catch (error) {
@@ -114,29 +194,24 @@ app.post('/api/ai-analysis', async (req, res) => {
     }
 });
 
+// ===== API CANDLES =====
 app.get('/api/candles', async (req, res) => {
     const symbol = req.query.symbol || 'XAU/USD';
     try {
-        const response = await axios.get(`https://api.twelvedata.com/time_series?symbol=${symbol}&interval=15min&outputsize=100&apikey=${TWELVE_DATA_KEY}`);
-        if (response.data.status === 'error') throw new Error("API Limit");
-        const candles = response.data.values.map(v => ({
-            time: Math.floor(new Date(v.datetime).getTime() / 1000),
-            open: parseFloat(v.open), high: parseFloat(v.high), low: parseFloat(v.low), close: parseFloat(v.close)
-        })).reverse();
-        res.json({ status: "success", candles });
+        const candles = await getOHLC(symbol, '15m', 100);
+        const formatted = candles.map(c => ({
+            time: Math.floor(new Date(c.time).getTime() / 1000),
+            open: c.open, high: c.high, low: c.low, close: c.close
+        })).filter(c => !isNaN(c.time));
+        res.json({ status: "success", candles: formatted });
     } catch (error) { res.status(500).json({ status: "error", message: error.message }); }
 });
 
+// ===== API BACKTEST =====
 app.get('/api/backtest', async (req, res) => {
     const symbol = req.query.symbol || 'XAU/USD';
     try {
-        const response = await axios.get(`https://api.twelvedata.com/time_series?symbol=${symbol}&interval=15min&outputsize=500&apikey=${TWELVE_DATA_KEY}`);
-        if (response.data.status === 'error') throw new Error("API Limit");
-        const candles = response.data.values.map(v => ({
-            time: Math.floor(new Date(v.datetime).getTime() / 1000),
-            open: parseFloat(v.open), high: parseFloat(v.high), low: parseFloat(v.low), close: parseFloat(v.close)
-        })).reverse();
-        
+        const candles = await getOHLC(symbol, '15m', 500);
         let win = 0, loss = 0, markers = [];
         for (let i = 50; i < candles.length - 1; i++) {
             const current = candles[i];
@@ -147,7 +222,7 @@ app.get('/api/backtest', async (req, res) => {
             const atr = calculateATR(candles.slice(0, i + 1), 14);
             const atrPercent = (atr / current.close) * 100;
             if (ema9 > ema21 && rsi < 70 && atrPercent > 0.05) {
-                const tp = current.close * 1.01; const sl = current.close * 0.99;
+                const tp = current.close * 1.01, sl = current.close * 0.99;
                 let result = null;
                 for (let j = i + 1; j < candles.length; j++) {
                     if (candles[j].high >= tp) { result = 'WIN'; break; }
@@ -155,12 +230,21 @@ app.get('/api/backtest', async (req, res) => {
                 }
                 if (result === 'WIN') win++;
                 if (result === 'LOSS') loss++;
-                if (result) markers.push({ time: current.time, position: result === 'WIN' ? 'belowBar' : 'aboveBar', color: result === 'WIN' ? '#22c55e' : '#ef4444', shape: result === 'WIN' ? 'arrowUp' : 'arrowDown', text: result });
+                if (result) markers.push({
+                    time: Math.floor(new Date(current.time).getTime() / 1000),
+                    position: result === 'WIN' ? 'belowBar' : 'aboveBar',
+                    color: result === 'WIN' ? '#22c55e' : '#ef4444',
+                    shape: result === 'WIN' ? 'arrowUp' : 'arrowDown',
+                    text: result
+                });
             }
         }
         const totalTrades = win + loss;
         const winRate = totalTrades > 0 ? ((win / totalTrades) * 100).toFixed(1) : 0;
-        const chartCandles = candles.slice(-100);
+        const chartCandles = candles.slice(-100).map(c => ({
+            time: Math.floor(new Date(c.time).getTime() / 1000),
+            open: c.open, high: c.high, low: c.low, close: c.close
+        }));
         const chartMarkers = markers.filter(m => m.time >= chartCandles[0].time);
         res.json({ status: "success", winRate, totalTrades, candles: chartCandles, markers: chartMarkers });
     } catch (error) { res.status(500).json({ status: "error", message: error.message }); }
