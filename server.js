@@ -23,19 +23,15 @@ if (!process.env.TWELVEDATA_API_KEY) {
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || 'MISSING_KEY' });
 const TWELVEDATA_URL = 'https://api.twelvedata.com';
 const TWELVEDATA_KEY = process.env.TWELVEDATA_API_KEY || '';
+const BIQUOTE_URL = 'https://biquote.io/api';
 
-// ===== SENARAI MODEL =====
 const AI_MODELS = ['gemini-3.8-flash'];
-
 let workingModel = null;
 
 async function callAI(prompt) {
     if (workingModel) {
         try {
-            const r = await ai.models.generateContent({ 
-                model: workingModel, 
-                contents: prompt 
-            });
+            const r = await ai.models.generateContent({ model: workingModel, contents: prompt });
             return r.text;
         } catch (e) {
             console.log("❌ " + workingModel + " gagal, reset...");
@@ -45,10 +41,7 @@ async function callAI(prompt) {
     let lastErr = null;
     for (const model of AI_MODELS) {
         try {
-            const r = await ai.models.generateContent({ 
-                model: model, 
-                contents: prompt 
-            });
+            const r = await ai.models.generateContent({ model: model, contents: prompt });
             console.log("✅ AI guna model:", model);
             workingModel = model;
             return r.text;
@@ -61,7 +54,6 @@ async function callAI(prompt) {
     throw lastErr || new Error("Semua model gagal");
 }
 
-// ===== SYMBOL MAPPING UNTUK TWELVEDATA =====
 const symbolMap = {
     'XAU/USD': 'XAU/USD', 'XAG/USD': 'XAG/USD',
     'EUR/USD': 'EUR/USD', 'GBP/USD': 'GBP/USD', 'USD/JPY': 'USD/JPY',
@@ -141,83 +133,79 @@ function detectSNR(candles) {
     return { resistance, support };
 }
 
-// ===== TWELVEDATA: GET TICK =====
+const tickCache = new Map();
+const TICK_CACHE_MS = 10000;
+
 async function getTick(symbol) {
+    const cacheKey = symbol;
+    const cached = tickCache.get(cacheKey);
+    if (cached && Date.now() - cached.time < TICK_CACHE_MS) {
+        return cached.data;
+    }
     const tdSymbol = toTwelveData(symbol);
     const url = `${TWELVEDATA_URL}/quote?symbol=${encodeURIComponent(tdSymbol)}&apikey=${TWELVEDATA_KEY}`;
     const response = await axios.get(url, { timeout: 10000 });
     const d = response.data;
-
-    if (d.status === 'error' || d.code) {
-        throw new Error(d.message || 'TwelveData error');
-    }
-
+    if (d.status === 'error' || d.code) throw new Error(d.message || 'TwelveData error');
     const bid = parseFloat(d.bid || 0);
     const ask = parseFloat(d.ask || 0);
     const price = parseFloat(d.close || d.price || 0);
     const mid = price || (bid + ask) / 2 || 0;
-
     if (mid === 0) throw new Error('Harga 0.00 dari TwelveData');
-
-    return {
-        bid: bid || mid,
-        ask: ask || mid,
-        mid,
+    const result = {
+        bid: bid || mid, ask: ask || mid, mid,
         spread: parseFloat(d.spread || (ask - bid) || 0),
-        marketState: 'open',
-        stale: false,
+        marketState: 'open', stale: false,
         change: parseFloat(d.change || 0),
         percentChange: parseFloat(d.percent_change || 0)
     };
+    tickCache.set(cacheKey, { data: result, time: Date.now() });
+    return result;
 }
 
-// ===== TWELVEDATA: GET OHLC =====
 async function getOHLC(symbol, interval = '15m', limit = 100) {
     const tdSymbol = toTwelveData(symbol);
-    // Map interval ke format TwelveData
-    const intervalMap = {
-        '1min': '1min', '5min': '5min', '15min': '15min',
-        '30min': '30min', '1h': '1h', '4h': '4h', '1day': '1day'
-    };
+    const intervalMap = { '1min': '1min', '5min': '5min', '15min': '15min', '30min': '30min', '1h': '1h', '4h': '4h', '1day': '1day' };
     const tdInterval = intervalMap[interval] || '15min';
-
     const url = `${TWELVEDATA_URL}/time_series?symbol=${encodeURIComponent(tdSymbol)}&interval=${tdInterval}&outputsize=${limit}&apikey=${TWELVEDATA_KEY}`;
-    const response = await axios.get(url, { timeout: 10000 });
-    const d = response.data;
-
-    if (d.status === 'error' || d.code) {
-        throw new Error(d.message || 'TwelveData OHLC error');
+    for (let attempt = 0; attempt < 3; attempt++) {
+        try {
+            const response = await axios.get(url, { timeout: 10000 });
+            const d = response.data;
+            if (d.status === 'error' || d.code) {
+                if (d.code === 429 && attempt < 2) {
+                    console.log(`⏳ 429 rate limit, retry dalam 2s...`);
+                    await new Promise(r => setTimeout(r, 2000));
+                    continue;
+                }
+                throw new Error(d.message || 'TwelveData OHLC error');
+            }
+            if (!d.values || !Array.isArray(d.values)) return [];
+            return d.values.slice().reverse().map(c => ({
+                time: c.datetime,
+                timestamp: Math.floor(new Date(c.datetime).getTime() / 1000),
+                open: parseFloat(c.open || 0),
+                high: parseFloat(c.high || 0),
+                low: parseFloat(c.low || 0),
+                close: parseFloat(c.close || 0)
+            })).filter(c => !isNaN(c.timestamp) && c.close > 0);
+        } catch (e) {
+            if (attempt === 2) throw e;
+            await new Promise(r => setTimeout(r, 2000));
+        }
     }
-
-    if (!d.values || !Array.isArray(d.values)) {
-        return [];
-    }
-
-    // TwelveData hantar newest first, kita reverse
-    return d.values.slice().reverse().map(c => ({
-        time: c.datetime,
-        timestamp: Math.floor(new Date(c.datetime).getTime() / 1000),
-        open: parseFloat(c.open || 0),
-        high: parseFloat(c.high || 0),
-        low: parseFloat(c.low || 0),
-        close: parseFloat(c.close || 0)
-    })).filter(c => !isNaN(c.timestamp) && c.close > 0);
+    return [];
 }
 
-// ===== API: TEST AI =====
 app.get('/api/test-ai', async (req, res) => {
     try {
-        const r = await ai.models.generateContent({
-            model: AI_MODELS[0],
-            contents: 'Reply with only: OK'
-        });
+        const r = await ai.models.generateContent({ model: AI_MODELS[0], contents: 'Reply with only: OK' });
         res.json({ status: 'OK', model: AI_MODELS[0], reply: r.text ? r.text.substring(0, 30) : '(empty)' });
     } catch (e) {
         res.json({ status: 'FAIL', model: AI_MODELS[0], error: (e.message || '').substring(0, 200) });
     }
 });
 
-// ===== API: TEST TWELVEDATA =====
 app.get('/api/test-twelvedata', async (req, res) => {
     try {
         const tick = await getTick('XAU/USD');
@@ -227,7 +215,6 @@ app.get('/api/test-twelvedata', async (req, res) => {
     }
 });
 
-// ===== API: SIGNAL =====
 app.get('/api/signal', async (req, res) => {
     const symbol = req.query.symbol || 'XAU/USD';
     const decimal = getDecimal(symbol);
@@ -264,7 +251,6 @@ app.get('/api/signal', async (req, res) => {
     }
 });
 
-// ===== API: MARKET =====
 app.get('/api/market', async (req, res) => {
     const symbol = req.query.symbol || 'XAU/USD';
     const decimal = getDecimal(symbol);
@@ -295,7 +281,6 @@ app.get('/api/market', async (req, res) => {
     } catch (error) { res.status(500).json({ status: "error", message: error.message }); }
 });
 
-// ===== API: AI ANALYSIS =====
 app.post('/api/ai-analysis', async (req, res) => {
     try {
         const { price, ema9, ema21, signal_time, soalan, rsi, atr, session, reasons, spread } = req.body;
@@ -308,7 +293,6 @@ app.post('/api/ai-analysis', async (req, res) => {
     }
 });
 
-// ===== API: CANDLES =====
 app.get('/api/candles', async (req, res) => {
     const symbol = req.query.symbol || 'XAU/USD';
     const tf = req.query.tf || '15min';
@@ -319,7 +303,6 @@ app.get('/api/candles', async (req, res) => {
     } catch (error) { res.status(500).json({ status: "error", message: error.message }); }
 });
 
-// ===== API: BACKTEST =====
 app.get('/api/backtest', async (req, res) => {
     const symbol = req.query.symbol || 'XAU/USD';
     try {
@@ -354,11 +337,10 @@ app.get('/api/backtest', async (req, res) => {
     } catch (error) { res.status(500).json({ status: "error", message: error.message }); }
 });
 
-// ===== API: NEXT NEWS =====
 app.get('/api/next-news', async (req, res) => {
     const fallback = { time: 'Akan datang', currency: 'USD', impact: 'high', event: 'US Non-Farm Payrolls', actual: '-', forecast: '180K', previous: '175K' };
     try {
-        const response = await axios.get(`${BIQUOTE_URL}/calendar`, { timeout: 10000 }).catch(() => ({ data: { events: [] } }));
+        const response = await axios.get(`${BIQUOTE_URL}/calendar`, { timeout: 10000 });
         const d = response.data;
         let events = d.events || d.data || d.calendar || (Array.isArray(d) ? d : []);
         if (!Array.isArray(events)) events = [];
@@ -391,11 +373,9 @@ app.get('/api/next-news', async (req, res) => {
     }
 });
 
-// ===== API: NEWS =====
 app.get('/api/news', async (req, res) => {
-    const fallback = { status: 'success', events: [{ time: 'Akan datang', currency: 'USD', impact: 'high', event: 'US Non-Farm Payrolls', actual: '-', forecast: '180K', previous: '175K' }], note: 'Simulasi' };
     try {
-        const response = await axios.get(`${BIQUOTE_URL}/calendar`, { timeout: 10000 }).catch(() => ({ data: { events: [] } }));
+        const response = await axios.get(`${BIQUOTE_URL}/calendar`, { timeout: 10000 });
         const d = response.data;
         let events = d.events || d.data || d.calendar || (Array.isArray(d) ? d : []);
         if (!Array.isArray(events)) events = [];
@@ -403,14 +383,12 @@ app.get('/api/news', async (req, res) => {
             .filter(e => { const cur = safeStr(e.currency || e.country).toUpperCase(); return cur === 'USD' || cur === 'US'; })
             .slice(0, 20)
             .map(e => ({ time: safeStr(e.time || e.date || e.datetime || ''), currency: safeStr(e.currency || 'USD'), impact: safeStr(e.impact || 'medium').toLowerCase(), event: safeStr(e.event || e.title || e.name || ''), actual: safeStr(e.actual || '-'), forecast: safeStr(e.forecast || e.estimate || '-'), previous: safeStr(e.previous || e.prior || '-') }));
-        if (usdEvents.length === 0) return res.json(fallback);
         res.json({ status: 'success', events: usdEvents });
     } catch (error) {
-        res.json(fallback);
+        res.json({ status: 'success', events: [{ time: 'Akan datang', currency: 'USD', impact: 'high', event: 'US Non-Farm Payrolls', actual: '-', forecast: '180K', previous: '175K' }], note: 'Simulasi' });
     }
 });
 
-// ===== API: AI DESK STATS =====
 app.get('/api/ai-desk-stats', async (req, res) => {
     try {
         const markets = ['XAU/USD', 'XAG/USD', 'EUR/USD', 'GBP/USD', 'USD/JPY', 'AUD/USD'];
@@ -440,7 +418,6 @@ app.get('/api/ai-desk-stats', async (req, res) => {
     } catch (e) { res.status(500).json({ status: 'error', message: e.message }); }
 });
 
-// ===== API: AI DESK =====
 app.get('/api/ai-desk', async (req, res) => {
     const symbol = req.query.symbol || 'XAU/USD';
     const result = { timestamp: new Date().toISOString(), steps: {} };
@@ -457,18 +434,15 @@ app.get('/api/ai-desk', async (req, res) => {
         const session = getMarketSession();
         let tick = { mid: price, spread: 0, bid: price, ask: price };
         try { tick = await getTick(symbol); } catch (e) { }
-        
         const snr = detectSNR(candles);
         const distToResistance = ((snr.resistance - price) / price * 100).toFixed(2);
         const distToSupport = ((price - snr.support) / price * 100).toFixed(2);
-        
         result.steps.scan = {
             price: price.toFixed(2), spread: tick.spread.toFixed(2),
             rsi: rsi.toFixed(1), atr: atrPct.toFixed(3), session,
             ema9: ema9.toFixed(2), ema21: ema21.toFixed(2), ema50: ema50.toFixed(2),
             snr: { resistance: snr.resistance.toFixed(2), support: snr.support.toFixed(2), distToResistance: distToResistance + '%', distToSupport: distToSupport + '%' }
         };
-        
         let signal = "WAIT", reasons = [];
         const emaCross = ema9 > ema21 ? "BUY" : "SELL";
         if (emaCross === "BUY" && rsi > 70) reasons.push("RSI Overbought");
@@ -479,7 +453,6 @@ app.get('/api/ai-desk', async (req, res) => {
         if (session === "ASIA" || session === "CLOSED") reasons.push("Off Session");
         if (reasons.length === 0) signal = emaCross;
         result.steps.signal = { signal, reasons, emaCross };
-        
         let aiPredict = { bias: "NEUTRAL", confidence: 50, reason: "Technical only" };
         try {
             const prompt = `XAUUSD Analyst. Price: ${price.toFixed(2)}. RSI: ${rsi.toFixed(1)}. EMA9: ${ema9.toFixed(2)}, EMA21: ${ema21.toFixed(2)}. Session: ${session}. Support: ${snr.support.toFixed(2)} (${distToSupport}%). Resistance: ${snr.resistance.toFixed(2)} (${distToResistance}%). Reply exactly 3 lines:
@@ -504,7 +477,6 @@ REASON: [1 ayat BM, sebut SNR]`;
             };
         }
         result.steps.predict = aiPredict;
-        
         const lotSize = "0.01";
         const slPips = atrPct < 0.1 ? 20 : 30;
         const tpPips = slPips * 2;
@@ -512,19 +484,16 @@ REASON: [1 ayat BM, sebut SNR]`;
         const riskAmount = (slPips * pipValue).toFixed(2);
         const potentialProfit = (tpPips * pipValue).toFixed(2);
         result.steps.size = { lotSize, slPips, tpPips, riskAmount, potentialProfit };
-        
         const isBearish = aiPredict.bias.includes("BEARISH");
         const isBullish = aiPredict.bias.includes("BULLISH");
         let action = "WAIT", direction = 0;
         if (signal === "BUY" || (signal === "WAIT" && isBullish && aiPredict.confidence >= 65)) { action = "BUY"; direction = 1; }
         else if (signal === "SELL" || (signal === "WAIT" && isBearish && aiPredict.confidence >= 65)) { action = "SELL"; direction = -1; }
-        
         const pipSize = 0.01;
         const entryPrice = direction === 1 ? price - slPips * pipSize * 0.3 : direction === -1 ? price + slPips * pipSize * 0.3 : price;
         const slPrice = direction === 1 ? entryPrice - slPips * pipSize : entryPrice + slPips * pipSize;
         const tpPrice = direction === 1 ? entryPrice + tpPips * pipSize : entryPrice - tpPips * pipSize;
         result.steps.plan = { action, direction, entry: entryPrice.toFixed(2), sl: slPrice.toFixed(2), tp: tpPrice.toFixed(2), rr: "1:2", slPips, tpPips, currentPrice: price.toFixed(2), lotSize };
-        
         res.json({ status: "success", ...result });
     } catch (e) {
         console.error("AI Desk Error:", e.message);
