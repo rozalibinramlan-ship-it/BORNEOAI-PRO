@@ -21,10 +21,10 @@ const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || 'MISSING_KEY'
 const BIQUOTE_URL = 'https://biquote.io/api';
 
 const AI_MODELS = [
-    'gemini-3.5-flash-lite',
-    'gemini-3.5-flash',
-    'gemini-3.8-flash',
-    'gemini-2.0-flash'
+    'gemini-2.0-flash',
+    'gemini-1.5-flash',
+    'gemini-1.5-flash-8b',
+    'gemini-3.5-flash-lite'
 ];
 
 async function callAI(prompt) {
@@ -108,77 +108,25 @@ function getMarketSession() {
     return "CLOSED";
 }
 
+// ===== SIMPLE SNR DETECTION =====
 function detectSNR(candles) {
-    if (candles.length < 20) return { resistances: [], supports: [] };
-    let swingHighs = [], swingLows = [];
-    for (let i = 3; i < candles.length - 3; i++) {
-        const c = candles[i];
-        let isHigh = true, isLow = true;
-        for (let j = 1; j <= 3; j++) {
-            if (c.high <= candles[i-j].high || c.high <= candles[i+j].high) isHigh = false;
-            if (c.low >= candles[i-j].low || c.low >= candles[i+j].low) isLow = false;
-        }
-        if (isHigh) swingHighs.push(c.high);
-        if (isLow) swingLows.push(c.low);
-    }
-    const last = candles[candles.length - 1].close;
-    return {
-        resistances: swingHighs.filter(h => h > last).sort((a, b) => a - b).slice(0, 3),
-        supports: swingLows.filter(l => l < last).sort((a, b) => b - a).slice(0, 3)
-    };
+    if (candles.length < 20) return { resistance: 0, support: 0 };
+    const recent = candles.slice(-50);
+    const last = recent[recent.length - 1].close;
+    const highs = recent.map(c => c.high);
+    const lows = recent.map(c => c.low);
+    const maxHigh = Math.max(...highs);
+    const minLow = Math.min(...lows);
+    
+    // Cari resistance terdekat (atas harga)
+    const resistance = highs.filter(h => h > last).sort((a, b) => a - b)[0] || maxHigh;
+    // Cari support terdekat (bawah harga)
+    const support = lows.filter(l => l < last).sort((a, b) => b - a)[0] || minLow;
+    
+    return { resistance, support };
 }
 
-function detectLiquidity(candles) {
-    const recent = candles.slice(-30);
-    const tolerance = 0.0005;
-    let equalHighs = [], equalLows = [];
-    for (let i = 0; i < recent.length; i++) {
-        for (let j = i + 1; j < recent.length; j++) {
-            const diffHigh = Math.abs(recent[i].high - recent[j].high) / recent[i].high;
-            const diffLow = Math.abs(recent[i].low - recent[j].low) / recent[i].low;
-            if (diffHigh < tolerance) equalHighs.push(recent[i].high);
-            if (diffLow < tolerance) equalLows.push(recent[i].low);
-        }
-    }
-    const last = recent[recent.length - 1];
-    const prev = recent[recent.length - 2];
-    let sweep = "NONE";
-    if (last.high > prev.high && last.close < prev.high) sweep = "BEARISH_SWEEP";
-    if (last.low < prev.low && last.close > prev.low) sweep = "BULLISH_SWEEP";
-    return { equalHighs: [...new Set(equalHighs)].slice(0, 2), equalLows: [...new Set(equalLows)].slice(0, 2), sweep };
-}
-
-function detectSMC(candles) {
-    if (candles.length < 30) return { bos: "NONE", choch: "NONE", fvg: "NONE" };
-    const recent = candles.slice(-30);
-    const last = recent[recent.length - 1];
-    const prev20 = recent.slice(-20, -1);
-    const prevHigh = Math.max(...prev20.map(c => c.high));
-    const prevLow = Math.min(...prev20.map(c => c.low));
-    let bos = "NONE";
-    if (last.close > prevHigh) bos = "BULLISH_BOS";
-    else if (last.close < prevLow) bos = "BEARISH_BOS";
-    const closes = recent.map(c => c.close);
-    const emaShort = calculateEMA(closes.slice(-10), 5);
-    const emaLong = calculateEMA(closes.slice(-20), 10);
-    let choch = "NONE";
-    if (emaShort > emaLong && closes[closes.length - 5] < emaLong) choch = "BULLISH_CHOCH";
-    if (emaShort < emaLong && closes[closes.length - 5] > emaLong) choch = "BEARISH_CHOCH";
-    let fvg = "NONE";
-    for (let i = candles.length - 3; i >= candles.length - 10 && i > 2; i--) {
-        const c1 = candles[i-2], c3 = candles[i];
-        if (c1.high < c3.low) { fvg = `BULLISH_FVG @ ${c1.high.toFixed(2)}-${c3.low.toFixed(2)}`; break; }
-        if (c1.low > c3.high) { fvg = `BEARISH_FVG @ ${c3.high.toFixed(2)}-${c1.low.toFixed(2)}`; break; }
-    }
-    return { bos, choch, fvg };
-}
-
-function getDailyLevels(candles) {
-    if (candles.length < 20) return null;
-    const recent = candles.slice(-96);
-    return { pdh: Math.max(...recent.map(c => c.high)), pdl: Math.min(...recent.map(c => c.low)) };
-}
-
+// ===== BIQUOTE =====
 async function getTick(symbol) {
     const url = `${BIQUOTE_URL}/${toBiquote(symbol)}`;
     const response = await axios.get(url, { timeout: 10000 });
@@ -204,54 +152,6 @@ async function getOHLC(symbol, interval = '15m', limit = 100) {
         close: parseFloat(c.close || 0)
     })).filter(c => !isNaN(c.timestamp));
 }
-
-async function analyzeTimeframe(symbol, interval) {
-    try {
-        const candles = await getOHLC(symbol, interval, 100);
-        if (candles.length < 50) return null;
-        const closes = candles.map(c => c.close);
-        const price = closes[closes.length - 1];
-        const ema9 = calculateEMA(closes, 9);
-        const ema21 = calculateEMA(closes, 21);
-        const ema50 = calculateEMA(closes, 50);
-        const rsi = calculateRSI(closes, 14);
-        const atr = calculateATR(candles, 14);
-        const atrPct = (atr / price) * 100;
-        let trend = "NEUTRAL";
-        if (ema9 > ema21 && ema21 > ema50) trend = "BULLISH";
-        else if (ema9 < ema21 && ema21 < ema50) trend = "BEARISH";
-        else if (ema9 > ema21) trend = "MILD_BULLISH";
-        else if (ema9 < ema21) trend = "MILD_BEARISH";
-        let signal = "WAIT";
-        if (ema9 > ema21 && rsi < 70 && rsi > 30 && atrPct > 0.03) signal = "BUY";
-        if (ema9 < ema21 && rsi > 30 && rsi < 70 && atrPct > 0.03) signal = "SELL";
-        return { interval, price: price.toFixed(2), trend, signal, rsi: rsi.toFixed(1), atrPct: atrPct.toFixed(3) };
-    } catch (e) { return null; }
-}
-
-// ===== API: MTF SIGNAL =====
-app.get('/api/mtf-signal', async (req, res) => {
-    const symbol = req.query.symbol || 'XAU/USD';
-    try {
-        const [m5, m15, h1, h4] = await Promise.all([
-            analyzeTimeframe(symbol, '5min'),
-            analyzeTimeframe(symbol, '15min'),
-            analyzeTimeframe(symbol, '1h'),
-            analyzeTimeframe(symbol, '4h')
-        ]);
-        const signals = [m5, m15, h1, h4].filter(x => x);
-        const buyCount = signals.filter(s => s.signal === 'BUY').length;
-        const sellCount = signals.filter(s => s.signal === 'SELL').length;
-        const bullTrend = signals.filter(s => s.trend.includes('BULLISH')).length;
-        const bearTrend = signals.filter(s => s.trend.includes('BEARISH')).length;
-        let confluence = "MIXED", confluenceScore = 0;
-        if (buyCount >= 3 && bullTrend >= 3) { confluence = "STRONG_BUY"; confluenceScore = 90; }
-        else if (sellCount >= 3 && bearTrend >= 3) { confluence = "STRONG_SELL"; confluenceScore = 90; }
-        else if (buyCount >= 2) { confluence = "WEAK_BUY"; confluenceScore = 60; }
-        else if (sellCount >= 2) { confluence = "WEAK_SELL"; confluenceScore = 60; }
-        res.json({ status: 'success', symbol, timeframes: { m5, m15, h1, h4 }, confluence, confluenceScore, summary: { buyCount, sellCount, bullTrend, bearTrend } });
-    } catch (error) { res.status(500).json({ status: "error", message: error.message }); }
-});
 
 // ===== API: SIGNAL =====
 app.get('/api/signal', async (req, res) => {
@@ -404,7 +304,7 @@ app.get('/api/next-news', async (req, res) => {
         }
         let goldPrice = '4145';
         try { const gt = await getTick('XAU/USD'); goldPrice = gt.mid.toFixed(2); } catch (e) { }
-        const prompt = `Pre-News Analyst XAUUSD.\nEVENT: ${nextEvent.event}\nForecast: ${nextEvent.forecast} | Previous: ${nextEvent.previous} | Actual: ${nextEvent.actual}\nData Bias: ${dataBias}\nCURRENT GOLD PRICE: ${goldPrice}\n\nReply EXACTLY:\n🎯 BIAS: [BULLISH GOLD / BEARISH GOLD / NEUTRAL]\n💪 CONFIDENCE: [50-95%]\n📈 SETUP: [BUY / SELL / WAIT]\n📝 REASON: [1-2 sentences BM]\n💡 ACTION: [SELL LIMIT @ ${goldPrice}, SL 30p, TP 60p]`;
+        const prompt = `Pre-News Analyst XAUUSD. Event: ${nextEvent.event}. Forecast: ${nextEvent.forecast}, Previous: ${nextEvent.previous}, Actual: ${nextEvent.actual}. Bias: ${dataBias}. Gold Price: ${goldPrice}. Reply 5 lines: BIAS, CONFIDENCE, SETUP, REASON, ACTION. Bahasa Melayu.`;
         const prediction = await callAI(prompt);
         res.json({ status: 'success', event: nextEvent, prediction, dataBias, goldPrice });
     } catch (error) {
@@ -459,7 +359,7 @@ app.get('/api/ai-desk-stats', async (req, res) => {
     } catch (e) { res.status(500).json({ status: 'error', message: e.message }); }
 });
 
-// ===== API: AI DESK =====
+// ===== API: AI DESK (SIMPLE + SNR) =====
 app.get('/api/ai-desk', async (req, res) => {
     const symbol = req.query.symbol || 'XAU/USD';
     const result = { timestamp: new Date().toISOString(), steps: {} };
@@ -476,17 +376,24 @@ app.get('/api/ai-desk', async (req, res) => {
         const session = getMarketSession();
         let tick = { mid: price, spread: 0, bid: price, ask: price };
         try { tick = await getTick(symbol); } catch (e) { }
-        const snrData = detectSNR(candles);
-        const liquidityData = detectLiquidity(candles);
-        const smcData = detectSMC(candles);
-        const dailyLevels = getDailyLevels(await getOHLC(symbol, '15min', 96));
+        
+        // SNR detection
+        const snr = detectSNR(candles);
+        const distToResistance = ((snr.resistance - price) / price * 100).toFixed(2);
+        const distToSupport = ((price - snr.support) / price * 100).toFixed(2);
+        
         result.steps.scan = {
             price: price.toFixed(2), spread: tick.spread.toFixed(2),
             rsi: rsi.toFixed(1), atr: atrPct.toFixed(3), session,
             ema9: ema9.toFixed(2), ema21: ema21.toFixed(2), ema50: ema50.toFixed(2),
-            snr: { resistances: snrData.resistances.map(r => r.toFixed(2)), supports: snrData.supports.map(s => s.toFixed(2)) },
-            liquidity: liquidityData, smc: smcData, dailyLevels
+            snr: {
+                resistance: snr.resistance.toFixed(2),
+                support: snr.support.toFixed(2),
+                distToResistance: distToResistance + '%',
+                distToSupport: distToSupport + '%'
+            }
         };
+        
         let signal = "WAIT", reasons = [];
         const emaCross = ema9 > ema21 ? "BUY" : "SELL";
         if (emaCross === "BUY" && rsi > 70) reasons.push("RSI Overbought");
@@ -497,9 +404,14 @@ app.get('/api/ai-desk', async (req, res) => {
         if (session === "ASIA" || session === "CLOSED") reasons.push("Off Session");
         if (reasons.length === 0) signal = emaCross;
         result.steps.signal = { signal, reasons, emaCross };
-        let aiPredict = { bias: "NEUTRAL", confidence: 50, reason: "Analysis" };
+        
+        // AI Predict with SNR (SHORT prompt)
+        let aiPredict = { bias: "NEUTRAL", confidence: 50, reason: "Technical only" };
         try {
-            const prompt = `Analyst XAUUSD Advanced.\nPRICE: ${price.toFixed(2)}\nEMA9: ${ema9.toFixed(2)} EMA21: ${ema21.toFixed(2)} EMA50: ${ema50.toFixed(2)}\nRSI: ${rsi.toFixed(1)} ATR%: ${atrPct.toFixed(3)} SESSION: ${session}\nSNR: R: ${snrData.resistances.map(r => r.toFixed(2)).join(', ') || 'None'} S: ${snrData.supports.map(s => s.toFixed(2)).join(', ') || 'None'}\nLIQUIDITY: EH: ${liquidityData.equalHighs.length} EL: ${liquidityData.equalLows.length} Sweep: ${liquidityData.sweep}\nSMC: BOS: ${smcData.bos} CHoCH: ${smcData.choch} FVG: ${smcData.fvg}\nDAILY: PDH: ${dailyLevels ? dailyLevels.pdh.toFixed(2) : 'N/A'} PDL: ${dailyLevels ? dailyLevels.pdl.toFixed(2) : 'N/A'}\n\nReply EXACTLY 3 lines:\nBIAS: [BULLISH/BEARISH/NEUTRAL]\nCONFIDENCE: [50-95]\nREASON: [1 ayat BM sebut SNR/SMC/liquidity]`;
+            const prompt = `XAUUSD Analyst. Price: ${price.toFixed(2)}. RSI: ${rsi.toFixed(1)}. EMA9: ${ema9.toFixed(2)}, EMA21: ${ema21.toFixed(2)}. Session: ${session}. Support: ${snr.support.toFixed(2)} (${distToSupport}% bawah). Resistance: ${snr.resistance.toFixed(2)} (${distToResistance}% atas). Reply exactly 3 lines:
+BIAS: [BULLISH/BEARISH/NEUTRAL]
+CONFIDENCE: [50-95]
+REASON: [1 ayat BM, sebut SNR]`;
             const aiText = await callAI(prompt);
             const biasM = aiText.match(/BIAS:\s*(\w+)/i);
             const confM = aiText.match(/CONFIDENCE:\s*(\d+)/i);
@@ -507,10 +419,19 @@ app.get('/api/ai-desk', async (req, res) => {
             aiPredict = {
                 bias: biasM ? biasM[1].toUpperCase() : "NEUTRAL",
                 confidence: confM ? parseInt(confM[1]) : 50,
-                reason: reasonM ? reasonM[1].trim().substring(0, 250) : "Analysis done"
+                reason: reasonM ? reasonM[1].trim().substring(0, 200) : "Analysis done"
             };
-        } catch (e) { console.log("Predict error:", e.message); }
+        } catch (e) {
+            console.log("AI error:", e.message);
+            // Fallback: guna teknikal
+            aiPredict = {
+                bias: ema9 > ema21 ? "BULLISH" : "BEARISH",
+                confidence: 55,
+                reason: `AI unavailable. Teknikal: EMA9 ${ema9 > ema21 ? '>' : '<'} EMA21. Support: ${snr.support.toFixed(2)}, Resistance: ${snr.resistance.toFixed(2)}.`
+            };
+        }
         result.steps.predict = aiPredict;
+        
         const lotSize = "0.01";
         const slPips = atrPct < 0.1 ? 20 : 30;
         const tpPips = slPips * 2;
@@ -518,16 +439,19 @@ app.get('/api/ai-desk', async (req, res) => {
         const riskAmount = (slPips * pipValue).toFixed(2);
         const potentialProfit = (tpPips * pipValue).toFixed(2);
         result.steps.size = { lotSize, slPips, tpPips, riskAmount, potentialProfit };
+        
         const isBearish = aiPredict.bias.includes("BEARISH");
         const isBullish = aiPredict.bias.includes("BULLISH");
         let action = "WAIT", direction = 0;
         if (signal === "BUY" || (signal === "WAIT" && isBullish && aiPredict.confidence >= 65)) { action = "BUY"; direction = 1; }
         else if (signal === "SELL" || (signal === "WAIT" && isBearish && aiPredict.confidence >= 65)) { action = "SELL"; direction = -1; }
+        
         const pipSize = 0.01;
         const entryPrice = direction === 1 ? price - slPips * pipSize * 0.3 : direction === -1 ? price + slPips * pipSize * 0.3 : price;
         const slPrice = direction === 1 ? entryPrice - slPips * pipSize : entryPrice + slPips * pipSize;
         const tpPrice = direction === 1 ? entryPrice + tpPips * pipSize : entryPrice - tpPips * pipSize;
         result.steps.plan = { action, direction, entry: entryPrice.toFixed(2), sl: slPrice.toFixed(2), tp: tpPrice.toFixed(2), rr: "1:2", slPips, tpPips, currentPrice: price.toFixed(2), lotSize };
+        
         res.json({ status: "success", ...result });
     } catch (e) {
         console.error("AI Desk Error:", e.message);
