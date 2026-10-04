@@ -37,6 +37,18 @@ function getDecimal(s) {
     return 5;
 }
 
+function safeStr(v) {
+    if (v === null || v === undefined) return '';
+    return String(v);
+}
+
+function safeNum(v) {
+    if (v === null || v === undefined) return 0;
+    if (typeof v === 'number') return v;
+    const n = parseFloat(String(v).replace(/[^0-9.-]/g, ''));
+    return isNaN(n) ? 0 : n;
+}
+
 function calculateRSI(closes, period = 14) {
     if (closes.length < period + 1) return 50;
     let gains = 0, losses = 0;
@@ -225,9 +237,9 @@ app.get('/api/backtest', async (req, res) => {
     } catch (error) { res.status(500).json({ status: "error", message: error.message }); }
 });
 
-// ===== API NEXT NEWS (Pre-News Prediction) =====
+// ===== API NEXT NEWS (Pre-News Prediction) - FIXED =====
 app.get('/api/next-news', async (req, res) => {
-    let fallback = {
+    const fallback = {
         time: 'Akan datang',
         currency: 'USD',
         impact: 'high',
@@ -246,32 +258,35 @@ app.get('/api/next-news', async (req, res) => {
         const now = Date.now();
         const usdHigh = events
             .filter(e => {
-                const cur = (e.currency || e.country || '').toUpperCase();
-                const imp = (e.impact || e.importance || '').toLowerCase();
-                return (cur === 'USD' || cur === 'US') && (imp === 'high' || imp === 'medium');
+                const cur = safeStr(e.currency || e.country).toUpperCase();
+                return cur === 'USD' || cur === 'US';
             })
             .map(e => ({
-                time: e.time || e.date || e.datetime || '',
+                time: safeStr(e.time || e.date || e.datetime || ''),
                 timestamp: new Date(e.time || e.date || e.datetime || 0).getTime(),
-                currency: e.currency || 'USD',
-                impact: (e.impact || 'medium').toLowerCase(),
-                event: e.event || e.title || e.name || '',
-                actual: e.actual || '-',
-                forecast: e.forecast || e.estimate || '-',
-                previous: e.previous || e.prior || '-'
+                currency: safeStr(e.currency || 'USD'),
+                impact: safeStr(e.impact || 'medium').toLowerCase(),
+                event: safeStr(e.event || e.title || e.name || ''),
+                actual: safeStr(e.actual || '-'),
+                forecast: safeStr(e.forecast || e.estimate || '-'),
+                previous: safeStr(e.previous || e.prior || '-')
             }))
-            .filter(e => !isNaN(e.timestamp))
-            .sort((a, b) => a.timestamp - b.timestamp);
+            .sort((a, b) => {
+                if (isNaN(a.timestamp) && isNaN(b.timestamp)) return 0;
+                if (isNaN(a.timestamp)) return 1;
+                if (isNaN(b.timestamp)) return -1;
+                return a.timestamp - b.timestamp;
+            });
         
-        const upcoming = usdHigh.filter(e => e.timestamp > now).slice(0, 1);
+        const upcoming = usdHigh.filter(e => !isNaN(e.timestamp) && e.timestamp > now).slice(0, 1);
         const nextEvent = upcoming.length > 0 ? upcoming[0] : (usdHigh.length > 0 ? usdHigh[0] : fallback);
         
-        const forecastNum = parseFloat((nextEvent.forecast || '').replace(/[^0-9.-]/g, '')) || 0;
-        const previousNum = parseFloat((nextEvent.previous || '').replace(/[^0-9.-]/g, '')) || 0;
+        const forecastNum = safeNum(nextEvent.forecast);
+        const previousNum = safeNum(nextEvent.previous);
+        const actualNum = safeNum(nextEvent.actual);
         
         let dataBias = "NEUTRAL";
-        if (nextEvent.actual !== '-' && nextEvent.actual !== '') {
-            const actualNum = parseFloat((nextEvent.actual || '').replace(/[^0-9.-]/g, '')) || 0;
+        if (actualNum > 0 && forecastNum > 0) {
             if (actualNum > forecastNum) dataBias = "USD KUAT (BEARISH GOLD)";
             else if (actualNum < forecastNum) dataBias = "USD LEMAH (BULLISH GOLD)";
         } else if (forecastNum > 0 && previousNum > 0) {
@@ -316,7 +331,7 @@ Predict in Bahasa Melayu. Reply EXACTLY in this format (no other text):
     }
 });
 
-// ===== API NEWS (Full List) =====
+// ===== API NEWS (Full List) - FIXED =====
 app.get('/api/news', async (req, res) => {
     try {
         const response = await axios.get(`${BIQUOTE_URL}/calendar`, { timeout: 10000 });
@@ -326,28 +341,27 @@ app.get('/api/news', async (req, res) => {
         
         const usdEvents = events
             .filter(e => {
-                const cur = (e.currency || e.country || '').toUpperCase();
+                const cur = safeStr(e.currency || e.country).toUpperCase();
                 return cur === 'USD' || cur === 'US';
             })
             .slice(0, 20)
             .map(e => ({
-                time: e.time || e.date || e.datetime || '',
-                currency: e.currency || 'USD',
-                impact: (e.impact || 'medium').toLowerCase(),
-                event: e.event || e.title || e.name || '',
-                actual: e.actual || '-',
-                forecast: e.forecast || e.estimate || '-',
-                previous: e.previous || e.prior || '-'
+                time: safeStr(e.time || e.date || e.datetime || ''),
+                currency: safeStr(e.currency || 'USD'),
+                impact: safeStr(e.impact || 'medium').toLowerCase(),
+                event: safeStr(e.event || e.title || e.name || ''),
+                actual: safeStr(e.actual || '-'),
+                forecast: safeStr(e.forecast || e.estimate || '-'),
+                previous: safeStr(e.previous || e.prior || '-')
             }));
         
         res.json({ status: 'success', events: usdEvents });
     } catch (error) {
+        console.error("News Error:", error.message);
         res.json({ status: 'success', events: [
             { time: 'Akan datang', currency: 'USD', impact: 'high', event: 'US Non-Farm Payrolls', actual: '-', forecast: '180K', previous: '175K' },
             { time: 'Akan datang', currency: 'USD', impact: 'high', event: 'Fed Interest Rate Decision', actual: '-', forecast: '5.25%', previous: '5.25%' },
-            { time: 'Akan datang', currency: 'USD', impact: 'medium', event: 'US Initial Jobless Claims', actual: '-', forecast: '220K', previous: '218K' },
-            { time: 'Akan datang', currency: 'USD', impact: 'high', event: 'US CPI m/m', actual: '-', forecast: '0.3%', previous: '0.2%' },
-            { time: 'Akan datang', currency: 'USD', impact: 'medium', event: 'US Retail Sales m/m', actual: '-', forecast: '0.4%', previous: '0.3%' }
+            { time: 'Akan datang', currency: 'USD', impact: 'medium', event: 'US Initial Jobless Claims', actual: '-', forecast: '220K', previous: '218K' }
         ], note: 'Simulasi' });
     }
 });
