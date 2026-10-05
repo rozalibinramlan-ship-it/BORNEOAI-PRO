@@ -82,6 +82,8 @@ td { padding: 12px; border-bottom: 1px solid var(--border); }
 .pre-news-data-label { font-size: 8px; color: var(--text-gray); font-weight: 700; }
 .pre-news-data-value { font-size: 12px; font-weight: 900; margin-top: 3px; }
 .pre-news-data-value.actual { color: var(--accent-yellow); }
+.refresh-btn { background: rgba(251,191,36,0.2); color: #fbbf24; border: 1px solid #fbbf24; padding: 5px 12px; border-radius: 8px; font-size: 10px; font-weight: 900; cursor: pointer; letter-spacing: 1px; }
+.refresh-btn:hover { background: rgba(251,191,36,0.35); }
 .desk-container { padding: 0; }
 .desk-topbar { display: flex; justify-content: space-between; align-items: center; padding: 12px 15px; background: linear-gradient(90deg, #0d1a33, #0a1525); border: 1px solid var(--border); border-radius: 12px; margin-bottom: 12px; }
 .desk-topbar-left { display: flex; align-items: center; gap: 10px; }
@@ -210,8 +212,11 @@ td { padding: 12px; border-bottom: 1px solid var(--border); }
     <p id="status" style="font-size:11px; color:gray; margin-top:15px; text-align:center;">Waiting...</p>
   </div>
   <div id="pre-news-card" class="glass-card" style="border-left:4px solid #fbbf24;">
-    <p class="card-title" style="color:#fbbf24;">📰 PRE-NEWS PREDICTION</p>
-    <div id="pre-news-content"><p style="text-align:center; color:#64748b; font-size:12px; padding:10px;">⏳ Memuatkan...</p></div>
+    <p class="card-title" style="color:#fbbf24; display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+      <span>📰 PRE-NEWS PREDICTION</span>
+      <button class="refresh-btn" onclick="loadPreNews(true)">🔄 REFRESH</button>
+    </p>
+    <div id="pre-news-content"><p style="text-align:center; color:#64748b; font-size:12px; padding:10px;">Tekan 🔄 REFRESH untuk analisa berita terkini</p></div>
   </div>
   <div class="ai-input-container">
     <input type="text" id="soalan-ai" class="ai-input" placeholder="Ask about this signal...">
@@ -371,6 +376,7 @@ let marketAktif = 'XAU/USD';
 let chart = null, candleSeries = null;
 let backtestChart = null, backtestSeries = null;
 let newsLoaded = false;
+let preNewsLoaded = false;
 let currentDeskPlan = null;
 let trades = JSON.parse(localStorage.getItem('borneo_trades') || '[]');
 const PIP_VALUE = 0.10;
@@ -383,6 +389,10 @@ function switchTab(tabName, element) {
   element.classList.add('active');
   if(tabName === 'chart' && chart) setTimeout(() => { chart.applyOptions({ width: document.getElementById('chart').clientWidth }); dapatkanCandleData(); }, 100);
   if(tabName === 'news' && !newsLoaded) loadNews();
+  if(tabName === 'signal' && !preNewsLoaded) {
+    preNewsLoaded = true;
+    loadPreNews(false);
+  }
   if(tabName === 'desk') { renderTracker(); startGraphAnimation(); loadDeskStats(); }
   else { stopGraphAnimation(); }
 }
@@ -493,16 +503,23 @@ async function dapatkanCandleData() {
   } catch (e) {}
 }
 
-async function loadPreNews() {
+async function loadPreNews(isManual = false) {
   const content = document.getElementById('pre-news-content');
+  if (isManual) {
+    content.innerHTML = '<p style="text-align:center; color:#fbbf24; font-size:12px; padding:10px;">⏳ AI tengah analisa... (10-30 detik)</p>';
+  }
   try {
     const res = await fetch('/api/next-news');
     const data = await res.json();
     if (data.status === 'success' && data.event) {
       const e = data.event;
       content.innerHTML = `<div class="pre-news-event"><span class="pre-news-name">${e.event}</span><span class="pre-news-time">${e.time||'Akan datang'}</span></div><div class="pre-news-data"><div class="pre-news-data-item"><div class="pre-news-data-label">ACTUAL</div><div class="pre-news-data-value actual">${e.actual}</div></div><div class="pre-news-data-item"><div class="pre-news-data-label">FORECAST</div><div class="pre-news-data-value">${e.forecast}</div></div><div class="pre-news-data-item"><div class="pre-news-data-label">PREVIOUS</div><div class="pre-news-data-value">${e.previous}</div></div></div><p class="pre-news-prediction">${data.prediction}</p>`;
-    } else { content.innerHTML = '<p style="text-align:center; color:#64748b; font-size:12px; padding:10px;">Tiada berita</p>'; }
-  } catch (err) { content.innerHTML = '<p style="text-align:center; color:#ef4444; font-size:12px;">❌ Gagal</p>'; }
+    } else {
+      content.innerHTML = '<p style="text-align:center; color:#64748b; font-size:12px; padding:10px;">Tiada berita. Cuba tekan 🔄 REFRESH.</p>';
+    }
+  } catch (err) {
+    content.innerHTML = '<p style="text-align:center; color:#ef4444; font-size:12px;">❌ Gagal. Cuba lagi.</p>';
+  }
 }
 
 async function loadNews() {
@@ -539,17 +556,16 @@ async function jalankanBacktest() {
       backtestSeries = backtestChart.addCandlestickSeries({ upColor: '#22c55e', downColor: '#ef4444', borderVisible: false, wickUpColor: '#22c55e', wickDownColor: '#ef4444' });
       backtestSeries.setData(data.candles);
       backtestSeries.setMarkers(data.markers);
-      // AI COMMENTARY with fallback
       try {
         const aiRes = await fetch('/api/ai-analysis', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ price: "Backtest", ema9: "N/A", ema21: "N/A", signal_time: Date.now() / 1000, soalan: `Strategy Win Rate ${data.winRate}% with ${data.totalTrades} signals. Give a brief review in Bahasa Melayu.` }) });
         const aiData = await aiRes.json();
         if (aiData.status === 'success' && aiData.analysis) {
           document.getElementById('bt-ai-comment').innerText = aiData.analysis;
         } else {
-          document.getElementById('bt-ai-comment').innerText = `📊 Backtest selesai: ${data.winRate}% win rate dari ${data.totalTrades} signal. Strategy guna TP/SL 0.1% pada XAUUSD. AI commentary tak available — cuba tekan RUN BACKTEST sekali lagi.`;
+          document.getElementById('bt-ai-comment').innerText = `📊 Backtest selesai: ${data.winRate}% win rate dari ${data.totalTrades} signal.`;
         }
       } catch (err) {
-        document.getElementById('bt-ai-comment').innerText = `📊 Backtest selesai: ${data.winRate}% win rate dari ${data.totalTrades} signal. Strategy guna TP/SL 0.1% pada XAUUSD. AI commentary tak available — cuba tekan RUN BACKTEST sekali lagi.`;
+        document.getElementById('bt-ai-comment').innerText = `📊 Backtest selesai: ${data.winRate}% win rate dari ${data.totalTrades} signal.`;
       }
     }
   } catch (e) {
@@ -557,7 +573,6 @@ async function jalankanBacktest() {
   }
 }
 
-/* GRAPH ANIMATION */
 let nodes = [];
 let edges = [];
 function initGraph() {
@@ -611,7 +626,6 @@ function stopGraphAnimation() {
   if (graphAnimFrame) { cancelAnimationFrame(graphAnimFrame); graphAnimFrame = null; }
 }
 
-/* AI DESK */
 function setPanel(n, status, desc, val, valColor) {
   const p = document.getElementById('panel-' + n);
   p.classList.remove('running', 'done');
@@ -641,17 +655,17 @@ async function runAIDesk() {
     if (data.status === 'success') {
       const s = data.steps;
       setPanel(1, 'done', `Price: ${s.scan.price} | RSI: ${s.scan.rsi}`, 'SCANNED', '');
-      logFeed(`[SCAN] Price ${s.scan.price} RSI ${s.scan.rsi} ATR ${s.scan.atr}%`, 'info');
+      logFeed(`[SCAN] Price ${s.scan.price} RSI ${s.scan.rsi}`, 'info');
       const sigColor = s.signal.signal === 'BUY' ? '' : s.signal.signal === 'SELL' ? 'red' : 'yellow';
       setPanel(2, 'done', `Signal: ${s.signal.signal}`, s.signal.signal, sigColor);
-      logFeed(`[SIGNAL] ${s.signal.signal} ${s.signal.reasons.length > 0 ? '(' + s.signal.reasons.join(', ') + ')' : ''}`, 'info');
+      logFeed(`[SIGNAL] ${s.signal.signal}`, 'info');
       const biasColor = s.predict.bias.includes('BULL') ? '' : s.predict.bias.includes('BEAR') ? 'red' : 'yellow';
       setPanel(3, 'done', `${s.predict.bias}`, s.predict.confidence + '%', biasColor);
       logFeed(`[PREDICT] ${s.predict.bias} @ ${s.predict.confidence}%`, 'info');
       setPanel(4, 'done', `Lot fixed 0.01`, '0.01 LOT', '');
       logFeed(`[SIZE] Lot 0.01 | Risk $${s.size.riskAmount}`, 'info');
       setPanel(5, 'done', `${s.plan.action}`, s.plan.action, s.plan.action.includes('BUY') ? '' : s.plan.action.includes('SELL') ? 'red' : 'yellow');
-      logFeed(`[PLAN] ${s.plan.action} Entry ${s.plan.entry}`, 'success');
+      logFeed(`[PLAN] ${s.plan.action}`, 'success');
       setPanel(6, 'done', `Ready`, 'READY', '');
       document.getElementById('signal-result-card').style.display = 'block';
       document.getElementById('result-badge').innerText = s.plan.action;
@@ -660,7 +674,6 @@ async function runAIDesk() {
       document.getElementById('r-conf').innerText = s.predict.confidence + '%';
       document.getElementById('r-lot').innerText = s.size.lotSize + ' lot';
       document.getElementById('r-reason').innerText = s.predict.reason;
-      
       if (s.plan.action === 'WAIT') {
         document.getElementById('r-entry').innerText = '-';
         document.getElementById('r-sl').innerText = '-';
@@ -672,12 +685,11 @@ async function runAIDesk() {
         document.getElementById('r-tp').innerText = s.plan.tp;
         document.getElementById('r-risk').innerText = '$' + s.size.riskAmount;
       }
-      
       currentDeskPlan = { symbol: marketAktif, direction: s.plan.action, entry: parseFloat(s.plan.entry), sl: parseFloat(s.plan.sl), tp: parseFloat(s.plan.tp), lot: s.size.lotSize, slPips: s.size.slPips, tpPips: s.size.tpPips };
       const isWait = s.plan.action === 'WAIT';
       document.getElementById('btn-take').disabled = isWait;
       document.getElementById('btn-take').classList.toggle('btn-disabled', isWait);
-      logFeed(`[DONE] Cycle complete. Plan: ${s.plan.action}`, 'success');
+      logFeed(`[DONE] Plan: ${s.plan.action}`, 'success');
     } else {
       logFeed('[ERROR] ' + data.message, 'error');
     }
@@ -772,11 +784,13 @@ function resetHistory() {
   logFeed('[RESET] History cleared', 'info');
 }
 
-setInterval(dapatkanSignal, 15000);
-setInterval(dapatkanMarketData, 15000);
-setInterval(dapatkanCandleData, 60000);
-setInterval(loadPreNews, 300000);
-dapatkanSignal(); dapatkanMarketData(); loadPreNews();
+// ===== AUTO REFRESH (PERLAHAN — JIMAT KUOTA) =====
+setInterval(dapatkanSignal, 60000);        // 60 detik
+setInterval(dapatkanMarketData, 60000);    // 60 detik
+setInterval(dapatkanCandleData, 300000);   // 5 minit
+
+dapatkanSignal();
+dapatkanMarketData();
 renderTracker();
 </script>
 </body>

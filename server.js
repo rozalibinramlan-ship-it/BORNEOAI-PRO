@@ -134,7 +134,7 @@ function detectSNR(candles) {
 }
 
 const tickCache = new Map();
-const TICK_CACHE_MS = 10000;
+const TICK_CACHE_MS = 15000;
 
 async function getTick(symbol) {
     const cacheKey = symbol;
@@ -163,7 +163,15 @@ async function getTick(symbol) {
     return result;
 }
 
+const ohlcCache = new Map();
+const OHLC_CACHE_MS = 30000;
+
 async function getOHLC(symbol, interval = '15m', limit = 100) {
+    const cacheKey = `${symbol}_${interval}_${limit}`;
+    const cached = ohlcCache.get(cacheKey);
+    if (cached && Date.now() - cached.time < OHLC_CACHE_MS) {
+        return cached.data;
+    }
     const tdSymbol = toTwelveData(symbol);
     const intervalMap = { '1min': '1min', '5min': '5min', '15min': '15min', '30min': '30min', '1h': '1h', '4h': '4h', '1day': '1day' };
     const tdInterval = intervalMap[interval] || '15min';
@@ -181,7 +189,7 @@ async function getOHLC(symbol, interval = '15m', limit = 100) {
                 throw new Error(d.message || 'TwelveData OHLC error');
             }
             if (!d.values || !Array.isArray(d.values)) return [];
-            return d.values.slice().reverse().map(c => ({
+            const result = d.values.slice().reverse().map(c => ({
                 time: c.datetime,
                 timestamp: Math.floor(new Date(c.datetime).getTime() / 1000),
                 open: parseFloat(c.open || 0),
@@ -189,6 +197,8 @@ async function getOHLC(symbol, interval = '15m', limit = 100) {
                 low: parseFloat(c.low || 0),
                 close: parseFloat(c.close || 0)
             })).filter(c => !isNaN(c.timestamp) && c.close > 0);
+            ohlcCache.set(cacheKey, { data: result, time: Date.now() });
+            return result;
         } catch (e) {
             if (attempt === 2) throw e;
             await new Promise(r => setTimeout(r, 2000));
@@ -340,7 +350,7 @@ app.get('/api/backtest', async (req, res) => {
 app.get('/api/next-news', async (req, res) => {
     const fallback = { time: 'Akan datang', currency: 'USD', impact: 'high', event: 'US Non-Farm Payrolls', actual: '-', forecast: '180K', previous: '175K' };
     try {
-        const response = await axios.get(`${BIQUOTE_URL}/calendar`, { timeout: 10000 });
+        const response = await axios.get(`${BIQUOTE_URL}/calendar`, { timeout: 10000 }).catch(() => ({ data: { events: [] } }));
         const d = response.data;
         let events = d.events || d.data || d.calendar || (Array.isArray(d) ? d : []);
         if (!Array.isArray(events)) events = [];
@@ -375,7 +385,7 @@ app.get('/api/next-news', async (req, res) => {
 
 app.get('/api/news', async (req, res) => {
     try {
-        const response = await axios.get(`${BIQUOTE_URL}/calendar`, { timeout: 10000 });
+        const response = await axios.get(`${BIQUOTE_URL}/calendar`, { timeout: 10000 }).catch(() => ({ data: { events: [] } }));
         const d = response.data;
         let events = d.events || d.data || d.calendar || (Array.isArray(d) ? d : []);
         if (!Array.isArray(events)) events = [];
@@ -411,6 +421,8 @@ app.get('/api/ai-desk-stats', async (req, res) => {
                 else wait++;
                 const change = ((closes[closes.length - 1] - closes[0]) / closes[0]) * 100;
                 topMovers.push({ symbol: m, price: price.toFixed(2), change: change.toFixed(2), signal: sig, rsi: rsi.toFixed(1) });
+                // ⏱️ Delay 1 detik antara market untuk elak 429
+                await new Promise(r => setTimeout(r, 1000));
             } catch (e) { }
         }
         topMovers.sort((a, b) => Math.abs(parseFloat(b.change)) - Math.abs(parseFloat(a.change)));
