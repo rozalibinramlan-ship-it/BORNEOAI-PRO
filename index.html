@@ -999,10 +999,10 @@ function resetHistory() {
 }
 
 // ===== AUTO REFRESH =====
-setInterval(dapatkanSignal, 60000);        // 1 minit
-setInterval(dapatkanMarketData, 60000);    // 1 minit
-setInterval(dapatkanCandleData, 300000);   // 5 minit
-setInterval(loadNewsPrediction, 60000);    // 1 minit (news countdown)
+setInterval(dapatkanSignal, 180000);
+setInterval(dapatkanMarketData, 180000);
+setInterval(dapatkanCandleData, 600000);
+setInterval(loadNewsPrediction, 120000);
 
 // Initial load
 dapatkanSignal();
