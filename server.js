@@ -162,47 +162,23 @@ function detectSNR(candles) {
     return { resistance, support, poc };
 }
 
-// ===== DETECT FVG (Fair Value Gap) =====
+// ===== FVG =====
 function detectFVG(candles) {
     if (!candles || candles.length < 3) return { zones: [] };
     const zones = [];
     const recent = candles.slice(-20);
-    
     for (let i = 1; i < recent.length - 1; i++) {
         const c1 = recent[i - 1];
-        const c2 = recent[i];
         const c3 = recent[i + 1];
-        
-        // Bullish FVG: gap antara c1.high dan c3.low
-        if (c3.low > c1.high) {
-            zones.push({
-                type: 'BULLISH',
-                top: c3.low,
-                bottom: c1.high,
-                mid: (c3.low + c1.high) / 2,
-                time: c3.time
-            });
-        }
-        
-        // Bearish FVG: gap antara c3.high dan c1.low
-        if (c3.high < c1.low) {
-            zones.push({
-                type: 'BEARISH',
-                top: c1.low,
-                bottom: c3.high,
-                mid: (c1.low + c3.high) / 2,
-                time: c3.time
-            });
-        }
+        if (c3.low > c1.high) zones.push({ type: 'BULLISH', top: c3.low, bottom: c1.high, mid: (c3.low + c1.high) / 2, time: c3.time });
+        if (c3.high < c1.low) zones.push({ type: 'BEARISH', top: c1.low, bottom: c3.high, mid: (c1.low + c3.high) / 2, time: c3.time });
     }
-    
     const lastPrice = candles[candles.length - 1].close;
     zones.sort((a, b) => Math.abs(a.mid - lastPrice) - Math.abs(b.mid - lastPrice));
-    
     return { zones: zones.slice(0, 3) };
 }
 
-// ===== DETECT POC (Point of Control) =====
+// ===== POC =====
 function detectPOC(candles, bins = 20) {
     if (!candles || candles.length < 20) return null;
     const recent = candles.slice(-50);
@@ -212,65 +188,74 @@ function detectPOC(candles, bins = 20) {
     const minPrice = Math.min(...lows);
     const range = maxPrice - minPrice;
     const binSize = range / bins;
-    
     const volumeMap = new Array(bins).fill(0);
-    
     recent.forEach(c => {
         const midBin = Math.floor((c.close - minPrice) / binSize);
-        if (midBin >= 0 && midBin < bins) {
-            const vol = Math.abs(c.close - c.open) * 1000;
-            volumeMap[midBin] += vol;
-        }
+        if (midBin >= 0 && midBin < bins) volumeMap[midBin] += Math.abs(c.close - c.open) * 1000;
     });
-    
-    let maxVol = 0;
-    let pocBin = 0;
+    let maxVol = 0, pocBin = 0;
     for (let i = 0; i < volumeMap.length; i++) {
-        if (volumeMap[i] > maxVol) {
-            maxVol = volumeMap[i];
-            pocBin = i;
-        }
+        if (volumeMap[i] > maxVol) { maxVol = volumeMap[i]; pocBin = i; }
     }
-    
-    const poc = minPrice + (pocBin * binSize) + (binSize / 2);
-    return { poc, minPrice, maxPrice, pocVolume: maxVol };
+    return { poc: minPrice + (pocBin * binSize) + (binSize / 2) };
 }
 
-// ===== CEK SENTUH SNR / FVG / POC =====
-function checkLevelTouch(price, snr, fvgZones, pocData, threshold = 0.0005) {
+// ===== ORDER BLOCK =====
+function detectOrderBlock(candles) {
+    if (!candles || candles.length < 5) return { bullish: [], bearish: [] };
+    const recent = candles.slice(-20);
+    const bullishOBs = [];
+    const bearishOBs = [];
+    for (let i = 1; i < recent.length - 1; i++) {
+        const prev = recent[i - 1];
+        const curr = recent[i];
+        const currBody = Math.abs(curr.close - curr.open);
+        const currRange = curr.high - curr.low;
+        const prevIsBullish = prev.close > prev.open;
+        const prevIsBearish = prev.close < prev.open;
+        const currIsBullish = curr.close > curr.open;
+        const currIsBearish = curr.close < curr.open;
+        const currBodyPct = currRange > 0 ? currBody / currRange : 0;
+        const currIsBig = currBodyPct > 0.6 && currRange > 0;
+        if (prevIsBearish && currIsBullish && currIsBig) {
+            bullishOBs.push({ type: 'BULLISH_OB', top: prev.high, bottom: prev.low, mid: (prev.high + prev.low) / 2, time: prev.time });
+        }
+        if (prevIsBullish && currIsBearish && currIsBig) {
+            bearishOBs.push({ type: 'BEARISH_OB', top: prev.high, bottom: prev.low, mid: (prev.high + prev.low) / 2, time: prev.time });
+        }
+    }
+    return { bullish: bullishOBs.slice(-3), bearish: bearishOBs.slice(-3) };
+}
+
+// ===== CEK SENTUH LEVEL =====
+function checkLevelTouch(price, snr, fvgZones, pocData, obData, threshold = 0.0005) {
     const touched = [];
-    
-    // SNR
     const nearSupport = Math.abs(price - snr.support) / price < threshold;
     const nearResistance = Math.abs(price - snr.resistance) / price < threshold;
     if (nearSupport) touched.push({ type: 'SNR_SUPPORT', level: snr.support });
     if (nearResistance) touched.push({ type: 'SNR_RESISTANCE', level: snr.resistance });
-    
-    // FVG
     if (fvgZones && fvgZones.length > 0) {
         for (const zone of fvgZones) {
-            if (price >= zone.bottom && price <= zone.top) {
-                touched.push({ type: 'FVG_' + zone.type, level: zone.mid });
-                break;
-            }
+            if (price >= zone.bottom && price <= zone.top) { touched.push({ type: 'FVG_' + zone.type, level: zone.mid }); break; }
         }
     }
-    
-    // POC
     if (pocData && pocData.poc) {
-        if (Math.abs(price - pocData.poc) / price < threshold) {
-            touched.push({ type: 'POC', level: pocData.poc });
+        if (Math.abs(price - pocData.poc) / price < threshold) touched.push({ type: 'POC', level: pocData.poc });
+    }
+    if (obData) {
+        for (const ob of obData.bullish) {
+            if (price >= ob.bottom && price <= ob.top) { touched.push({ type: 'BULLISH_OB', level: ob.mid }); break; }
+        }
+        for (const ob of obData.bearish) {
+            if (price >= ob.bottom && price <= ob.top) { touched.push({ type: 'BEARISH_OB', level: ob.mid }); break; }
         }
     }
-    
     return { touched: touched.length > 0, levels: touched };
 }
 
-// ===== CEK CANDLE CONFIRM (BUKAN WICK) =====
+// ===== CEK CANDLE CONFIRM =====
 function isCandleConfirm(candles, signal) {
     if (!candles || candles.length < 2) return { confirm: false, reason: "Data tak cukup" };
-    
-    // Guna candle CLOSED (bukan live) untuk confirm
     const c = candles[candles.length - 2];
     const body = Math.abs(c.close - c.open);
     const range = c.high - c.low;
@@ -279,31 +264,25 @@ function isCandleConfirm(candles, signal) {
     const isBullish = c.close > c.open;
     const isBearish = c.close < c.open;
     const bodyPct = range > 0 ? body / range : 0;
-    
     const wickTotal = upperWick + lowerWick;
     const isWickDominant = wickTotal > body * 2;
     const isDoji = bodyPct < 0.15;
     const isSpinningTop = bodyPct < 0.3 && upperWick > body && lowerWick > body;
-    
     const hasBody = bodyPct > 0.4;
     const isSolid = !isWickDominant && !isDoji && !isSpinningTop;
     
-    // SELL signal: candle kena merah solid
     if (signal === "SELL") {
         if (!isBearish) return { confirm: false, reason: "Candle closed BUKAN merah" };
-        if (!hasBody) return { confirm: false, reason: "Body candle kecil (bukan solid)" };
-        if (!isSolid) return { confirm: false, reason: "Candle wick/doji (tunggu confirm)" };
+        if (!hasBody) return { confirm: false, reason: "Body candle kecil" };
+        if (!isSolid) return { confirm: false, reason: "Candle wick/doji" };
         return { confirm: true, reason: "Candle merah solid" };
     }
-    
-    // BUY signal: candle kena hijau solid
     if (signal === "BUY") {
         if (!isBullish) return { confirm: false, reason: "Candle closed BUKAN hijau" };
-        if (!hasBody) return { confirm: false, reason: "Body candle kecil (bukan solid)" };
-        if (!isSolid) return { confirm: false, reason: "Candle wick/doji (tunggu confirm)" };
+        if (!hasBody) return { confirm: false, reason: "Body candle kecil" };
+        if (!isSolid) return { confirm: false, reason: "Candle wick/doji" };
         return { confirm: true, reason: "Candle hijau solid" };
     }
-    
     return { confirm: false, reason: "Signal tidak jelas" };
 }
 
@@ -321,7 +300,6 @@ function calculateSLTP(direction, entry, atr, symbol) {
     const tp2Distance = atr * 2.0;
     const tp3Distance = atr * 3.0;
     const pipSize = 0.01;
-
     if (direction === "BUY") {
         return {
             sl: (entry - slDistance).toFixed(getDecimal(symbol)),
@@ -423,50 +401,32 @@ async function getTick(symbol) {
     const cacheKey = symbol;
     const cached = tickCache.get(cacheKey);
     if (cached && Date.now() - cached.time < TICK_CACHE_MS) return cached.data;
-    
     const tdSymbol = toTwelveData(symbol);
     const totalKeys = TWELVEDATA_KEYS.length;
     let attempts = 0;
     let maxAttempts = totalKeys * 2;
-    
     while (attempts < maxAttempts) {
         attempts++;
         const keyIndex = currentKeyIndex;
         const key = getCurrentKey();
         const url = `${TWELVEDATA_URL}/quote?symbol=${encodeURIComponent(tdSymbol)}&apikey=${key}`;
-        
         try {
             const response = await axios.get(url, { timeout: 10000 });
             const d = response.data;
-            
             if (d.status === 'error' || d.code) {
-                if (d.code === 429 || (d.message && d.message.includes('429'))) {
-                    switchKey();
-                    continue;
-                }
+                if (d.code === 429 || (d.message && d.message.includes('429'))) { switchKey(); continue; }
                 throw new Error(d.message || 'TwelveData error');
             }
-            
             const bid = parseFloat(d.bid || 0);
             const ask = parseFloat(d.ask || 0);
             const price = parseFloat(d.close || d.price || 0);
             const mid = price || (bid + ask) / 2 || 0;
             if (mid === 0) throw new Error('Harga 0.00');
-            
-            const result = { 
-                bid: bid || mid, ask: ask || mid, mid, 
-                spread: parseFloat(d.spread || (ask - bid) || 0), 
-                marketState: 'open', stale: false, 
-                change: parseFloat(d.change || 0), 
-                percentChange: parseFloat(d.percent_change || 0) 
-            };
+            const result = { bid: bid || mid, ask: ask || mid, mid, spread: parseFloat(d.spread || (ask - bid) || 0), marketState: 'open', stale: false, change: parseFloat(d.change || 0), percentChange: parseFloat(d.percent_change || 0) };
             tickCache.set(cacheKey, { data: result, time: Date.now() });
             return result;
         } catch (e) {
-            if (e.message && e.message.includes('429')) {
-                switchKey();
-                continue;
-            }
+            if (e.message && e.message.includes('429')) { switchKey(); continue; }
             if (attempts >= maxAttempts) throw e;
         }
     }
@@ -480,34 +440,25 @@ async function getOHLC(symbol, interval = '15m', limit = 100) {
     const cacheKey = `${symbol}_${interval}_${limit}`;
     const cached = ohlcCache.get(cacheKey);
     if (cached && Date.now() - cached.time < OHLC_CACHE_MS) return cached.data;
-    
     const tdSymbol = toTwelveData(symbol);
     const intervalMap = { '1min': '1min', '5min': '5min', '15min': '15min', '30min': '30min', '1h': '1h', '4h': '4h', '1day': '1day' };
     const tdInterval = intervalMap[interval] || '15min';
     const totalKeys = TWELVEDATA_KEYS.length;
     let attempts = 0;
     let maxAttempts = totalKeys * 2;
-    
     while (attempts < maxAttempts) {
         attempts++;
         const keyIndex = currentKeyIndex;
         const key = getCurrentKey();
         const url = `${TWELVEDATA_URL}/time_series?symbol=${encodeURIComponent(tdSymbol)}&interval=${tdInterval}&outputsize=${limit}&apikey=${key}`;
-        
         try {
             const response = await axios.get(url, { timeout: 10000 });
             const d = response.data;
-            
             if (d.status === 'error' || d.code) {
-                if (d.code === 429 || (d.message && d.message.includes('429'))) {
-                    switchKey();
-                    continue;
-                }
+                if (d.code === 429 || (d.message && d.message.includes('429'))) { switchKey(); continue; }
                 throw new Error(d.message || 'TwelveData error');
             }
-            
             if (!d.values || !Array.isArray(d.values)) return [];
-            
             const result = d.values.slice().reverse().map(c => ({
                 time: c.datetime,
                 timestamp: Math.floor(new Date(c.datetime).getTime() / 1000),
@@ -516,14 +467,10 @@ async function getOHLC(symbol, interval = '15m', limit = 100) {
                 low: parseFloat(c.low || 0),
                 close: parseFloat(c.close || 0)
             })).filter(c => !isNaN(c.timestamp) && c.close > 0);
-            
             ohlcCache.set(cacheKey, { data: result, time: Date.now() });
             return result;
         } catch (e) {
-            if (e.message && e.message.includes('429')) {
-                switchKey();
-                continue;
-            }
+            if (e.message && e.message.includes('429')) { switchKey(); continue; }
             if (attempts >= maxAttempts) throw e;
         }
     }
@@ -541,7 +488,6 @@ function analyzeCandles(candles) {
     return { signal: sig, rsi: rsi.toFixed(1) };
 }
 
-// ===== 4 TIMEFRAME (DENGAN RETRY) =====
 async function checkMultiTimeframe(symbol) {
     const timeframes = [
         { tf: '5min', label: 'M5' },
@@ -550,10 +496,8 @@ async function checkMultiTimeframe(symbol) {
         { tf: '4h', label: 'H4' }
     ];
     const results = [];
-    
     for (const item of timeframes) {
         let tfResult = null;
-        
         try {
             const cacheKey = `${symbol}_${item.tf}_50`;
             const cached = ohlcCache.get(cacheKey);
@@ -565,37 +509,25 @@ async function checkMultiTimeframe(symbol) {
                 candles = await getOHLC(symbol, item.tf, 50);
             }
             tfResult = analyzeCandles(candles);
-        } catch (e) {
-            console.log(`MTF ${item.label} attempt 1 fail: ${e.message}`);
-        }
-        
+        } catch (e) { console.log(`MTF ${item.label} attempt 1 fail: ${e.message}`); }
         if (!tfResult) {
             try {
                 await new Promise(r => setTimeout(r, 2000));
                 const candles = await getOHLC(symbol, item.tf, 50);
                 tfResult = analyzeCandles(candles);
-            } catch (e2) {
-                console.log(`MTF ${item.label} attempt 2 fail: ${e2.message}`);
-            }
+            } catch (e2) { console.log(`MTF ${item.label} attempt 2 fail: ${e2.message}`); }
         }
-        
-        if (tfResult) {
-            results.push({ tf: item.tf, label: item.label, signal: tfResult.signal, rsi: tfResult.rsi });
-        } else {
-            results.push({ tf: item.tf, label: item.label, signal: 'WAIT', rsi: '-' });
-        }
+        if (tfResult) results.push({ tf: item.tf, label: item.label, signal: tfResult.signal, rsi: tfResult.rsi });
+        else results.push({ tf: item.tf, label: item.label, signal: 'WAIT', rsi: '-' });
     }
-    
     const buyCount = results.filter(r => r.signal === 'BUY').length;
     const sellCount = results.filter(r => r.signal === 'SELL').length;
     const maxCount = Math.max(buyCount, sellCount);
     const majoritySignal = buyCount > sellCount ? 'BUY' : sellCount > buyCount ? 'SELL' : 'WAIT';
-    
     let grade = 'SKIP';
     let confidence = 'LOW';
     if (maxCount === 4) { grade = 'A+'; confidence = 'HIGH'; }
     else if (maxCount === 3) { grade = 'B'; confidence = 'MEDIUM'; }
-    
     return {
         timeframes: results,
         buyCount,
@@ -608,7 +540,6 @@ async function checkMultiTimeframe(symbol) {
     };
 }
 
-// ===== SIGNAL LOCK + COOLDOWN =====
 const signalLock = new Map();
 const signalCooldown = new Map();
 const COOLDOWN_MS = 5 * 60 * 1000;
@@ -622,11 +553,7 @@ function checkMomentumValid(lockData, ema9, ema21, rsi, currentPrice, atrPercent
     const { direction, entry, lockedAt } = lockData;
     const percentMove = Math.abs(currentPrice - entry) / entry * 100;
     const lockAge = Date.now() - lockedAt;
-    
-    if (lockAge > MAX_LOCK_MS) {
-        console.log(`⏰ Lock dah ${Math.round(lockAge / 60000)} minit — reset (max 1 jam)`);
-        return false;
-    }
+    if (lockAge > MAX_LOCK_MS) { console.log(`⏰ Lock reset (max 1 jam)`); return false; }
     if (percentMove > 5) return false;
     if (atrPercent < 0.015) return false;
     if (direction === "SELL" && ema9 > ema21) return false;
@@ -641,7 +568,6 @@ function checkCandleAgainstSignal(candles, signal) {
     const last = candles[candles.length - 1];
     const isBullish = last.close > last.open;
     const isBearish = last.close < last.open;
-    
     if (signal === "SELL" && isBullish) return { against: true, reason: "Candle live TIDAK merah" };
     if (signal === "BUY" && isBearish) return { against: true, reason: "Candle live TIDAK hijau" };
     return { against: false };
@@ -690,7 +616,7 @@ app.get('/api/multi-tf', async (req, res) => {
     } catch (e) { res.status(500).json({ status: 'error', message: e.message }); }
 });
 
-// ===== API: SIGNAL (UTAMA) =====
+// ===== API: SIGNAL =====
 app.get('/api/signal', async (req, res) => {
     const symbol = req.query.symbol || 'XAU/USD';
     const tf = req.query.tf || '5min';
@@ -711,6 +637,7 @@ app.get('/api/signal', async (req, res) => {
         const snr = detectSNR(candles);
         const fvgData = detectFVG(candles);
         const pocData = detectPOC(candles);
+        const obData = detectOrderBlock(candles);
         const lastPattern = detectLastCandlePattern(candles);
         
         let spread = 0, bid = 0, ask = 0;
@@ -718,13 +645,11 @@ app.get('/api/signal', async (req, res) => {
             const tick = await getTick(symbol);
             bid = tick.bid || harga; ask = tick.ask || harga; spread = tick.spread || 0;
         } catch (e) { }
-
         const newsBlocking = await isNewsTime();
         const cooldownData = signalCooldown.get(symbol);
         const now = Date.now();
         const isCooldown = cooldownData && (now - cooldownData.time) < COOLDOWN_MS;
         const cooldownRemain = isCooldown ? Math.ceil((COOLDOWN_MS - (now - cooldownData.time)) / 60000) : 0;
-
         const existingLock = signalLock.get(symbol);
         let signal = "WAIT", warna = "#94a3b8", reasons = [], filtered = false;
         let lockedEntry = null;
@@ -741,11 +666,9 @@ app.get('/api/signal', async (req, res) => {
             const momentumValid = checkMomentumValid(existingLock, ema9, ema21, rsi, harga, atrPercent);
             const lockAge = Date.now() - existingLock.lockedAt;
             lockAgeMin = Math.round(lockAge / 60000);
-            
             if (momentumValid) {
                 const candleCheck = checkCandleAgainstSignal(candles, existingLock.direction);
                 const mtfOverride = mtf.consensus !== existingLock.direction && mtf.grade !== 'SKIP' && mtf.grade === 'A+';
-                
                 if (candleCheck.against) {
                     console.log(`🔓 Reset — ${candleCheck.reason}`);
                     signalLock.delete(symbol);
@@ -771,24 +694,19 @@ app.get('/api/signal', async (req, res) => {
             }
         }
 
-        // ===== SIGNAL BARU =====
         if (!isLocked && !isCooldown) {
             const mtfSignal = mtf.consensus;
             const mtfGrade = mtf.grade;
-            
             if (mtfGrade === 'SKIP') {
                 filtered = true;
                 reasons.push(`4TF: ${mtf.agreement} (perlu ≥3/4)`);
             } else {
-                // Cek candle LIVE
                 const candleCheck = checkCandleAgainstSignal(candles, mtfSignal);
                 if (candleCheck.against) {
                     filtered = true;
                     reasons.push(`⚠️ ${candleCheck.reason}`);
                 } else {
-                    // Cek sentuh SNR/FVG/POC
-                    levelCheck = checkLevelTouch(harga, snr, fvgData.zones, pocData, 0.0005);
-                    
+                    levelCheck = checkLevelTouch(harga, snr, fvgData.zones, pocData, obData, 0.0005);
                     if (!levelCheck.touched) {
                         filtered = true;
                         const distSNR = Math.min(
@@ -797,14 +715,11 @@ app.get('/api/signal', async (req, res) => {
                         ).toFixed(2);
                         reasons.push(`⏳ Tunggu sentuh level (SNR ${distSNR}% jauh)`);
                     } else {
-                        // Cek candle CONFIRM (bukan wick)
                         confirmCheck = isCandleConfirm(candles, mtfSignal);
-                        
                         if (!confirmCheck.confirm) {
                             filtered = true;
                             reasons.push(`⚠️ Sentuh level tapi candle ${confirmCheck.reason}`);
                         } else {
-                            // SEMUA LULUS → SIGNAL KELUAR
                             signal = mtfSignal;
                             warna = signal === "BUY" ? "#22c55e" : "#ef4444";
                             signalLock.set(symbol, { direction: signal, entry: harga, lockedAt: Date.now(), timestamp: new Date().toISOString() });
@@ -827,7 +742,6 @@ app.get('/api/signal', async (req, res) => {
         const displayPrice = lockedEntry !== null ? lockedEntry : harga;
         const sltp = calculateSLTP(signal, displayPrice, atr, symbol);
         const riskMgmt = calculatePositionSize(displayPrice, parseFloat(sltp.sl), symbol);
-
         if (isLocked && signal !== "WAIT") {
             const lastJournal = tradeJournal[0];
             const journalKey = `${symbol}_${signal}_${Math.floor(displayPrice)}`;
@@ -859,6 +773,10 @@ app.get('/api/signal', async (req, res) => {
             snr: { support: snr.support.toFixed(decimal), resistance: snr.resistance.toFixed(decimal), poc: snr.poc.toFixed(decimal) },
             fvg_zones: fvgData.zones.map(z => ({ type: z.type, top: z.top.toFixed(decimal), bottom: z.bottom.toFixed(decimal) })),
             poc_price: pocData ? pocData.poc.toFixed(decimal) : '-',
+            order_blocks: {
+                bullish: obData.bullish.map(ob => ({ top: ob.top.toFixed(decimal), bottom: ob.bottom.toFixed(decimal) })),
+                bearish: obData.bearish.map(ob => ({ top: ob.top.toFixed(decimal), bottom: ob.bottom.toFixed(decimal) }))
+            },
             candle_pattern: { pattern: lastPattern.pattern, bias: lastPattern.bias, strength: lastPattern.strength, icon: lastPattern.icon },
             sltp: { sl: sltp.sl, tp1: sltp.tp1, tp2: sltp.tp2, tp3: sltp.tp3, slPips: sltp.slPips, tp1Pips: sltp.tp1Pips, tp2Pips: sltp.tp2Pips, tp3Pips: sltp.tp3Pips },
             risk_mgmt: riskMgmt, reset_pattern: resetPattern, filtered, reasons, masa: new Date().toLocaleTimeString(), status: "LIVE"
@@ -1120,7 +1038,6 @@ async function checkSignalAndNotify() {
         const symbol = 'XAU/USD';
         const mtf = await checkMultiTimeframe(symbol);
         if (mtf.grade === 'SKIP') return;
-        
         const candles = await getOHLC(symbol, '5min', 100);
         if (candles.length < 50) return;
         const closes = candles.map(c => c.close);
@@ -1131,34 +1048,27 @@ async function checkSignalAndNotify() {
         const snr = detectSNR(candles);
         const fvgData = detectFVG(candles);
         const pocData = detectPOC(candles);
-        
+        const obData = detectOrderBlock(candles);
         if (session === 'CLOSED') return;
         const candleCheck = checkCandleAgainstSignal(candles, mtf.consensus);
         if (candleCheck.against) return;
-        
-        const levelCheck = checkLevelTouch(harga, snr, fvgData.zones, pocData, 0.0005);
+        const levelCheck = checkLevelTouch(harga, snr, fvgData.zones, pocData, obData, 0.0005);
         if (!levelCheck.touched) return;
-        
         const confirmCheck = isCandleConfirm(candles, mtf.consensus);
         if (!confirmCheck.confirm) return;
-        
         const lastCandleTime = candles[candles.length - 1].timestamp;
         const signalKey = `${symbol}_${mtf.consensus}_${mtf.grade}_${lastCandleTime}`;
         const now = Date.now();
         const telegramCooldownData = signalCooldown.get('TELEGRAM_' + symbol);
         if (telegramCooldownData && (now - telegramCooldownData.time) < 30 * 60 * 1000) return;
         if (lastNotifiedSignal === signalKey) return;
-        
         const sltp = calculateSLTP(mtf.consensus, harga, atr, symbol);
         const risk = calculatePositionSize(harga, parseFloat(sltp.sl), symbol);
-        
         lastNotifiedSignal = signalKey;
         signalCooldown.set('TELEGRAM_' + symbol, { time: now });
-        
         const tfLines = mtf.timeframes.map(t => ` ${t.label}: ${t.signal} (RSI ${t.rsi})`).join('\n');
         const levelNames = levelCheck.levels.map(l => l.type).join(', ');
         const msg = `🚀 <b>SIGNAL ${mtf.grade} (${mtf.agreement})</b>\n━━━━━━━━━━━━━━━━\n📊 ${symbol} — <b>${mtf.consensus}</b>\n🎯 Entry: ${harga.toFixed(2)}\n\n🛑 SL: ${sltp.sl}\n✅ TP1: ${sltp.tp1}\n✅ TP2: ${sltp.tp2}\n\n📊 4TF:\n${tfLines}\n\n📍 Sentuh: ${levelNames}\n✅ Candle: ${confirmCheck.reason}\n\n📈 RSI: ${rsi.toFixed(1)} | ⏰ ${session}\n💰 Lot: ${risk.lotSize} | Risk: $${risk.riskAmount}`;
-        
         await sendTelegram(msg);
         console.log(`📱 Telegram sent: ${mtf.grade} | ${levelNames}`);
     } catch (e) {
@@ -1182,4 +1092,4 @@ console.log('✅ News alert service berjalan (1 minit)');
 console.log('✅ Signal alert service berjalan (5 minit)');
 
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log('🚀 Server berjalan di port ' + PORT + ' | SENTUH SNR/FVG/POC + CANDLE CONFIRM'));
+app.listen(PORT, () => console.log('🚀 Server berjalan di port ' + PORT + ' | SNR + FVG + POC + OB + CANDLE CONFIRM'));
