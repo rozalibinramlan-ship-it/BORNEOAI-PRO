@@ -14,36 +14,76 @@
   --text-gray: #94a3b8; --text-white: #f1f5f9;
 }
 body { background: #050810; color: var(--text-white); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif; margin: 0; padding: 0; padding-bottom: 80px; overflow-x: hidden; min-height: 100vh; }
-.header { padding: 25px 15px 15px; text-align: center; border-bottom: 1px solid var(--border); background: #0a1525; }
+
+@keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes pulseGlow { 0%, 100% { box-shadow: 0 0 30px rgba(239,68,68,0.4); } 50% { box-shadow: 0 0 60px rgba(239,68,68,0.8); } }
+@keyframes pulseGlowGreen { 0%, 100% { box-shadow: 0 0 30px rgba(34,197,94,0.4); } 50% { box-shadow: 0 0 60px rgba(34,197,94,0.8); } }
+@keyframes pulseGlowYellow { 0%, 100% { box-shadow: 0 0 20px rgba(251,191,36,0.4); } 50% { box-shadow: 0 0 40px rgba(251,191,36,0.8); } }
+@keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+@keyframes shimmer { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } }
+@keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
+@keyframes scan { 0% { transform: translateX(-100%); } 100% { transform: translateX(100%); } }
+
+.header { padding: 25px 15px 15px; text-align: center; border-bottom: 1px solid var(--border); background: #0a1525; position: relative; overflow: hidden; }
+.header::before { content: ''; position: absolute; top: 0; left: -100%; width: 100%; height: 100%; background: linear-gradient(90deg, transparent, rgba(56,189,248,0.1), transparent); animation: shimmer 4s infinite; }
 .header img { display: block; margin: 0 auto 12px; width: 70px; height: 70px; border-radius: 50%; object-fit: cover; box-shadow: 0 0 40px rgba(56, 189, 248, 0.6); border: 2px solid var(--accent-blue); }
 .header h1 { margin: 0; color: var(--accent-yellow); font-size: 14px; letter-spacing: 4px; font-weight: 900; }
 select { margin-top: 15px; padding: 10px 15px; border-radius: 10px; background: #141e30; color: white; border: 1px solid var(--border); font-weight: 700; width: 85%; font-size: 13px; }
 option { color: white; font-size: 13px; }
+
 .screen { display: none; padding: 15px; }
-.screen.active { display: block; }
+.screen.active { display: block; animation: fadeIn 0.4s ease-out; }
 .glass-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 18px; padding: 18px; margin-bottom: 15px; box-shadow: 0 8px 32px rgba(0,0,0,0.4); }
+
 .card-title { font-size: 10px; font-weight: 800; color: var(--text-gray); margin-top: 0; margin-bottom: 12px; letter-spacing: 2.5px; text-transform: uppercase; }
 .price-display { text-align: center; margin: 20px 0; }
 .price-value { font-size: 52px; font-weight: 900; margin: 0; letter-spacing: -2px; }
 .live-badge { background: rgba(34, 197, 94, 0.15); color: #4ade80; padding: 5px 14px; border-radius: 20px; font-size: 10px; font-weight: 900; letter-spacing: 2px; border: 1px solid rgba(34, 197, 94, 0.4); display: inline-block; }
-.signal-box { padding: 35px 20px; border-radius: 22px; font-size: 46px; font-weight: 900; text-align: center; margin: 20px auto; letter-spacing: 4px; }
+
+.signal-box { padding: 35px 20px; border-radius: 22px; font-size: 46px; font-weight: 900; text-align: center; margin: 20px auto; letter-spacing: 4px; transition: all 0.4s ease; }
 .wait { background: #1e293b; color: #64748b; border: 2px solid #475569; }
-.buy { background: linear-gradient(135deg, #064e3b, #065f46); color: #4ade80; border: 2px solid #22c55e; box-shadow: 0 0 60px rgba(34, 197, 94, 0.5); }
-.sell { background: linear-gradient(135deg, #7f1d1d, #991b1b); color: #fca5a5; border: 2px solid #ef4444; box-shadow: 0 0 60px rgba(239, 68, 68, 0.5); }
+.buy { background: linear-gradient(135deg, #064e3b, #065f46); color: #4ade80; border: 2px solid #22c55e; animation: pulseGlowGreen 2s infinite; }
+.sell { background: linear-gradient(135deg, #7f1d1d, #991b1b); color: #fca5a5; border: 2px solid #ef4444; animation: pulseGlow 2s infinite; }
+
 .lock-badge { display: inline-block; padding: 6px 14px; border-radius: 20px; font-size: 11px; font-weight: 900; letter-spacing: 2px; margin-top: 10px; }
-.lock-badge.locked { background: rgba(251, 191, 36, 0.15); color: #fbbf24; border: 1px solid rgba(251, 191, 36, 0.5); }
+.lock-badge.locked { background: rgba(251, 191, 36, 0.15); color: #fbbf24; border: 1px solid rgba(251, 191, 36, 0.5); animation: pulseGlowYellow 3s infinite; }
 .lock-badge.fresh { background: rgba(56, 189, 248, 0.15); color: #38bdf8; border: 1px solid rgba(56, 189, 248, 0.5); }
 .lock-info { text-align: center; font-size: 11px; color: #94a3b8; margin-top: 8px; }
+
 .filter-badge { display: inline-block; padding: 6px 12px; border-radius: 8px; font-size: 9px; font-weight: 900; letter-spacing: 1.5px; margin: 4px; text-transform: uppercase; }
 .filter-pass { background: rgba(34, 197, 94, 0.15); color: #4ade80; border: 1px solid rgba(34, 197, 94, 0.5); }
 .filter-fail { background: rgba(239, 68, 68, 0.15); color: #fca5a5; border: 1px solid rgba(239, 68, 68, 0.5); }
 .filter-info { background: rgba(251, 191, 36, 0.15); color: #fbbf24; border: 1px solid rgba(251, 191, 36, 0.5); }
+
+.sltp-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-top: 12px; }
+.sltp-item { text-align: center; background: #0a1525; padding: 10px 6px; border-radius: 10px; border: 1px solid var(--border); }
+.sltp-label { font-size: 8px; color: #94a3b8; font-weight: 800; letter-spacing: 1px; display: block; margin-bottom: 4px; }
+.sltp-value { font-size: 13px; font-weight: 900; }
+.sltp-value.sl { color: #ef4444; }
+.sltp-value.tp { color: #22c55e; }
+.sltp-value.entry { color: #38bdf8; }
+
+.pattern-badge { display: flex; align-items: center; justify-content: center; gap: 8px; padding: 10px 16px; border-radius: 12px; margin: 12px auto; max-width: 90%; animation: slideUp 0.4s ease; }
+.pattern-badge.bullish { background: rgba(34,197,94,0.15); border: 1px solid #22c55e; }
+.pattern-badge.bearish { background: rgba(239,68,68,0.15); border: 1px solid #ef4444; }
+.pattern-badge.neutral { background: rgba(148,163,184,0.15); border: 1px solid #94a3b8; }
+.pattern-icon { font-size: 24px; }
+.pattern-text { font-size: 12px; font-weight: 900; letter-spacing: 1px; }
+.pattern-strength { font-size: 10px; color: #94a3b8; margin-left: auto; }
+
+.risk-panel { background: linear-gradient(135deg, #0d1a33, #101c33); border: 1px solid var(--border); border-radius: 14px; padding: 14px; margin-top: 12px; }
+.risk-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.risk-item { text-align: center; background: rgba(0,0,0,0.3); padding: 8px; border-radius: 8px; }
+.risk-label { font-size: 9px; color: #94a3b8; font-weight: 700; }
+.risk-value { font-size: 14px; font-weight: 900; margin-top: 4px; color: #fbbf24; }
+
 .indicator-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
 .indicator-item { text-align: center; padding: 12px 4px; background: #0a1525; border-radius: 12px; border: 1px solid var(--border); }
 .indicator-label { display: block; color: var(--text-gray); font-size: 8px; font-weight: 800; letter-spacing: 1px; margin-bottom: 6px; text-transform: uppercase; }
 .indicator-value { font-size: 13px; font-weight: 900; }
 .indicator-value.blue { color: var(--accent-blue); }
 .indicator-value.yellow { color: var(--accent-yellow); }
+
 .snr-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 15px; }
 .snr-box { background: var(--bg-card); padding: 14px 8px; border-radius: 12px; text-align: center; border: 1px solid var(--border); }
 .snr-box .label { font-size: 10px; margin-bottom: 6px; font-weight: 900; }
@@ -51,15 +91,18 @@ option { color: white; font-size: 13px; }
 .snr-box.red .label { color: #ef4444; } .snr-box.green .label { color: #22c55e; } .snr-box.blue .label { color: #3b82f6; }
 .snr-box.yellow { background: linear-gradient(135deg, #fbbf24, #f59e0b); border: none; } 
 .snr-box.yellow .label, .snr-box.yellow .value { color: #050810; }
+
 .table-container { background: var(--bg-card); border-radius: 14px; overflow: hidden; border: 1px solid var(--border); }
 table { width: 100%; border-collapse: collapse; font-size: 13px; }
 th { background: #0a1525; padding: 12px; color: var(--text-gray); text-align: left; font-size: 10px; letter-spacing: 1.5px; font-weight: 900; text-transform: uppercase; }
 td { padding: 12px; border-bottom: 1px solid var(--border); }
 .highlight-row { background: linear-gradient(90deg, rgba(251,191,36,0.2), transparent); color: var(--accent-yellow); font-weight: 900; }
 .text-green { color: var(--accent-green); } .text-red { color: var(--accent-red); }
+
 #chart, #chart-backtest { width: 100%; background: #0a1525; border-radius: 14px; border: 1px solid var(--border); overflow: hidden; }
 #chart { height: 420px; } #chart-backtest { height: 260px; }
 .poc-banner { background: linear-gradient(135deg, #fbbf24, #f59e0b); color: #050810; font-weight: 900; text-align: center; padding: 16px; border-radius: 14px; margin-bottom: 15px; font-size: 16px; letter-spacing: 2px; }
+
 .ai-input-container { display: flex; gap: 8px; margin-top: 15px; }
 .ai-input { flex: 1; padding: 14px 18px; border-radius: 25px; border: 1px solid var(--border); background: var(--bg-card); color: white; font-size: 14px; outline: none; }
 .ai-input::placeholder { color: #64748b; }
@@ -68,6 +111,7 @@ td { padding: 12px; border-bottom: 1px solid var(--border); }
 .ai-result-header { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
 .ai-result-header b { color: var(--accent-blue); font-size: 11px; text-transform: uppercase; letter-spacing: 2.5px; font-weight: 900; }
 .ai-result-text { color: #cbd5e1; font-size: 14px; line-height: 1.8; margin: 0; white-space: pre-wrap; }
+
 .news-item { background: var(--bg-card); border: 1px solid var(--border); border-radius: 14px; padding: 16px; margin-bottom: 12px; border-left: 4px solid var(--accent-yellow); }
 .news-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
 .news-time { font-size: 11px; color: var(--accent-blue); font-weight: 900; }
@@ -78,6 +122,7 @@ td { padding: 12px; border-bottom: 1px solid var(--border); }
 .news-stat-label { font-size: 9px; color: var(--text-gray); font-weight: 700; }
 .news-stat-value { font-size: 13px; font-weight: 900; margin-top: 4px; }
 .news-stat-value.actual { color: var(--accent-yellow); }
+
 .pre-news-event { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; padding-bottom: 12px; border-bottom: 1px solid var(--border); }
 .pre-news-name { font-size: 13px; font-weight: 800; }
 .pre-news-time { font-size: 10px; color: var(--accent-blue); font-weight: 700; }
@@ -88,13 +133,29 @@ td { padding: 12px; border-bottom: 1px solid var(--border); }
 .pre-news-data-value { font-size: 12px; font-weight: 900; margin-top: 3px; }
 .pre-news-data-value.actual { color: var(--accent-yellow); }
 .refresh-btn { background: rgba(251,191,36,0.2); color: #fbbf24; border: 1px solid #fbbf24; padding: 5px 12px; border-radius: 8px; font-size: 10px; font-weight: 900; cursor: pointer; letter-spacing: 1px; }
+
+.news-countdown { border-left: 4px solid #ef4444; }
+.countdown-timer { text-align: center; font-size: 36px; font-weight: 900; letter-spacing: 2px; margin-bottom: 4px; }
+.countdown-label { text-align: center; font-size: 11px; color: #94a3b8; margin-bottom: 12px; }
+.news-info-box { background: rgba(0,0,0,0.3); padding: 12px; border-radius: 10px; margin-bottom: 10px; }
+.news-info-title { font-size: 13px; font-weight: 900; margin-bottom: 8px; }
+.news-info-stats { display: grid; grid-template-columns: repeat(3,1fr); gap: 8px; font-size: 11px; }
+.news-info-stat-label { color: #94a3b8; font-size: 9px; }
+.news-info-stat-value { color: #fbbf24; font-weight: 900; }
+.bias-box { padding: 12px; border-radius: 10px; }
+.bias-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
+.bias-label { font-size: 10px; color: #94a3b8; font-weight: 900; letter-spacing: 1px; }
+.bias-confidence { font-size: 10px; font-weight: 900; }
+.bias-value { font-size: 15px; font-weight: 900; margin-bottom: 6px; }
+.bias-reason { font-size: 11px; color: #cbd5e1; line-height: 1.5; }
+.bias-action { margin-top: 8px; font-size: 11px; color: #fbbf24; font-weight: 900; }
+
 .desk-container { padding: 0; }
 .desk-topbar { display: flex; justify-content: space-between; align-items: center; padding: 12px 15px; background: linear-gradient(90deg, #0d1a33, #0a1525); border: 1px solid var(--border); border-radius: 12px; margin-bottom: 12px; }
 .desk-topbar-left { display: flex; align-items: center; gap: 10px; }
 .desk-logo { font-size: 16px; font-weight: 900; color: #a78bfa; letter-spacing: 2px; }
 .desk-live { font-size: 10px; color: var(--accent-green); font-weight: 900; letter-spacing: 1px; }
 .desk-live::before { content: '●'; margin-right: 5px; animation: blink 1s infinite; }
-@keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
 .desk-topbar-right { display: flex; gap: 12px; font-size: 10px; }
 .desk-stat { text-align: right; }
 .desk-stat-label { color: var(--text-gray); font-size: 9px; letter-spacing: 1px; }
@@ -108,7 +169,6 @@ td { padding: 12px; border-bottom: 1px solid var(--border); }
 .desk-panel { background: linear-gradient(135deg, #0d1a33, #101c33); border: 1px solid var(--border); border-radius: 10px; padding: 10px; position: relative; overflow: hidden; min-height: 100px; }
 .desk-panel::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px; background: linear-gradient(90deg, transparent, #a78bfa, transparent); opacity: 0; transition: opacity 0.3s; }
 .desk-panel.running::before { opacity: 1; animation: scan 1s infinite; }
-@keyframes scan { 0% { transform: translateX(-100%); } 100% { transform: translateX(100%); } }
 .desk-panel.done { border-color: var(--accent-green); background: linear-gradient(135deg, #0d3320, #0a1525); }
 .desk-panel.running { border-color: var(--accent-purple); box-shadow: 0 0 20px rgba(167, 139, 250, 0.3); }
 .desk-panel-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
@@ -196,6 +256,7 @@ td { padding: 12px; border-bottom: 1px solid var(--border); }
   </select>
 </div>
 
+<!-- SCREEN 1: SIGNAL -->
 <div id="screen-signal" class="screen active">
   <div class="price-display">
     <h2 class="price-value" id="main-price-signal">Loading...</h2>
@@ -203,7 +264,43 @@ td { padding: 12px; border-bottom: 1px solid var(--border); }
   </div>
   <div id="signal-box" class="signal-box wait">WAIT</div>
   <div id="lock-status" style="text-align:center; margin-top:-10px; margin-bottom:10px;"></div>
+  <div id="pattern-display"></div>
   <div id="filter-status" style="text-align: center; margin: 15px 0;"></div>
+  
+  <div class="glass-card">
+    <p class="card-title">🎯 SL / TP (AUTO)</p>
+    <div class="sltp-grid">
+      <div class="sltp-item"><span class="sltp-label">ENTRY</span><span class="sltp-value entry" id="sltp-entry">-</span></div>
+      <div class="sltp-item"><span class="sltp-label">SL</span><span class="sltp-value sl" id="sltp-sl">-</span></div>
+      <div class="sltp-item"><span class="sltp-label">TP1</span><span class="sltp-value tp" id="sltp-tp1">-</span></div>
+      <div class="sltp-item"><span class="sltp-label">TP2</span><span class="sltp-value tp" id="sltp-tp2">-</span></div>
+    </div>
+    <div class="sltp-grid" style="margin-top:8px;">
+      <div class="sltp-item"><span class="sltp-label">TP3</span><span class="sltp-value tp" id="sltp-tp3">-</span></div>
+      <div class="sltp-item"><span class="sltp-label">SL PIPS</span><span class="sltp-value sl" id="sltp-slpips">-</span></div>
+      <div class="sltp-item"><span class="sltp-label">TP PIPS</span><span class="sltp-value tp" id="sltp-tppips">-</span></div>
+      <div class="sltp-item"><span class="sltp-label">R:R</span><span class="sltp-value" id="sltp-rr">1:2</span></div>
+    </div>
+  </div>
+
+  <div class="glass-card">
+    <p class="card-title">💰 RISK MANAGEMENT</p>
+    <div class="risk-panel">
+      <div class="risk-grid">
+        <div class="risk-item"><div class="risk-label">BALANCE</div><div class="risk-value" id="risk-balance">-</div></div>
+        <div class="risk-item"><div class="risk-label">RISK %</div><div class="risk-value" id="risk-percent">-</div></div>
+        <div class="risk-item"><div class="risk-label">LOT SIZE</div><div class="risk-value" id="risk-lot">-</div></div>
+        <div class="risk-item"><div class="risk-label">POTENSI LOSS</div><div class="risk-value" id="risk-loss">-</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- NEWS COUNTDOWN CARD -->
+  <div id="news-countdown-card" class="glass-card news-countdown" style="display:none;">
+    <p class="card-title" style="color:#ef4444;">🚨 NEWS COUNTDOWN</p>
+    <div id="news-countdown-content"></div>
+  </div>
+
   <div class="glass-card">
     <p class="card-title">⚡ LIVE INDICATORS</p>
     <div class="indicator-grid">
@@ -226,6 +323,7 @@ td { padding: 12px; border-bottom: 1px solid var(--border); }
     </div>
     <p id="status" style="font-size:11px; color:gray; margin-top:15px; text-align:center;">Waiting...</p>
   </div>
+
   <div id="pre-news-card" class="glass-card" style="border-left:4px solid #fbbf24;">
     <p class="card-title" style="color:#fbbf24; display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
       <span>📰 PRE-NEWS PREDICTION</span>
@@ -233,6 +331,7 @@ td { padding: 12px; border-bottom: 1px solid var(--border); }
     </p>
     <div id="pre-news-content"><p style="text-align:center; color:#64748b; font-size:12px; padding:10px;">Tekan 🔄 REFRESH untuk analisa berita terkini</p></div>
   </div>
+
   <div class="ai-input-container">
     <input type="text" id="soalan-ai" class="ai-input" placeholder="Ask about this signal...">
     <button onclick="tanyaAI()" class="ai-send-btn">Ask AI</button>
@@ -243,6 +342,7 @@ td { padding: 12px; border-bottom: 1px solid var(--border); }
   </div>
 </div>
 
+<!-- SCREEN 2: LEVELS -->
 <div id="screen-levels" class="screen">
   <div class="poc-banner">☆ POC <span id="poc-val">-</span></div>
   <p class="card-title">AUTO SNR LEVELS</p>
@@ -261,16 +361,19 @@ td { padding: 12px; border-bottom: 1px solid var(--border); }
   <div class="table-container"><table><thead><tr><th>PRICE</th><th>VOL</th><th>DELTA</th></tr></thead><tbody id="footprint-summary"></tbody></table></div>
 </div>
 
+<!-- SCREEN 3: CHART -->
 <div id="screen-chart" class="screen">
   <h2 style="text-align:center; letter-spacing:3px; font-size:14px; color:var(--text-gray);">CHART</h2>
   <div id="chart"></div>
 </div>
 
+<!-- SCREEN 4: NEWS -->
 <div id="screen-news" class="screen">
   <h2 style="text-align:center; color:var(--accent-yellow); margin-top:0; letter-spacing:3px; font-size:14px;">📰 NEWS</h2>
   <div id="news-list"><div style="text-align:center; padding:30px; color:#38bdf8;">⏳ Memuatkan...</div></div>
 </div>
 
+<!-- SCREEN 5: AI DESK -->
 <div id="screen-desk" class="screen">
   <div class="desk-container">
     <div class="desk-topbar">
@@ -349,6 +452,7 @@ td { padding: 12px; border-bottom: 1px solid var(--border); }
   </div>
 </div>
 
+<!-- SCREEN 6: STRATEGY -->
 <div id="screen-strategy" class="screen">
   <h2 style="text-align:center; color:var(--accent-yellow); margin-top:0; letter-spacing:3px; font-size:14px;">STRATEGY AI</h2>
   <div class="glass-card">
@@ -368,8 +472,10 @@ td { padding: 12px; border-bottom: 1px solid var(--border); }
   </div>
 </div>
 
+<!-- TP Popup -->
 <div class="tp-popup" id="tp-popup">🎯 TP HIT<br><span id="tp-pips">+0 pips</span></div>
 
+<!-- BOTTOM NAV -->
 <nav id="bottom-nav">
   <button class="nav-item active" onclick="switchTab('signal', this)">📈<span>SIGNAL</span></button>
   <button class="nav-item" onclick="switchTab('levels', this)">⭐<span>LEVELS</span></button>
@@ -378,13 +484,11 @@ td { padding: 12px; border-bottom: 1px solid var(--border); }
   <button class="nav-item" onclick="switchTab('desk', this)">🤖<span>AI DESK</span></button>
   <button class="nav-item" onclick="switchTab('strategy', this)">⚡<span>STRATEGY</span></button>
 </nav>
-
 <script>
 let marketAktif = 'XAU/USD';
 let chart = null, candleSeries = null;
 let backtestChart = null, backtestSeries = null;
 let newsLoaded = false;
-let preNewsLoaded = false;
 let currentDeskPlan = null;
 let trades = JSON.parse(localStorage.getItem('borneo_trades') || '[]');
 const PIP_VALUE = 0.10;
@@ -403,7 +507,7 @@ function switchTab(tabName, element) {
 
 function tukarMarket() {
   marketAktif = document.getElementById('market-selector').value;
-  dapatkanSignal(); dapatkanMarketData();
+  dapatkanSignal(); dapatkanMarketData(); loadNewsPrediction();
 }
 
 function logFeed(msg, type='info') {
@@ -434,10 +538,12 @@ async function loadDeskStats() {
   } catch(e) {}
 }
 
+// ===== SIGNAL =====
 async function dapatkanSignal() {
   try {
     const res = await fetch(`/api/signal?symbol=${marketAktif}`);
     const data = await res.json();
+
     document.getElementById('main-price-signal').innerText = data.harga;
     document.getElementById('ema9').innerText = data.ema9;
     document.getElementById('ema21').innerText = data.ema21;
@@ -446,42 +552,66 @@ async function dapatkanSignal() {
     document.getElementById('atr').innerText = data.atrPercent + '%';
     document.getElementById('session').innerText = data.session;
     document.getElementById('status').innerText = "Updated: " + data.masa;
+
     const spreadEl = document.getElementById('spread');
     spreadEl.innerText = data.spread || '0';
     const sNum = parseFloat(data.spread) || 0;
     const th = marketAktif.includes('XAU') ? 0.30 : marketAktif.includes('XAG') ? 0.02 : 0.0003;
     spreadEl.style.color = sNum < th ? '#22c55e' : sNum < th*2 ? '#fbbf24' : '#ef4444';
     document.getElementById('bid').innerText = data.bid || '-';
+
     let badges = `<span class="filter-badge ${!data.filtered ? 'filter-pass' : 'filter-fail'}">SIGNAL ${data.filtered ? 'FILTERED' : 'ACTIVE'}</span>`;
     if (data.reasons && data.reasons.length > 0) {
       data.reasons.forEach(r => { badges += `<span class="filter-badge filter-info">${r}</span>`; });
     }
     document.getElementById('filter-status').innerHTML = badges;
+
     const sb = document.getElementById('signal-box');
     const lockStatus = document.getElementById('lock-status');
+
     if (data.signal === "BUY") {
       const displayPrice = data.harga_entry || data.harga;
       sb.innerHTML = "BUY <br><span style='font-size:26px;'>@ " + displayPrice + "</span>";
       sb.className = "signal-box buy";
-      if (data.locked) {
-        lockStatus.innerHTML = `<span class="lock-badge locked">🔒 LOCKED</span><div class="lock-info">Entry kekal di ${displayPrice}</div>`;
-      } else {
-        lockStatus.innerHTML = `<span class="lock-badge fresh">⚡ FRESH SIGNAL</span>`;
-      }
+      if (data.locked) lockStatus.innerHTML = `<span class="lock-badge locked">🔒 LOCKED</span><div class="lock-info">Entry kekal di ${displayPrice}</div>`;
+      else lockStatus.innerHTML = `<span class="lock-badge fresh">⚡ FRESH SIGNAL</span>`;
     } else if (data.signal === "SELL") {
       const displayPrice = data.harga_entry || data.harga;
       sb.innerHTML = "SELL <br><span style='font-size:26px;'>@ " + displayPrice + "</span>";
       sb.className = "signal-box sell";
-      if (data.locked) {
-        lockStatus.innerHTML = `<span class="lock-badge locked">🔒 LOCKED</span><div class="lock-info">Entry kekal di ${displayPrice}</div>`;
-      } else {
-        lockStatus.innerHTML = `<span class="lock-badge fresh">⚡ FRESH SIGNAL</span>`;
-      }
+      if (data.locked) lockStatus.innerHTML = `<span class="lock-badge locked">🔒 LOCKED</span><div class="lock-info">Entry kekal di ${displayPrice}</div>`;
+      else lockStatus.innerHTML = `<span class="lock-badge fresh">⚡ FRESH SIGNAL</span>`;
     } else {
       sb.innerHTML = "WAIT <br><span style='font-size:14px; font-weight:400;'>Market Not Ready</span>";
       sb.className = "signal-box wait";
       lockStatus.innerHTML = '';
     }
+
+    const patternDisplay = document.getElementById('pattern-display');
+    if (data.candle_pattern && data.candle_pattern.pattern !== "NONE" && data.candle_pattern.pattern !== "DOJI") {
+      const biasClass = data.candle_pattern.bias === "BULLISH" ? "bullish" : data.candle_pattern.bias === "BEARISH" ? "bearish" : "neutral";
+      patternDisplay.innerHTML = `<div class="pattern-badge ${biasClass}"><span class="pattern-icon">${data.candle_pattern.icon || '📊'}</span><span class="pattern-text">${data.candle_pattern.pattern}</span><span class="pattern-strength">${data.candle_pattern.strength}%</span></div>`;
+    } else patternDisplay.innerHTML = '';
+
+    if (data.sltp) {
+      document.getElementById('sltp-entry').innerText = data.harga_entry || data.harga;
+      document.getElementById('sltp-sl').innerText = data.sltp.sl;
+      document.getElementById('sltp-tp1').innerText = data.sltp.tp1;
+      document.getElementById('sltp-tp2').innerText = data.sltp.tp2;
+      document.getElementById('sltp-tp3').innerText = data.sltp.tp3;
+      document.getElementById('sltp-slpips').innerText = data.sltp.slPips;
+      document.getElementById('sltp-tppips').innerText = data.sltp.tp2Pips + ' (' + data.sltp.tp1Pips + '/' + data.sltp.tp2Pips + ')';
+      const rr = (data.sltp.tp2Pips / data.sltp.slPips).toFixed(1);
+      document.getElementById('sltp-rr').innerText = '1:' + rr;
+    }
+
+    if (data.risk_mgmt) {
+      document.getElementById('risk-balance').innerText = '$' + data.risk_mgmt.balance;
+      document.getElementById('risk-percent').innerText = data.risk_mgmt.riskPercent + '%';
+      document.getElementById('risk-lot').innerText = data.risk_mgmt.lotSize;
+      document.getElementById('risk-loss').innerText = '$' + data.risk_mgmt.riskAmount;
+    }
+
     if (data.snr) {
       document.getElementById('snr-info').style.display = 'block';
       document.getElementById('snr-support').innerText = data.snr.support || '-';
@@ -507,6 +637,64 @@ async function dapatkanMarketData() {
   } catch (e) {}
 }
 
+// ===== NEWS COUNTDOWN =====
+async function loadNewsPrediction() {
+  try {
+    const res = await fetch('/api/news-prediction');
+    const data = await res.json();
+    const card = document.getElementById('news-countdown-card');
+    const content = document.getElementById('news-countdown-content');
+
+    if (!data.hasNews || !data.event) {
+      card.style.display = 'none';
+      return;
+    }
+
+    const e = data.event;
+    const p = data.prediction;
+    
+    let urgencyColor = '#94a3b8';
+    if (e.minutesUntil <= 5) urgencyColor = '#ef4444';
+    else if (e.minutesUntil <= 15) urgencyColor = '#fbbf24';
+    else if (e.minutesUntil <= 30) urgencyColor = '#22c55e';
+
+    let biasColor = p.bias.includes('BEARISH') ? '#ef4444' : p.bias.includes('BULLISH') ? '#22c55e' : '#94a3b8';
+
+    content.innerHTML = `
+      <div class="countdown-timer" style="color:${urgencyColor};">⏰ ${e.countdown}</div>
+      <div class="countdown-label">${e.time}</div>
+      <div class="news-info-box">
+        <div class="news-info-title">${e.name}</div>
+        <div class="news-info-stats">
+          <div style="text-align:center;">
+            <div class="news-info-stat-label">ACTUAL</div>
+            <div class="news-info-stat-value">${e.actual}</div>
+          </div>
+          <div style="text-align:center;">
+            <div class="news-info-stat-label">FORECAST</div>
+            <div class="news-info-stat-value" style="color:#f1f5f9;">${e.forecast}</div>
+          </div>
+          <div style="text-align:center;">
+            <div class="news-info-stat-label">PREVIOUS</div>
+            <div class="news-info-stat-value" style="color:#f1f5f9;">${e.previous}</div>
+          </div>
+        </div>
+      </div>
+      <div class="bias-box" style="background:linear-gradient(135deg, #0d1a33, #101c33); border-left:3px solid ${biasColor};">
+        <div class="bias-header">
+          <span class="bias-label">BIAS PREDICTION</span>
+          <span class="bias-confidence" style="color:${urgencyColor};">${p.confidence}%</span>
+        </div>
+        <div class="bias-value" style="color:${biasColor};">${p.bias}</div>
+        <div class="bias-reason">${p.reason}</div>
+        <div class="bias-action">💡 ${p.action}</div>
+      </div>
+    `;
+    card.style.display = 'block';
+  } catch (err) { console.error('News prediction error:', err); }
+}
+
+// ===== ASK AI =====
 async function tanyaAI() {
   const harga = document.getElementById('main-price-signal').innerText;
   const soalan = document.getElementById('soalan-ai').value;
@@ -522,6 +710,7 @@ async function tanyaAI() {
   } catch (e) { text.innerText = "Connection error."; }
 }
 
+// ===== CHART =====
 async function dapatkanCandleData() {
   if (!chart) {
     const c = document.getElementById('chart');
@@ -537,19 +726,21 @@ async function dapatkanCandleData() {
   } catch (e) {}
 }
 
+// ===== PRE-NEWS =====
 async function loadPreNews(isManual = false) {
   const content = document.getElementById('pre-news-content');
-  if (isManual) content.innerHTML = '<p style="text-align:center; color:#fbbf24; font-size:12px; padding:10px;">⏳ AI tengah analisa... (10-30 detik)</p>';
+  if (isManual) content.innerHTML = '<p style="text-align:center; color:#fbbf24; font-size:12px; padding:10px;">⏳ AI tengah analisa...</p>';
   try {
     const res = await fetch('/api/next-news');
     const data = await res.json();
     if (data.status === 'success' && data.event) {
       const e = data.event;
       content.innerHTML = `<div class="pre-news-event"><span class="pre-news-name">${e.event}</span><span class="pre-news-time">${e.time||'Akan datang'}</span></div><div class="pre-news-data"><div class="pre-news-data-item"><div class="pre-news-data-label">ACTUAL</div><div class="pre-news-data-value actual">${e.actual}</div></div><div class="pre-news-data-item"><div class="pre-news-data-label">FORECAST</div><div class="pre-news-data-value">${e.forecast}</div></div><div class="pre-news-data-item"><div class="pre-news-data-label">PREVIOUS</div><div class="pre-news-data-value">${e.previous}</div></div></div><p class="pre-news-prediction">${data.prediction}</p>`;
-    } else { content.innerHTML = '<p style="text-align:center; color:#64748b; font-size:12px; padding:10px;">Tiada berita</p>'; }
+    } else content.innerHTML = '<p style="text-align:center; color:#64748b; font-size:12px; padding:10px;">Tiada berita</p>';
   } catch (err) { content.innerHTML = '<p style="text-align:center; color:#ef4444; font-size:12px;">❌ Gagal. Cuba tekan 🔄 REFRESH.</p>'; }
 }
 
+// ===== NEWS LIST =====
 async function loadNews() {
   newsLoaded = true;
   const list = document.getElementById('news-list');
@@ -565,10 +756,11 @@ async function loadNews() {
         div.innerHTML = `<div class="news-header"><span class="news-time">${e.time||'Akan datang'}</span><span class="news-currency">${e.currency}</span></div><div class="news-event">${e.event}</div><div class="news-stats"><div class="news-stat"><div class="news-stat-label">ACTUAL</div><div class="news-stat-value actual">${e.actual}</div></div><div class="news-stat"><div class="news-stat-label">FORECAST</div><div class="news-stat-value">${e.forecast}</div></div><div class="news-stat"><div class="news-stat-label">PREVIOUS</div><div class="news-stat-value">${e.previous}</div></div></div>`;
         list.appendChild(div);
       });
-    } else { list.innerHTML = '<div style="text-align:center; padding:30px; color:#94a3b8;">Tiada berita</div>'; }
+    } else list.innerHTML = '<div style="text-align:center; padding:30px; color:#94a3b8;">Tiada berita</div>';
   } catch (err) { list.innerHTML = '<div style="text-align:center; padding:30px; color:#ef4444;">❌ Gagal</div>'; }
 }
 
+// ===== BACKTEST =====
 async function jalankanBacktest() {
   document.getElementById('bt-ai-comment').innerText = "Analyzing historical data...";
   document.getElementById('bt-winrate').innerText = "...";
@@ -585,15 +777,16 @@ async function jalankanBacktest() {
       backtestSeries.setData(data.candles);
       backtestSeries.setMarkers(data.markers);
       try {
-        const aiRes = await fetch('/api/ai-analysis', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ price: "Backtest", ema9: "N/A", ema21: "N/A", signal_time: Date.now() / 1000, soalan: `Strategy Win Rate ${data.winRate}% with ${data.totalTrades} signals. Brief review BM.` }) });
+        const aiRes = await fetch('/api/ai-analysis', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ price: "Backtest", ema9: "N/A", ema21: "N/A", signal_time: Date.now() / 1000, soalan: `Strategy Win Rate ${data.winRate}% with ${data.totalTrades} signals. Give a brief review in Bahasa Melayu.` }) });
         const aiData = await aiRes.json();
         if (aiData.status === 'success' && aiData.analysis) document.getElementById('bt-ai-comment').innerText = aiData.analysis;
-        else document.getElementById('bt-ai-comment').innerText = `📊 Backtest: ${data.winRate}% win rate, ${data.totalTrades} signals.`;
-      } catch (err) { document.getElementById('bt-ai-comment').innerText = `📊 Backtest: ${data.winRate}% win rate, ${data.totalTrades} signals.`; }
+        else document.getElementById('bt-ai-comment').innerText = `📊 Backtest selesai: ${data.winRate}% win rate dari ${data.totalTrades} signal.`;
+      } catch (err) { document.getElementById('bt-ai-comment').innerText = `📊 Backtest selesai: ${data.winRate}% win rate dari ${data.totalTrades} signal.`; }
     }
   } catch (e) { document.getElementById('bt-ai-comment').innerText = "❌ Connection error."; }
 }
 
+/* GRAPH ANIMATION */
 let nodes = [];
 let edges = [];
 function initGraph() {
@@ -602,7 +795,9 @@ function initGraph() {
   const w = canvas.clientWidth; const h = canvas.clientHeight;
   canvas.width = w; canvas.height = h;
   nodes = [];
-  for (let i = 0; i < 8; i++) nodes.push({ x: Math.random() * w, y: Math.random() * h, vx: (Math.random() - 0.5) * 0.5, vy: (Math.random() - 0.5) * 0.5, r: 4 + Math.random() * 3, color: ['#a78bfa', '#38bdf8', '#22c55e'][Math.floor(Math.random() * 3)] });
+  for (let i = 0; i < 8; i++) {
+    nodes.push({ x: Math.random() * w, y: Math.random() * h, vx: (Math.random() - 0.5) * 0.5, vy: (Math.random() - 0.5) * 0.5, r: 4 + Math.random() * 3, color: ['#a78bfa', '#38bdf8', '#22c55e'][Math.floor(Math.random() * 3)] });
+  }
   edges = [];
   for (let i = 0; i < 12; i++) edges.push({ a: Math.floor(Math.random() * 8), b: Math.floor(Math.random() * 8) });
 }
@@ -636,11 +831,19 @@ function drawGraph() {
   });
   graphAnimFrame = requestAnimationFrame(drawGraph);
 }
-function startGraphAnimation() { initGraph(); if (graphAnimFrame) cancelAnimationFrame(graphAnimFrame); drawGraph(); }
-function stopGraphAnimation() { if (graphAnimFrame) { cancelAnimationFrame(graphAnimFrame); graphAnimFrame = null; } }
+function startGraphAnimation() {
+  initGraph();
+  if (graphAnimFrame) cancelAnimationFrame(graphAnimFrame);
+  drawGraph();
+}
+function stopGraphAnimation() {
+  if (graphAnimFrame) { cancelAnimationFrame(graphAnimFrame); graphAnimFrame = null; }
+}
 
+/* AI DESK */
 function setPanel(n, status, desc, val, valColor) {
   const p = document.getElementById('panel-' + n);
+  if (!p) return;
   p.classList.remove('running', 'done');
   if (status === 'running') p.classList.add('running');
   if (status === 'done') p.classList.add('done');
@@ -659,7 +862,10 @@ async function runAIDesk() {
   document.getElementById('signal-result-card').style.display = 'none';
   logFeed('[CYCLE] Starting AI Desk analysis...', 'info');
   try {
-    for (let i = 1; i <= 6; i++) { setPanel(i, 'running', 'Processing...'); await new Promise(r => setTimeout(r, 400)); }
+    for (let i = 1; i <= 6; i++) {
+      setPanel(i, 'running', 'Processing...');
+      await new Promise(r => setTimeout(r, 400));
+    }
     const res = await fetch(`/api/ai-desk?symbol=${marketAktif}`);
     const data = await res.json();
     if (data.status === 'success') {
@@ -700,7 +906,7 @@ async function runAIDesk() {
       document.getElementById('btn-take').disabled = isWait;
       document.getElementById('btn-take').classList.toggle('btn-disabled', isWait);
       logFeed(`[DONE] Cycle complete. Plan: ${s.plan.action}`, 'success');
-    } else { logFeed('[ERROR] ' + data.message, 'error'); }
+    } else logFeed('[ERROR] ' + data.message, 'error');
   } catch(e) { logFeed('[ERROR] ' + e.message, 'error'); }
   btn.disabled = false; btn.innerText = '⚡ RUN AI DESK CYCLE';
 }
@@ -766,8 +972,8 @@ function renderTracker() {
   document.getElementById('balance-pips').className = 'balance-value' + (totalPips < 0 ? ' negative' : '');
   const best = [...closed].sort((a,b) => b.pips - a.pips).slice(0, 3);
   const bestBox = document.getElementById('best-trades');
-  if (best.length === 0) { bestBox.innerHTML = '<p style="text-align:center; color:#64748b; font-size:11px; padding:10px;">Belum ada trade closed</p>'; }
-  else { bestBox.innerHTML = best.map((t, i) => `<div class="top-mover"><span class="tm-symbol">${i+1}. ${t.direction.replace(' LIMIT','')} @ ${t.entry.toFixed(2)}</span><span class="tm-change positive">+${t.pips} pips</span></div>`).join(''); }
+  if (best.length === 0) bestBox.innerHTML = '<p style="text-align:center; color:#64748b; font-size:11px; padding:10px;">Belum ada trade closed</p>';
+  else bestBox.innerHTML = best.map((t, i) => `<div class="top-mover"><span class="tm-symbol">${i+1}. ${t.direction.replace(' LIMIT','')} @ ${t.entry.toFixed(2)}</span><span class="tm-change positive">+${t.pips} pips</span></div>`).join('');
   const tbody = document.getElementById('history-body');
   if (trades.length === 0) { tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; color:#64748b; padding:20px;">Belum ada trade</td></tr>'; return; }
   tbody.innerHTML = '';
@@ -792,11 +998,16 @@ function resetHistory() {
   logFeed('[RESET] History cleared', 'info');
 }
 
-setInterval(dapatkanSignal, 60000);
-setInterval(dapatkanMarketData, 60000);
-setInterval(dapatkanCandleData, 300000);
+// ===== AUTO REFRESH =====
+setInterval(dapatkanSignal, 60000);        // 1 minit
+setInterval(dapatkanMarketData, 60000);    // 1 minit
+setInterval(dapatkanCandleData, 300000);   // 5 minit
+setInterval(loadNewsPrediction, 60000);    // 1 minit (news countdown)
+
+// Initial load
 dapatkanSignal();
 dapatkanMarketData();
+loadNewsPrediction();
 renderTracker();
 </script>
 </body>
