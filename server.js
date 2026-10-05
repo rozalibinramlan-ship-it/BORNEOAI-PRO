@@ -121,7 +121,7 @@ function getMarketSession() {
 }
 
 function detectSNR(candles) {
-    if (candles.length < 20) return { resistance: 0, support: 0 };
+    if (candles.length < 20) return { resistance: 0, support: 0, poc: 0 };
     const recent = candles.slice(-50);
     const last = recent[recent.length - 1].close;
     const highs = recent.map(c => c.high);
@@ -130,7 +130,60 @@ function detectSNR(candles) {
     const minLow = Math.min(...lows);
     const resistance = highs.filter(h => h > last).sort((a, b) => a - b)[0] || maxHigh;
     const support = lows.filter(l => l < last).sort((a, b) => b - a)[0] || minLow;
-    return { resistance, support };
+    const prices = recent.map(c => c.close).sort((a, b) => a - b);
+    const poc = prices[Math.floor(prices.length / 2)];
+    return { resistance, support, poc };
+}
+
+// ===== DETECT CANDLE REACTION =====
+function detectCandleReaction(candles, direction) {
+    const last3 = candles.slice(-3);
+    if (last3.length < 3) return { hasReversal: false, bullishCount: 0, bearishCount: 0 };
+    let bullishCount = 0, bearishCount = 0;
+    last3.forEach(c => {
+        if (c.close > c.open) bullishCount++;
+        else if (c.close < c.open) bearishCount++;
+    });
+    if (direction === "SELL") {
+        return { hasReversal: bullishCount >= 2, bullishCount, bearishCount };
+    }
+    if (direction === "BUY") {
+        return { hasReversal: bearishCount >= 2, bullishCount, bearishCount };
+    }
+    return { hasReversal: false, bullishCount, bearishCount };
+}
+
+// ===== DETECT SNR TOUCH =====
+function detectSNRTouch(currentPrice, snr, direction, candles) {
+    if (!snr || !snr.support || !snr.resistance) return { touched: false, type: null };
+    const threshold = currentPrice * 0.0003;
+    if (direction === "SELL") {
+        const nearSupport = Math.abs(currentPrice - snr.support) < threshold;
+        if (nearSupport) {
+            const reaction = detectCandleReaction(candles, "SELL");
+            return { touched: true, type: "support", level: snr.support, candleReversal: reaction.hasReversal };
+        }
+    }
+    if (direction === "BUY") {
+        const nearResistance = Math.abs(currentPrice - snr.resistance) < threshold;
+        if (nearResistance) {
+            const reaction = detectCandleReaction(candles, "BUY");
+            return { touched: true, type: "resistance", level: snr.resistance, candleReversal: reaction.hasReversal };
+        }
+    }
+    return { touched: false, type: null };
+}
+
+// ===== DETECT POC TOUCH =====
+function detectPOCTouch(currentPrice, poc, direction, candles) {
+    if (!poc) return { touched: false };
+    const threshold = currentPrice * 0.0005;
+    const nearPOC = Math.abs(currentPrice - poc) < threshold;
+    if (nearPOC) {
+        const reaction = detectCandleReaction(candles, direction);
+        return { touched: true, level: poc, candleReversal: reaction.hasReversal };
+    }
+    return { touched: false };
 }
 
 const tickCache = new Map();
@@ -139,9 +192,7 @@ const TICK_CACHE_MS = 15000;
 async function getTick(symbol) {
     const cacheKey = symbol;
     const cached = tickCache.get(cacheKey);
-    if (cached && Date.now() - cached.time < TICK_CACHE_MS) {
-        return cached.data;
-    }
+    if (cached && Date.now() - cached.time < TICK_CACHE_MS) return cached.data;
     const tdSymbol = toTwelveData(symbol);
     const url = `${TWELVEDATA_URL}/quote?symbol=${encodeURIComponent(tdSymbol)}&apikey=${TWELVEDATA_KEY}`;
     const response = await axios.get(url, { timeout: 10000 });
@@ -169,9 +220,7 @@ const OHLC_CACHE_MS = 30000;
 async function getOHLC(symbol, interval = '15m', limit = 100) {
     const cacheKey = `${symbol}_${interval}_${limit}`;
     const cached = ohlcCache.get(cacheKey);
-    if (cached && Date.now() - cached.time < OHLC_CACHE_MS) {
-        return cached.data;
-    }
+    if (cached && Date.now() - cached.time < OHLC_CACHE_MS) return cached.data;
     const tdSymbol = toTwelveData(symbol);
     const intervalMap = { '1min': '1min', '5min': '5min', '15min': '15min', '30min': '30min', '1h': '1h', '4h': '4h', '1day': '1day' };
     const tdInterval = intervalMap[interval] || '15min';
@@ -207,6 +256,30 @@ async function getOHLC(symbol, interval = '15m', limit = 100) {
     return [];
 }
 
+// ===== SIGNAL LOCK SYSTEM =====
+const signalLock = new Map();
+
+function checkMomentumValid(lockData, ema9, ema21, rsi, currentPrice, atrPercent) {
+    if (!lockData) return false;
+    const { direction, entry } = lockData;
+    const pipSize = 0.01;
+    if (direction === "SELL") {
+        if (ema9 > ema21) return false;
+        if (rsi < 25) return false;
+        if (Math.abs(currentPrice - entry) / pipSize > 150) return false;
+        if (atrPercent < 0.015) return false;
+        return true;
+    }
+    if (direction === "BUY") {
+        if (ema9 < ema21) return false;
+        if (rsi > 75) return false;
+        if (Math.abs(currentPrice - entry) / pipSize > 150) return false;
+        if (atrPercent < 0.015) return false;
+        return true;
+    }
+    return false;
+}
+
 app.get('/api/test-ai', async (req, res) => {
     try {
         const r = await ai.models.generateContent({ model: AI_MODELS[0], contents: 'Reply with only: OK' });
@@ -240,28 +313,101 @@ app.get('/api/signal', async (req, res) => {
         const atr = calculateATR(candles, 14);
         const atrPercent = (atr / harga) * 100;
         const session = getMarketSession();
+        const snr = detectSNR(candles);
+
         let spread = 0, bid = 0, ask = 0;
         try {
             const tick = await getTick(symbol);
             bid = tick.bid || harga; ask = tick.ask || harga; spread = tick.spread || 0;
         } catch (e) { }
+
+        // ===== CEK LOCK SIGNAL =====
+        const existingLock = signalLock.get(symbol);
         let signal = "WAIT", warna = "#94a3b8", reasons = [], filtered = false;
-        const emaCross = ema9 > ema21 ? "BUY" : "SELL";
-        
-        // ===== FILTER BARU (LONGGAR) =====
-        // RSI: 75/25 (longgar dari 70/30)
-        if (emaCross === "BUY" && rsi > 75) { filtered = true; reasons.push("RSI Overbought"); }
-        if (emaCross === "SELL" && rsi < 25) { filtered = true; reasons.push("RSI Oversold"); }
-        // ATR: 0.015% (longgar dari 0.05%)
-        if (atrPercent < 0.015) { filtered = true; reasons.push("Low Volatility"); }
-        // Session filter DIBUANG
-        // EMA50 filter DIBUANG
-        
-        if (!filtered) { signal = emaCross; warna = signal === "BUY" ? "#22c55e" : "#ef4444"; }
-        res.json({ symbol, harga: harga.toFixed(decimal), signal, warna, ema9: ema9.toFixed(decimal), ema21: ema21.toFixed(decimal), ema50: ema50.toFixed(decimal), rsi: rsi.toFixed(1), atrPercent: atrPercent.toFixed(3), session, spread: spread.toFixed(decimal), bid: bid.toFixed(decimal), ask: ask.toFixed(decimal), filtered, reasons, masa: new Date().toLocaleTimeString(), status: "LIVE" });
+        let lockedEntry = null;
+        let isLocked = false;
+
+        if (existingLock) {
+            const momentumValid = checkMomentumValid(existingLock, ema9, ema21, rsi, harga, atrPercent);
+
+            if (momentumValid) {
+                const snrTouch = detectSNRTouch(harga, snr, existingLock.direction, candles);
+                const pocTouch = detectPOCTouch(harga, snr.poc, existingLock.direction, candles);
+
+                if (snrTouch.touched && snrTouch.candleReversal) {
+                    console.log(`🔓 Lock reset — SNR (${snrTouch.type}) + candle reversal`);
+                    signalLock.delete(symbol);
+                } else if (pocTouch.touched && pocTouch.candleReversal) {
+                    console.log(`🔓 Lock reset — POC + candle reversal`);
+                    signalLock.delete(symbol);
+                } else {
+                    signal = existingLock.direction;
+                    warna = signal === "BUY" ? "#22c55e" : "#ef4444";
+                    lockedEntry = existingLock.entry;
+                    isLocked = true;
+                    reasons.push(`Locked sejak ${new Date(existingLock.lockedAt).toLocaleTimeString()}`);
+                    if (snrTouch.touched) reasons.push(`Dekat ${snrTouch.type}`);
+                    if (pocTouch.touched) reasons.push("Dekat POC");
+                }
+            } else {
+                console.log(`🔓 Lock reset — momentum hilang`);
+                signalLock.delete(symbol);
+            }
+        }
+
+        // ===== KALAU TAK ADA LOCK, KIRA SIGNAL BARU =====
+        if (!isLocked) {
+            const emaCross = ema9 > ema21 ? "BUY" : "SELL";
+            if (emaCross === "BUY" && rsi > 75) { filtered = true; reasons.push("RSI Overbought"); }
+            if (emaCross === "SELL" && rsi < 25) { filtered = true; reasons.push("RSI Oversold"); }
+            if (atrPercent < 0.015) { filtered = true; reasons.push("Low Volatility"); }
+
+            if (!filtered) {
+                signal = emaCross;
+                warna = signal === "BUY" ? "#22c55e" : "#ef4444";
+                signalLock.set(symbol, {
+                    direction: signal,
+                    entry: harga,
+                    lockedAt: Date.now(),
+                    timestamp: new Date().toISOString()
+                });
+                lockedEntry = harga;
+                isLocked = true;
+                console.log(`🔒 Lock ${symbol} ${signal} @ ${harga}`);
+            }
+        }
+
+        const displayPrice = lockedEntry !== null ? lockedEntry : harga;
+
+        res.json({
+            symbol,
+            harga: harga.toFixed(decimal),
+            harga_entry: displayPrice.toFixed(decimal),
+            signal,
+            warna,
+            locked: isLocked,
+            ema9: ema9.toFixed(decimal),
+            ema21: ema21.toFixed(decimal),
+            ema50: ema50.toFixed(decimal),
+            rsi: rsi.toFixed(1),
+            atrPercent: atrPercent.toFixed(3),
+            session,
+            spread: spread.toFixed(decimal),
+            bid: bid.toFixed(decimal),
+            ask: ask.toFixed(decimal),
+            snr: {
+                support: snr.support.toFixed(decimal),
+                resistance: snr.resistance.toFixed(decimal),
+                poc: snr.poc.toFixed(decimal)
+            },
+            filtered,
+            reasons,
+            masa: new Date().toLocaleTimeString(),
+            status: "LIVE"
+        });
     } catch (error) {
         console.error("/api/signal ERROR:", error.message);
-        res.json({ symbol, harga: "0.00", signal: "WAIT", warna: "#94a3b8", ema9: "0", ema21: "0", ema50: "0", rsi: "50", atrPercent: "0", session: "CLOSED", spread: "0", bid: "0", ask: "0", filtered: true, reasons: ["Data Error"], masa: new Date().toLocaleTimeString(), status: "ERROR" });
+        res.json({ symbol, harga: "0.00", harga_entry: "0.00", signal: "WAIT", warna: "#94a3b8", locked: false, ema9: "0", ema21: "0", ema50: "0", rsi: "50", atrPercent: "0", session: "CLOSED", spread: "0", bid: "0", ask: "0", filtered: true, reasons: ["Data Error"], masa: new Date().toLocaleTimeString(), status: "ERROR" });
     }
 });
 
