@@ -63,14 +63,12 @@ option { color: white; font-size: 13px; }
 .filter-fail { background: rgba(239, 68, 68, 0.15); color: #fca5a5; border: 1px solid rgba(239, 68, 68, 0.5); }
 .filter-info { background: rgba(251, 191, 36, 0.15); color: #fbbf24; border: 1px solid rgba(251, 191, 36, 0.5); }
 
-/* ===== 8 LAYER CONFIRM ===== */
 .layer-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
 .layer-item { padding: 8px 10px; border-radius: 8px; font-size: 10px; font-weight: 800; letter-spacing: 0.5px; display: flex; justify-content: space-between; align-items: center; }
 .layer-item.ok { background: rgba(34,197,94,0.15); color: #4ade80; border: 1px solid rgba(34,197,94,0.4); }
 .layer-item.fail { background: rgba(239,68,68,0.1); color: #94a3b8; border: 1px solid rgba(239,68,68,0.3); }
 .layer-icon { font-size: 12px; }
 
-/* ===== LIQUIDITY ===== */
 .liquidity-status { text-align: center; padding: 12px; border-radius: 12px; margin-bottom: 10px; font-weight: 900; font-size: 13px; letter-spacing: 1px; }
 .liquidity-in { background: linear-gradient(135deg, #064e3b, #065f46); color: #4ade80; border: 1px solid #22c55e; }
 .liquidity-out { background: #1e293b; color: #64748b; border: 1px solid #475569; }
@@ -80,7 +78,6 @@ option { color: white; font-size: 13px; }
 .zone-POC { background: rgba(251,191,36,0.2); color: #fbbf24; border: 1px solid #fbbf24; }
 .zone-FVG { background: rgba(167,139,250,0.2); color: #a78bfa; border: 1px solid #a78bfa; }
 
-/* ===== VOLUME ===== */
 .volume-bar { background: #0a1525; border-radius: 8px; padding: 10px; margin-top: 8px; }
 .volume-label { display: flex; justify-content: space-between; font-size: 10px; color: #94a3b8; margin-bottom: 6px; font-weight: 800; letter-spacing: 1px; }
 .volume-fill { height: 12px; background: #1e293b; border-radius: 6px; overflow: hidden; position: relative; }
@@ -91,13 +88,13 @@ option { color: white; font-size: 13px; }
 .volume-bias-buy { flex: 1; text-align: center; padding: 6px; border-radius: 6px; background: rgba(34,197,94,0.15); color: #4ade80; font-weight: 900; }
 .volume-bias-sell { flex: 1; text-align: center; padding: 6px; border-radius: 6px; background: rgba(239,68,68,0.15); color: #fca5a5; font-weight: 900; }
 
-.tf-status { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 15px 0; }
-.tf-item { text-align: center; padding: 12px 8px; border-radius: 12px; border: 2px solid var(--border); background: #0a1525; }
+.tf-status { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin: 15px 0; }
+.tf-item { text-align: center; padding: 10px 4px; border-radius: 12px; border: 2px solid var(--border); background: #0a1525; }
 .tf-item.buy { background: rgba(34,197,94,0.15); border-color: #22c55e; }
 .tf-item.sell { background: rgba(239,68,68,0.15); border-color: #ef4444; }
 .tf-item.wait { background: rgba(148,163,184,0.1); border-color: #475569; }
 .tf-label { font-size: 10px; font-weight: 900; color: #94a3b8; letter-spacing: 1px; display: block; margin-bottom: 4px; }
-.tf-value { font-size: 14px; font-weight: 900; }
+.tf-value { font-size: 13px; font-weight: 900; }
 .tf-value.buy { color: #4ade80; }
 .tf-value.sell { color: #fca5a5; }
 .tf-value.wait { color: #94a3b8; }
@@ -165,11 +162,6 @@ td { padding: 12px; border-bottom: 1px solid var(--border); }
 .news-time { font-size: 11px; color: var(--accent-blue); font-weight: 900; }
 .news-currency { background: rgba(56, 189, 248, 0.15); color: var(--accent-blue); padding: 3px 8px; border-radius: 4px; font-size: 10px; font-weight: 900; }
 .news-event { font-size: 14px; color: var(--text-white); font-weight: 700; margin-bottom: 10px; }
-.news-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
-.news-stat { text-align: center; background: #0a1525; padding: 8px 4px; border-radius: 8px; }
-.news-stat-label { font-size: 9px; color: var(--text-gray); font-weight: 700; }
-.news-stat-value { font-size: 13px; font-weight: 900; margin-top: 4px; }
-.news-stat-value.actual { color: var(--accent-yellow); }
 
 .pre-news-event { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; padding-bottom: 12px; border-bottom: 1px solid var(--border); }
 .pre-news-name { font-size: 13px; font-weight: 800; }
@@ -208,32 +200,7 @@ td { padding: 12px; border-bottom: 1px solid var(--border); }
 .desk-stat { text-align: right; }
 .desk-stat-label { color: var(--text-gray); font-size: 9px; letter-spacing: 1px; }
 .desk-stat-value { color: var(--accent-yellow); font-weight: 900; font-size: 12px; }
-.desk-live-cycle { background: linear-gradient(135deg, #0d1a33, #101c33); border: 1px solid var(--border); border-radius: 12px; padding: 12px 15px; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center; }
-.cycle-info { display: flex; gap: 15px; }
-.cycle-item { font-size: 10px; }
-.cycle-label { color: var(--text-gray); font-weight: 800; }
-.cycle-value { color: var(--accent-green); font-weight: 900; font-size: 13px; }
-.desk-grid-6 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 12px; }
-.desk-panel { background: linear-gradient(135deg, #0d1a33, #101c33); border: 1px solid var(--border); border-radius: 10px; padding: 10px; position: relative; overflow: hidden; min-height: 100px; }
-.desk-panel::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px; background: linear-gradient(90deg, transparent, #a78bfa, transparent); opacity: 0; transition: opacity 0.3s; }
-.desk-panel.running::before { opacity: 1; animation: scan 1s infinite; }
-.desk-panel.done { border-color: var(--accent-green); background: linear-gradient(135deg, #0d3320, #0a1525); }
-.desk-panel.running { border-color: var(--accent-purple); box-shadow: 0 0 20px rgba(167, 139, 250, 0.3); }
-.desk-panel-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
-.desk-panel-num { background: rgba(167, 139, 250, 0.15); color: #a78bfa; padding: 2px 6px; border-radius: 4px; font-size: 8px; font-weight: 900; letter-spacing: 1px; }
-.desk-panel-icon { font-size: 14px; }
-.desk-panel-name { font-size: 10px; font-weight: 900; color: var(--text-white); letter-spacing: 1px; text-transform: uppercase; margin-bottom: 4px; }
-.desk-panel-desc { font-size: 9px; color: var(--text-gray); line-height: 1.3; }
-.desk-panel-value { font-size: 12px; font-weight: 900; color: var(--accent-green); margin-top: 6px; }
-.desk-panel-value.red { color: var(--accent-red); }
-.desk-panel-value.yellow { color: var(--accent-yellow); }
-.graph-canvas { width: 100%; height: 180px; background: radial-gradient(circle at center, #0d1a33, #050810); border: 1px solid var(--border); border-radius: 12px; margin-bottom: 12px; position: relative; overflow: hidden; }
-.graph-canvas canvas { width: 100%; height: 100%; }
-.balance-panel { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 12px; }
-.balance-card { background: linear-gradient(135deg, #0d1a33, #101c33); border: 1px solid var(--border); border-radius: 10px; padding: 12px; text-align: center; }
-.balance-label { font-size: 9px; color: var(--text-gray); letter-spacing: 1px; font-weight: 800; }
-.balance-value { font-size: 18px; font-weight: 900; margin-top: 4px; color: var(--accent-green); }
-.balance-value.negative { color: var(--accent-red); }
+.desk-run-btn { background: linear-gradient(135deg, #a78bfa, #7c3aed); color: white; padding: 16px; border-radius: 12px; border: none; cursor: pointer; width: 100%; font-weight: 900; letter-spacing: 2px; font-size: 14px; margin-bottom: 12px; box-shadow: 0 4px 20px rgba(167, 139, 250, 0.4); }
 .signal-result-card { background: linear-gradient(135deg, #0d1a33, #101c33); border: 2px solid var(--accent-purple); border-radius: 14px; padding: 16px; margin-bottom: 12px; }
 .signal-result-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; padding-bottom: 10px; border-bottom: 1px solid var(--border); }
 .signal-result-title { font-size: 11px; color: var(--accent-purple); font-weight: 900; letter-spacing: 2px; }
@@ -244,21 +211,6 @@ td { padding: 12px; border-bottom: 1px solid var(--border); }
 .signal-row { display: flex; justify-content: space-between; padding: 6px 0; font-size: 12px; }
 .signal-row-label { color: var(--text-gray); font-weight: 700; }
 .signal-row-value { font-weight: 900; }
-.action-buttons { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 12px; }
-.btn-action { padding: 14px; border-radius: 10px; border: none; cursor: pointer; font-weight: 900; font-size: 12px; letter-spacing: 1.5px; color: white; }
-.btn-take { background: linear-gradient(135deg, #22c55e, #16a34a); box-shadow: 0 4px 15px rgba(34,197,94,0.3); }
-.btn-close { background: linear-gradient(135deg, #ef4444, #dc2626); box-shadow: 0 4px 15px rgba(239,68,68,0.3); }
-.btn-disabled { opacity: 0.4; cursor: not-allowed; }
-.desk-run-btn { background: linear-gradient(135deg, #a78bfa, #7c3aed); color: white; padding: 16px; border-radius: 12px; border: none; cursor: pointer; width: 100%; font-weight: 900; letter-spacing: 2px; font-size: 14px; margin-bottom: 12px; box-shadow: 0 4px 20px rgba(167, 139, 250, 0.4); }
-.tp-popup { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%) scale(0); background: linear-gradient(135deg, #22c55e, #16a34a); color: white; padding: 30px 50px; border-radius: 20px; font-size: 24px; font-weight: 900; z-index: 9999; box-shadow: 0 10px 60px rgba(34,197,94,0.6); transition: transform 0.4s cubic-bezier(0.68, -0.55, 0.27, 1.55); text-align: center; letter-spacing: 2px; }
-.tp-popup.show { transform: translate(-50%, -50%) scale(1); }
-.tp-popup.loss { background: linear-gradient(135deg, #ef4444, #dc2626); box-shadow: 0 10px 60px rgba(239,68,68,0.6); }
-.live-feed { background: #050810; border: 1px solid var(--border); border-radius: 10px; padding: 10px; max-height: 120px; overflow-y: auto; font-family: 'Courier New', monospace; font-size: 10px; }
-.feed-line { padding: 2px 0; color: var(--text-gray); }
-.feed-line.success { color: var(--accent-green); }
-.feed-line.error { color: var(--accent-red); }
-.feed-line.info { color: var(--accent-blue); }
-.feed-time { color: #475569; margin-right: 6px; }
 .tracker-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin-bottom: 10px; }
 .tracker-item { text-align: center; background: #0a1525; padding: 10px 4px; border-radius: 10px; border: 1px solid var(--border); }
 .tracker-label { font-size: 8px; color: var(--text-gray); font-weight: 800; letter-spacing: 1px; }
@@ -266,15 +218,7 @@ td { padding: 12px; border-bottom: 1px solid var(--border); }
 .tracker-value.green { color: var(--accent-green); }
 .tracker-value.red { color: var(--accent-red); }
 .tracker-value.yellow { color: var(--accent-yellow); }
-.badge-win { background: rgba(34, 197, 94, 0.2); color: #22c55e; padding: 3px 6px; border-radius: 4px; font-weight: 900; font-size: 9px; }
-.badge-loss { background: rgba(239, 68, 68, 0.2); color: #ef4444; padding: 3px 6px; border-radius: 4px; font-weight: 900; font-size: 9px; }
-.badge-open { background: rgba(251, 191, 36, 0.2); color: #fbbf24; padding: 3px 6px; border-radius: 4px; font-weight: 900; font-size: 9px; }
 .btn-reset { background: rgba(239, 68, 68, 0.15); color: #fca5a5; border: 1px solid #ef4444; padding: 10px; border-radius: 8px; cursor: pointer; font-weight: 700; font-size: 11px; width: 100%; margin-top: 10px; }
-.top-mover { display: flex; justify-content: space-between; padding: 8px 10px; background: #0a1525; border-radius: 8px; margin-bottom: 6px; font-size: 11px; }
-.tm-symbol { font-weight: 900; color: var(--text-white); }
-.tm-change { font-weight: 900; }
-.tm-change.positive { color: var(--accent-green); }
-.tm-change.negative { color: var(--accent-red); }
 #bottom-nav { position: fixed; bottom: 0; left: 0; width: 100%; background: #050810; border-top: 1px solid var(--border); display: flex; justify-content: space-around; padding: 12px 0 15px; z-index: 100; }
 .nav-item { display: flex; flex-direction: column; align-items: center; color: #64748b; font-size: 9px; cursor: pointer; background: none; border: none; width: 16%; letter-spacing: 1px; font-weight: 900; }
 .nav-item.active { color: var(--accent-yellow); } 
@@ -305,28 +249,27 @@ td { padding: 12px; border-bottom: 1px solid var(--border); }
   <div id="grade-display" style="text-align:center; margin-top:-10px; margin-bottom:10px;"></div>
   <div id="lock-status" style="text-align:center; margin-bottom:10px;"></div>
   
-  <!-- LIQUIDITY CARD -->
   <div class="glass-card">
     <p class="card-title">💧 LIQUIDITY ZONE</p>
     <div id="liquidity-display"></div>
   </div>
 
-  <!-- 8 LAYER CONFIRM -->
   <div class="glass-card">
-    <p class="card-title">📊 8 LAYER CONFIRMATION</p>
+    <p class="card-title">📊 9 LAYER CONFIRMATION</p>
     <div class="layer-grid" id="layers-grid">
       <div class="layer-item"><span>💧 Liquidity</span><span class="layer-icon">-</span></div>
       <div class="layer-item"><span>📊 Volume</span><span class="layer-icon">-</span></div>
       <div class="layer-item"><span>🎯 Vol Bias</span><span class="layer-icon">-</span></div>
       <div class="layer-item"><span>📈 EMA</span><span class="layer-icon">-</span></div>
       <div class="layer-item"><span>📉 BB</span><span class="layer-icon">-</span></div>
-      <div class="layer-item"><span>⏱️ TF 3</span><span class="layer-icon">-</span></div>
+      <div class="layer-item"><span>⏱️ TF 4</span><span class="layer-icon">-</span></div>
       <div class="layer-item"><span>🕯️ Pattern</span><span class="layer-icon">-</span></div>
       <div class="layer-item"><span>📊 RSI</span><span class="layer-icon">-</span></div>
+      <div class="layer-item"><span>🕯️ Momentum</span><span class="layer-icon">-</span></div>
+      <div class="layer-item"><span>🎯 Candle</span><span class="layer-icon">-</span></div>
     </div>
   </div>
 
-  <!-- VOLUME CARD -->
   <div class="glass-card">
     <p class="card-title">📊 VOLUME ANALYSIS</p>
     <div class="volume-bar">
@@ -341,15 +284,9 @@ td { padding: 12px; border-bottom: 1px solid var(--border); }
     </div>
   </div>
 
-  <!-- 3 TF -->
   <div class="glass-card">
-    <p class="card-title">📊 3 TIMEFRAME CONFIRMATION</p>
+    <p class="card-title">📊 4 TIMEFRAME CONFIRMATION</p>
     <div class="tf-status">
-      <div class="tf-item" id="tf-m1-box">
-        <span class="tf-label">M1</span>
-        <span class="tf-value" id="tf-m1-val">-</span>
-        <div class="tf-rsi" id="tf-m1-rsi">-</div>
-      </div>
       <div class="tf-item" id="tf-m5-box">
         <span class="tf-label">M5</span>
         <span class="tf-value" id="tf-m5-val">-</span>
@@ -359,6 +296,16 @@ td { padding: 12px; border-bottom: 1px solid var(--border); }
         <span class="tf-label">M15</span>
         <span class="tf-value" id="tf-m15-val">-</span>
         <div class="tf-rsi" id="tf-m15-rsi">-</div>
+      </div>
+      <div class="tf-item" id="tf-h1-box">
+        <span class="tf-label">H1</span>
+        <span class="tf-value" id="tf-h1-val">-</span>
+        <div class="tf-rsi" id="tf-h1-rsi">-</div>
+      </div>
+      <div class="tf-item" id="tf-h4-box">
+        <span class="tf-label">H4</span>
+        <span class="tf-value" id="tf-h4-val">-</span>
+        <div class="tf-rsi" id="tf-h4-rsi">-</div>
       </div>
     </div>
   </div>
@@ -516,10 +463,8 @@ td { padding: 12px; border-bottom: 1px solid var(--border); }
   </div>
 </div>
 
-<!-- TP Popup -->
 <div class="tp-popup" id="tp-popup">🎯 TP HIT<br><span id="tp-pips">+0 pips</span></div>
 
-<!-- BOTTOM NAV -->
 <nav id="bottom-nav">
   <button class="nav-item active" onclick="switchTab('signal', this)">📈<span>SIGNAL</span></button>
   <button class="nav-item" onclick="switchTab('levels', this)">⭐<span>LEVELS</span></button>
@@ -536,7 +481,6 @@ let newsLoaded = false;
 let currentDeskPlan = null;
 let trades = JSON.parse(localStorage.getItem('borneo_trades') || '[]');
 const PIP_VALUE = 0.10;
-let graphAnimFrame = null;
 
 function switchTab(tabName, element) {
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
@@ -545,8 +489,7 @@ function switchTab(tabName, element) {
   element.classList.add('active');
   if(tabName === 'chart' && chart) setTimeout(() => { chart.applyOptions({ width: document.getElementById('chart').clientWidth }); dapatkanCandleData(); }, 100);
   if(tabName === 'news' && !newsLoaded) loadNews();
-  if(tabName === 'desk') { renderTracker(); startGraphAnimation(); loadDeskStats(); }
-  else { stopGraphAnimation(); }
+  if(tabName === 'desk') { renderTracker(); loadDeskStats(); }
 }
 
 function tukarMarket() {
@@ -565,7 +508,6 @@ async function loadDeskStats() {
   } catch(e) {}
 }
 
-// ===== SIGNAL (8 LAYER) =====
 async function dapatkanSignal() {
   try {
     const res = await fetch(`/api/signal?symbol=${marketAktif}`);
@@ -607,7 +549,7 @@ async function dapatkanSignal() {
       }
     }
 
-    // ===== 8 LAYER DISPLAY =====
+    // ===== 9 LAYER DISPLAY =====
     if (data.layers || data.reasons) {
       const layersGrid = document.getElementById('layers-grid');
       const layerNames = [
@@ -616,9 +558,11 @@ async function dapatkanSignal() {
         { key: 'volumeBias', label: '🎯 Vol Bias' },
         { key: 'ema', label: '📈 EMA' },
         { key: 'bb', label: '📉 BB' },
-        { key: 'tf', label: '⏱️ TF 3' },
+        { key: 'tf', label: '⏱️ TF 4' },
         { key: 'pattern', label: '🕯️ Pattern' },
-        { key: 'rsi', label: '📊 RSI' }
+        { key: 'rsi', label: '📊 RSI' },
+        { key: 'candleMomentum', label: '🕯️ Momentum' },
+        { key: 'candleReversal', label: '🎯 Candle' }
       ];
       const currentLayers = data.locked_layers || {};
       layersGrid.innerHTML = layerNames.map(ln => {
@@ -642,20 +586,20 @@ async function dapatkanSignal() {
       `;
     }
 
-    // ===== 3 TF DISPLAY =====
+    // ===== 4 TF DISPLAY =====
     if (data.tf3) {
       const tf3 = data.tf3;
-      ['m1', 'm5', 'm15'].forEach(k => {
+      ['m5', 'm15', 'h1', 'h4'].forEach(k => {
         const box = document.getElementById(`tf-${k}-box`);
         const val = document.getElementById(`tf-${k}-val`);
         const rsiEl = document.getElementById(`tf-${k}-rsi`);
         if (box && val) {
-          const sig = tf3[k].toLowerCase();
+          const sig = (tf3[k] || 'WAIT').toLowerCase();
           box.className = 'tf-item ' + sig;
           val.className = 'tf-value ' + sig;
-          val.innerText = tf3[k];
+          val.innerText = tf3[k] || '-';
         }
-        if (rsiEl) rsiEl.innerText = 'RSI: ' + tf3[`${k}rsi`];
+        if (rsiEl) rsiEl.innerText = 'RSI: ' + (tf3[`${k}rsi`] || '-');
       });
     }
 
@@ -674,11 +618,10 @@ async function dapatkanSignal() {
       sb.innerHTML = `${data.signal} <br><span style='font-size:24px;'>@ ${displayPrice}</span>`;
       sb.className = data.signal === "BUY" ? "signal-box buy" : "signal-box sell";
       
-      // Grade badge
       const grade = data.signal_grade || 'B';
       const gradeClass = grade === 'A+' ? 'grade-A' : grade === 'B' ? 'grade-B' : 'grade-SKIP';
       const score = data.signal_score || 0;
-      gradeDisplay.innerHTML = `<span class="grade-badge ${gradeClass}">${grade === 'A+' ? '🚀' : '⭐'} ${grade} (${score}/8)</span>`;
+      gradeDisplay.innerHTML = `<span class="grade-badge ${gradeClass}">${grade === 'A+' ? '🚀' : '⭐'} ${grade} (${score}/9)</span>`;
       
       if (data.locked) lockStatus.innerHTML = `<span class="lock-badge locked">🔒 LOCKED</span><div class="lock-info">Entry kekal di ${displayPrice}</div>`;
       else lockStatus.innerHTML = `<span class="lock-badge fresh">⚡ FRESH SIGNAL</span>`;
@@ -855,9 +798,6 @@ async function jalankanBacktest() {
   } catch (e) { document.getElementById('bt-ai-comment').innerText = "❌ Connection error."; }
 }
 
-function startGraphAnimation() {}
-function stopGraphAnimation() {}
-
 async function runAIDesk() {
   const btn = document.getElementById('desk-run-btn');
   btn.disabled = true; btn.innerText = '⚙️ RUNNING...';
@@ -897,7 +837,6 @@ function resetHistory() {
   renderTracker();
 }
 
-// ===== AUTO REFRESH =====
 setInterval(dapatkanSignal, 180000);
 setInterval(dapatkanMarketData, 180000);
 setInterval(loadNewsPrediction, 120000);
