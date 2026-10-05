@@ -247,12 +247,16 @@ app.get('/api/signal', async (req, res) => {
         } catch (e) { }
         let signal = "WAIT", warna = "#94a3b8", reasons = [], filtered = false;
         const emaCross = ema9 > ema21 ? "BUY" : "SELL";
-        if (emaCross === "BUY" && rsi > 70) { filtered = true; reasons.push("RSI Overbought"); }
-        if (emaCross === "SELL" && rsi < 30) { filtered = true; reasons.push("RSI Oversold"); }
-        if (atrPercent < 0.05) { filtered = true; reasons.push("Low Volatility"); }
-        if (emaCross === "BUY" && harga < ema50) { filtered = true; reasons.push("Against Trend"); }
-        if (emaCross === "SELL" && harga > ema50) { filtered = true; reasons.push("Against Trend"); }
-        if (session === "ASIA" || session === "CLOSED") { filtered = true; reasons.push("Off Session"); }
+        
+        // ===== FILTER BARU (LONGGAR) =====
+        // RSI: 75/25 (longgar dari 70/30)
+        if (emaCross === "BUY" && rsi > 75) { filtered = true; reasons.push("RSI Overbought"); }
+        if (emaCross === "SELL" && rsi < 25) { filtered = true; reasons.push("RSI Oversold"); }
+        // ATR: 0.015% (longgar dari 0.05%)
+        if (atrPercent < 0.015) { filtered = true; reasons.push("Low Volatility"); }
+        // Session filter DIBUANG
+        // EMA50 filter DIBUANG
+        
         if (!filtered) { signal = emaCross; warna = signal === "BUY" ? "#22c55e" : "#ef4444"; }
         res.json({ symbol, harga: harga.toFixed(decimal), signal, warna, ema9: ema9.toFixed(decimal), ema21: ema21.toFixed(decimal), ema50: ema50.toFixed(decimal), rsi: rsi.toFixed(1), atrPercent: atrPercent.toFixed(3), session, spread: spread.toFixed(decimal), bid: bid.toFixed(decimal), ask: ask.toFixed(decimal), filtered, reasons, masa: new Date().toLocaleTimeString(), status: "LIVE" });
     } catch (error) {
@@ -326,7 +330,7 @@ app.get('/api/backtest', async (req, res) => {
             const rsi = calculateRSI(closesSlice.slice(-30), 14);
             const atr = calculateATR(candles.slice(Math.max(0, i - 30), i + 1), 14);
             const atrPercent = (atr / current.close) * 100;
-            if (ema9 > ema21 && rsi < 70 && atrPercent > 0.05) {
+            if (ema9 > ema21 && rsi < 75 && atrPercent > 0.015) {
                 const tp = current.close * 1.001;
                 const sl = current.close * 0.999;
                 let result = null;
@@ -414,14 +418,13 @@ app.get('/api/ai-desk-stats', async (req, res) => {
                 const ema21 = calculateEMA(closes, 21);
                 const rsi = calculateRSI(closes, 14);
                 let sig = ema9 > ema21 ? 'BUY' : 'SELL';
-                if ((sig === 'BUY' && rsi > 70) || (sig === 'SELL' && rsi < 30)) sig = 'WAIT';
+                if ((sig === 'BUY' && rsi > 75) || (sig === 'SELL' && rsi < 25)) sig = 'WAIT';
                 signals++;
                 if (sig === 'BUY') buy++;
                 else if (sig === 'SELL') sell++;
                 else wait++;
                 const change = ((closes[closes.length - 1] - closes[0]) / closes[0]) * 100;
                 topMovers.push({ symbol: m, price: price.toFixed(2), change: change.toFixed(2), signal: sig, rsi: rsi.toFixed(1) });
-                // ⏱️ Delay 1 detik antara market untuk elak 429
                 await new Promise(r => setTimeout(r, 1000));
             } catch (e) { }
         }
@@ -457,12 +460,9 @@ app.get('/api/ai-desk', async (req, res) => {
         };
         let signal = "WAIT", reasons = [];
         const emaCross = ema9 > ema21 ? "BUY" : "SELL";
-        if (emaCross === "BUY" && rsi > 70) reasons.push("RSI Overbought");
-        if (emaCross === "SELL" && rsi < 30) reasons.push("RSI Oversold");
-        if (atrPct < 0.05) reasons.push("Low Volatility");
-        if (emaCross === "BUY" && price < ema50) reasons.push("Against Trend");
-        if (emaCross === "SELL" && price > ema50) reasons.push("Against Trend");
-        if (session === "ASIA" || session === "CLOSED") reasons.push("Off Session");
+        if (emaCross === "BUY" && rsi > 75) reasons.push("RSI Overbought");
+        if (emaCross === "SELL" && rsi < 25) reasons.push("RSI Oversold");
+        if (atrPct < 0.015) reasons.push("Low Volatility");
         if (reasons.length === 0) signal = emaCross;
         result.steps.signal = { signal, reasons, emaCross };
         let aiPredict = { bias: "NEUTRAL", confidence: 50, reason: "Technical only" };
