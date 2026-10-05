@@ -16,16 +16,35 @@ app.get('/', (req, res) => {
 });
 
 if (!process.env.GEMINI_API_KEY) console.error("⚠️ GEMINI_API_KEY tidak dijumpai!");
-if (!process.env.TWELVEDATA_API_KEY) console.error("⚠️ TWELVEDATA_API_KEY tidak dijumpai!");
 
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || 'MISSING_KEY' });
 const TWELVEDATA_URL = 'https://api.twelvedata.com';
-const TWELVEDATA_KEY = process.env.TWELVEDATA_API_KEY || '';
 const BIQUOTE_URL = 'https://biquote.io/api';
 const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN || '';
 const TELEGRAM_CHAT_ID = process.env.TELEGRAM_CHAT_ID || '';
 const ACCOUNT_BALANCE = parseFloat(process.env.ACCOUNT_BALANCE || '1000');
 const RISK_PERCENT = parseFloat(process.env.RISK_PERCENT || '1');
+
+// ===== MULTI API KEY =====
+const TWELVEDATA_KEYS = [
+    process.env.TWELVEDATA_API_KEY || '',
+    process.env.TWELVEDATA_API_KEY_2 || '',
+    process.env.TWELVEDATA_API_KEY_3 || ''
+].filter(k => k.length > 0);
+let currentKeyIndex = 0;
+
+function getCurrentKey() {
+    return TWELVEDATA_KEYS[currentKeyIndex] || TWELVEDATA_KEYS[0] || '';
+}
+
+function switchKey() {
+    if (TWELVEDATA_KEYS.length > 1) {
+        currentKeyIndex = (currentKeyIndex + 1) % TWELVEDATA_KEYS.length;
+        console.log(`🔄 Switch ke API key #${currentKeyIndex + 1} (dari ${TWELVEDATA_KEYS.length} key)`);
+    }
+}
+
+console.log(`✅ TwelveData: ${TWELVEDATA_KEYS.length} API key dimuatkan`);
 
 const AI_MODELS = ['gemini-3.8-flash'];
 let workingModel = null;
@@ -221,20 +240,21 @@ function detectLastCandlePattern(candles) {
     return detectCandlePattern(candles[candles.length - 1], candles[candles.length - 2]);
 }
 
+// ===== CANDLE REACTION (FIX: 5 candle + 3 reversal) =====
 function detectCandleReaction(candles, direction) {
-    const last3 = candles.slice(-3);
-    if (last3.length < 3) return { hasReversal: false, patterns: [], avgStrength: 0 };
-    const patterns = last3.map((c, i) => {
-        const prev = i > 0 ? last3[i - 1] : null;
+    const last5 = candles.slice(-5);
+    if (last5.length < 5) return { hasReversal: false, patterns: [], avgStrength: 0 };
+    const patterns = last5.map((c, i) => {
+        const prev = i > 0 ? last5[i - 1] : null;
         return detectCandlePattern(c, prev);
     });
     if (direction === "SELL") {
         const bullishPatterns = patterns.filter(p => p.bias === "BULLISH" && p.strength >= 70);
-        return { hasReversal: bullishPatterns.length >= 1, patterns: patterns.map(p => p.pattern), avgStrength: patterns.reduce((s, p) => s + p.strength, 0) / patterns.length, strongPattern: bullishPatterns[0] || null };
+        return { hasReversal: bullishPatterns.length >= 3, patterns: patterns.map(p => p.pattern), avgStrength: patterns.reduce((s, p) => s + p.strength, 0) / patterns.length, strongPattern: bullishPatterns[0] || null };
     }
     if (direction === "BUY") {
         const bearishPatterns = patterns.filter(p => p.bias === "BEARISH" && p.strength >= 70);
-        return { hasReversal: bearishPatterns.length >= 1, patterns: patterns.map(p => p.pattern), avgStrength: patterns.reduce((s, p) => s + p.strength, 0) / patterns.length, strongPattern: bearishPatterns[0] || null };
+        return { hasReversal: bearishPatterns.length >= 3, patterns: patterns.map(p => p.pattern), avgStrength: patterns.reduce((s, p) => s + p.strength, 0) / patterns.length, strongPattern: bearishPatterns[0] || null };
     }
     return { hasReversal: false, patterns: [], avgStrength: 0 };
 }
@@ -291,49 +311,105 @@ async function isNewsTime() {
     } catch (e) { return false; }
 }
 
-// ===== CACHE (Fix: Naikkan ke 120s) =====
+// ===== CACHE =====
 const tickCache = new Map();
-const TICK_CACHE_MS = 30000;  // 30 detik
+const TICK_CACHE_MS = 30000;
 
 async function getTick(symbol) {
     const cacheKey = symbol;
     const cached = tickCache.get(cacheKey);
     if (cached && Date.now() - cached.time < TICK_CACHE_MS) return cached.data;
+    
     const tdSymbol = toTwelveData(symbol);
-    const url = `${TWELVEDATA_URL}/quote?symbol=${encodeURIComponent(tdSymbol)}&apikey=${TWELVEDATA_KEY}`;
-    const response = await axios.get(url, { timeout: 10000 });
-    const d = response.data;
-    if (d.status === 'error' || d.code) throw new Error(d.message || 'TwelveData error');
-    const bid = parseFloat(d.bid || 0);
-    const ask = parseFloat(d.ask || 0);
-    const price = parseFloat(d.close || d.price || 0);
-    const mid = price || (bid + ask) / 2 || 0;
-    if (mid === 0) throw new Error('Harga 0.00 dari TwelveData');
-    const result = { bid: bid || mid, ask: ask || mid, mid, spread: parseFloat(d.spread || (ask - bid) || 0), marketState: 'open', stale: false, change: parseFloat(d.change || 0), percentChange: parseFloat(d.percent_change || 0) };
-    tickCache.set(cacheKey, { data: result, time: Date.now() });
-    return result;
+    const totalKeys = TWELVEDATA_KEYS.length;
+    let attempts = 0;
+    let maxAttempts = totalKeys * 2;
+    
+    while (attempts < maxAttempts) {
+        attempts++;
+        const keyIndex = currentKeyIndex;
+        const key = getCurrentKey();
+        const url = `${TWELVEDATA_URL}/quote?symbol=${encodeURIComponent(tdSymbol)}&apikey=${key}`;
+        
+        try {
+            const response = await axios.get(url, { timeout: 10000 });
+            const d = response.data;
+            
+            if (d.status === 'error' || d.code) {
+                if (d.code === 429 || (d.message && d.message.includes('429'))) {
+                    console.log(`⏳ Key #${keyIndex + 1} rate limit, cuba seterusnya...`);
+                    switchKey();
+                    continue;
+                }
+                throw new Error(d.message || 'TwelveData error');
+            }
+            
+            const bid = parseFloat(d.bid || 0);
+            const ask = parseFloat(d.ask || 0);
+            const price = parseFloat(d.close || d.price || 0);
+            const mid = price || (bid + ask) / 2 || 0;
+            if (mid === 0) throw new Error('Harga 0.00');
+            
+            const result = { 
+                bid: bid || mid, 
+                ask: ask || mid, 
+                mid, 
+                spread: parseFloat(d.spread || (ask - bid) || 0), 
+                marketState: 'open', 
+                stale: false, 
+                change: parseFloat(d.change || 0), 
+                percentChange: parseFloat(d.percent_change || 0) 
+            };
+            tickCache.set(cacheKey, { data: result, time: Date.now() });
+            return result;
+        } catch (e) {
+            if (e.message && e.message.includes('429')) {
+                console.log(`⏳ Key #${keyIndex + 1} 429, cuba seterusnya...`);
+                switchKey();
+                continue;
+            }
+            if (attempts >= maxAttempts) throw e;
+        }
+    }
+    throw new Error(`Semua ${totalKeys} API key gagal`);
 }
 
 const ohlcCache = new Map();
-const OHLC_CACHE_MS = 120000;  // Fix: 30s → 120s (2 minit)
+const OHLC_CACHE_MS = 120000;
 
 async function getOHLC(symbol, interval = '15m', limit = 100) {
     const cacheKey = `${symbol}_${interval}_${limit}`;
     const cached = ohlcCache.get(cacheKey);
     if (cached && Date.now() - cached.time < OHLC_CACHE_MS) return cached.data;
+    
     const tdSymbol = toTwelveData(symbol);
     const intervalMap = { '1min': '1min', '5min': '5min', '15min': '15min', '30min': '30min', '1h': '1h', '4h': '4h', '1day': '1day' };
     const tdInterval = intervalMap[interval] || '15min';
-    const url = `${TWELVEDATA_URL}/time_series?symbol=${encodeURIComponent(tdSymbol)}&interval=${tdInterval}&outputsize=${limit}&apikey=${TWELVEDATA_KEY}`;
-    for (let attempt = 0; attempt < 3; attempt++) {
+    const totalKeys = TWELVEDATA_KEYS.length;
+    let attempts = 0;
+    let maxAttempts = totalKeys * 2;
+    
+    while (attempts < maxAttempts) {
+        attempts++;
+        const keyIndex = currentKeyIndex;
+        const key = getCurrentKey();
+        const url = `${TWELVEDATA_URL}/time_series?symbol=${encodeURIComponent(tdSymbol)}&interval=${tdInterval}&outputsize=${limit}&apikey=${key}`;
+        
         try {
             const response = await axios.get(url, { timeout: 10000 });
             const d = response.data;
+            
             if (d.status === 'error' || d.code) {
-                if (d.code === 429 && attempt < 2) { await new Promise(r => setTimeout(r, 3000)); continue; }
-                throw new Error(d.message || 'TwelveData OHLC error');
+                if (d.code === 429 || (d.message && d.message.includes('429'))) {
+                    console.log(`⏳ OHLC Key #${keyIndex + 1} rate limit, cuba seterusnya...`);
+                    switchKey();
+                    continue;
+                }
+                throw new Error(d.message || 'TwelveData error');
             }
+            
             if (!d.values || !Array.isArray(d.values)) return [];
+            
             const result = d.values.slice().reverse().map(c => ({
                 time: c.datetime,
                 timestamp: Math.floor(new Date(c.datetime).getTime() / 1000),
@@ -342,17 +418,21 @@ async function getOHLC(symbol, interval = '15m', limit = 100) {
                 low: parseFloat(c.low || 0),
                 close: parseFloat(c.close || 0)
             })).filter(c => !isNaN(c.timestamp) && c.close > 0);
+            
             ohlcCache.set(cacheKey, { data: result, time: Date.now() });
             return result;
         } catch (e) {
-            if (attempt === 2) throw e;
-            await new Promise(r => setTimeout(r, 3000));
+            if (e.message && e.message.includes('429')) {
+                console.log(`⏳ OHLC Key #${keyIndex + 1} 429, cuba seterusnya...`);
+                switchKey();
+                continue;
+            }
+            if (attempts >= maxAttempts) throw e;
         }
     }
-    return [];
+    throw new Error(`Semua ${totalKeys} API key gagal`);
 }
-
-// ===== MULTI-TIMEFRAME =====
+// ===== MULTI-TIMEFRAME (M5 + M15 + H1) =====
 async function checkMultiTimeframe(symbol) {
     const timeframes = ['5min', '15min', '1h'];
     const results = [];
@@ -367,9 +447,7 @@ async function checkMultiTimeframe(symbol) {
             let sig = ema9 > ema21 ? 'BUY' : 'SELL';
             if ((sig === 'BUY' && rsi > 75) || (sig === 'SELL' && rsi < 25)) sig = 'WAIT';
             results.push({ tf, signal: sig, strength: Math.abs(ema9 - ema21) });
-        } catch (e) {
-            results.push({ tf, signal: 'WAIT', strength: 0 });
-        }
+        } catch (e) { results.push({ tf, signal: 'WAIT', strength: 0 }); }
     }
     const signals = results.map(r => r.signal);
     const agreedCount = results.filter(r => r.signal === signals[0]).length;
@@ -389,28 +467,29 @@ const tradeJournal = [];
 let lastNotifiedSignal = null;
 let lastNotifiedSignalB = null;
 
+// ====== FIX: THRESHOLD 5% + RSI 15/85 ======
 function checkMomentumValid(lockData, ema9, ema21, rsi, currentPrice, atrPercent) {
     if (!lockData) return false;
     const { direction, entry } = lockData;
     const percentMove = Math.abs(currentPrice - entry) / entry * 100;
     if (direction === "SELL") {
         if (ema9 > ema21) return false;
-        if (rsi < 25) return false;
-        if (percentMove > 2) return false;
+        if (rsi < 15) return false;           // Fix: 25 → 15
+        if (percentMove > 5) return false;    // Fix: 2 → 5
         if (atrPercent < 0.015) return false;
         return true;
     }
     if (direction === "BUY") {
         if (ema9 < ema21) return false;
-        if (rsi > 75) return false;
-        if (percentMove > 2) return false;
+        if (rsi > 85) return false;           // Fix: 75 → 85
+        if (percentMove > 5) return false;    // Fix: 2 → 5
         if (atrPercent < 0.015) return false;
         return true;
     }
     return false;
 }
 
-// ===== SIGNAL QUALITY CHECKER (A+/B) =====
+// ===== SIGNAL QUALITY (A+/B) =====
 async function calculateSignalQuality(signalData) {
     const { signal, rsi, atrPercent, session, confidence, pattern, symbol } = signalData;
     let score = 0;
@@ -456,70 +535,6 @@ function buildSignalTelegram(data, grade) {
         `💰 Lot: ${data.risk.lotSize} | Risk: $${data.risk.riskAmount}`;
 }
 
-// ===== AUTO CHECK SIGNAL & SEND TELEGRAM (FIX: 5 minit) =====
-async function checkSignalAndNotify() {
-    if (!TELEGRAM_BOT_TOKEN || !TELEGRAM_CHAT_ID) return;
-    try {
-        const symbol = 'XAU/USD';
-        const candles = await getOHLC(symbol, '1min', 100);
-        if (candles.length < 50) return;
-        const closes = candles.map(c => c.close);
-        const harga = closes[closes.length - 1];
-        const ema9 = calculateEMA(closes, 9);
-        const ema21 = calculateEMA(closes, 21);
-        const rsi = calculateRSI(closes, 14);
-        const atr = calculateATR(candles, 14);
-        const atrPercent = (atr / harga) * 100;
-        const session = getMarketSession();
-        const pattern = detectLastCandlePattern(candles);
-        
-        const emaCross = ema9 > ema21 ? 'BUY' : 'SELL';
-        if ((emaCross === 'BUY' && rsi > 75) || (emaCross === 'SELL' && rsi < 25)) return;
-        if (atrPercent < 0.015) return;
-        if (session === 'ASIA' || session === 'CLOSED') return;
-        
-        const sltp = calculateSLTP(emaCross, harga, atr, symbol);
-        const risk = calculatePositionSize(harga, parseFloat(sltp.sl), symbol);
-        
-        let confidence = 60;
-        try {
-            const prompt = `XAUUSD. Signal: ${emaCross}. RSI: ${rsi.toFixed(1)}. EMA9: ${ema9.toFixed(2)}, EMA21: ${ema21.toFixed(2)}. Session: ${session}. Reply ONLY with number 50-95 (confidence %).`;
-            const aiText = await callAI(prompt);
-            const match = aiText.match(/(\d+)/);
-            if (match) confidence = parseInt(match[1]);
-        } catch (e) { confidence = 60; }
-        
-        const quality = await calculateSignalQuality({
-            signal: emaCross, rsi, atrPercent, session, confidence,
-            pattern: pattern.pattern, symbol
-        });
-        
-        if (quality.grade === 'SKIP') return;
-        
-        const signalKey = `${symbol}_${emaCross}_${Math.floor(harga)}_${quality.grade}`;
-        const lastKey = quality.grade === 'A+' ? lastNotifiedSignal : lastNotifiedSignalB;
-        if (lastKey === signalKey) return;
-        
-        if (quality.grade === 'A+') lastNotifiedSignal = signalKey;
-        else lastNotifiedSignalB = signalKey;
-        
-        const msg = buildSignalTelegram({
-            symbol, signal: emaCross, entry: harga.toFixed(2),
-            sltp, risk, rsi: rsi.toFixed(1), session,
-            quality
-        }, quality.grade);
-        
-        await sendTelegram(msg);
-        console.log(`📱 Telegram sent: ${quality.grade} signal`);
-    } catch (e) {
-        // Fix: Silent 429 error
-        if (e.message && e.message.includes('429')) {
-            console.log("⏳ Rate limit hit — skip this cycle");
-        } else {
-            console.log("checkSignalAndNotify error:", e.message);
-        }
-    }
-}
 // ===== API: TEST =====
 app.get('/api/test-ai', async (req, res) => {
     try {
@@ -531,7 +546,7 @@ app.get('/api/test-ai', async (req, res) => {
 app.get('/api/test-twelvedata', async (req, res) => {
     try {
         const tick = await getTick('XAU/USD');
-        res.json({ status: 'OK', data: tick });
+        res.json({ status: 'OK', keysLoaded: TWELVEDATA_KEYS.length, data: tick });
     } catch (e) { res.json({ status: 'FAIL', error: (e.message || '').substring(0, 200) }); }
 });
 
@@ -541,7 +556,6 @@ app.get('/api/test-telegram', async (req, res) => {
     res.json({ status: 'OK', message: 'Telegram test dihantar' });
 });
 
-// ===== API: NEWS PREDICTION =====
 app.get('/api/news-prediction', async (req, res) => {
     try {
         const result = await newsService.getNewsPrediction();
@@ -559,9 +573,10 @@ app.get('/api/news-alerts', async (req, res) => {
 // ===== API: SIGNAL (UTAMA) =====
 app.get('/api/signal', async (req, res) => {
     const symbol = req.query.symbol || 'XAU/USD';
+    const tf = req.query.tf || '5min';
     const decimal = getDecimal(symbol);
     try {
-        const candles = await getOHLC(symbol, '1min', 100);
+        const candles = await getOHLC(symbol, tf, 100);
         if (candles.length < 50) throw new Error("Data tak cukup");
         const closes = candles.map(c => c.close);
         const harga = closes[closes.length - 1];
@@ -612,10 +627,15 @@ app.get('/api/signal', async (req, res) => {
 
         if (!isLocked) {
             const emaCross = ema9 > ema21 ? "BUY" : "SELL";
-            if (emaCross === "BUY" && rsi > 75) { filtered = true; reasons.push("RSI Overbought"); }
-            if (emaCross === "SELL" && rsi < 25) { filtered = true; reasons.push("RSI Oversold"); }
+            
+            // ===== FIX: RSI 15/85 + BUANG FILTER ASIA =====
+            if (emaCross === "BUY" && rsi > 85) { filtered = true; reasons.push("RSI Overbought"); }
+            if (emaCross === "SELL" && rsi < 15) { filtered = true; reasons.push("RSI Oversold"); }
             if (atrPercent < 0.015) { filtered = true; reasons.push("Low Volatility"); }
+            // Asia filter DIBUANG — boleh trade
+            if (session === "CLOSED") { filtered = true; reasons.push("Market Closed"); }
             if (newsBlocking) { filtered = true; reasons.push("News Time — Block"); }
+            
             if (!filtered) {
                 signal = emaCross;
                 warna = signal === "BUY" ? "#22c55e" : "#ef4444";
@@ -644,7 +664,7 @@ app.get('/api/signal', async (req, res) => {
         }
 
         res.json({
-            symbol, harga: harga.toFixed(decimal), harga_entry: displayPrice.toFixed(decimal), signal, warna, locked: isLocked, news_blocking: newsBlocking,
+            symbol, tf, harga: harga.toFixed(decimal), harga_entry: displayPrice.toFixed(decimal), signal, warna, locked: isLocked, news_blocking: newsBlocking,
             ema9: ema9.toFixed(decimal), ema21: ema21.toFixed(decimal), ema50: ema50.toFixed(decimal),
             rsi: rsi.toFixed(1), atrPercent: atrPercent.toFixed(3), session,
             spread: spread.toFixed(decimal), bid: bid.toFixed(decimal), ask: ask.toFixed(decimal),
@@ -654,7 +674,6 @@ app.get('/api/signal', async (req, res) => {
             risk_mgmt: riskMgmt, reset_pattern: resetPattern, filtered, reasons, masa: new Date().toLocaleTimeString(), status: "LIVE"
         });
     } catch (error) {
-        // Fix: Silent 429 error
         if (error.message && error.message.includes('429')) {
             console.log("⏳ /api/signal rate limit — skip");
         } else {
@@ -664,7 +683,6 @@ app.get('/api/signal', async (req, res) => {
     }
 });
 
-// ===== API: MULTI-TIMEFRAME =====
 app.get('/api/multi-tf', async (req, res) => {
     const symbol = req.query.symbol || 'XAU/USD';
     try {
@@ -673,7 +691,6 @@ app.get('/api/multi-tf', async (req, res) => {
     } catch (e) { res.status(500).json({ status: 'error', message: e.message }); }
 });
 
-// ===== API: PATTERN =====
 app.get('/api/pattern', async (req, res) => {
     const symbol = req.query.symbol || 'XAU/USD';
     try {
@@ -692,7 +709,6 @@ app.get('/api/pattern', async (req, res) => {
 app.get('/api/pattern-history', (req, res) => res.json({ status: 'success', history: patternHistory.slice(0, 50) }));
 app.get('/api/trade-journal', (req, res) => res.json({ status: 'success', journal: tradeJournal.slice(0, 100) }));
 
-// ===== API: MARKET =====
 app.get('/api/market', async (req, res) => {
     const symbol = req.query.symbol || 'XAU/USD';
     const decimal = getDecimal(symbol);
@@ -721,16 +737,12 @@ app.get('/api/market', async (req, res) => {
             time: new Date().toLocaleTimeString()
         });
     } catch (error) {
-        if (error.message && error.message.includes('429')) {
-            console.log("⏳ /api/market rate limit");
-        } else {
-            console.error("/api/market ERROR:", error.message);
-        }
+        if (error.message && error.message.includes('429')) console.log("⏳ /api/market rate limit");
+        else console.error("/api/market ERROR:", error.message);
         res.status(500).json({ status: "error", message: error.message });
     }
 });
 
-// ===== API: AI ANALYSIS =====
 app.post('/api/ai-analysis', async (req, res) => {
     try {
         const { price, ema9, ema21, signal_time, soalan, rsi, atr, session, reasons, spread } = req.body;
@@ -740,7 +752,6 @@ app.post('/api/ai-analysis', async (req, res) => {
     } catch (error) { res.status(500).json({ status: "error", message: "AI busy." }); }
 });
 
-// ===== API: CANDLES =====
 app.get('/api/candles', async (req, res) => {
     const symbol = req.query.symbol || 'XAU/USD';
     const tf = req.query.tf || '15min';
@@ -749,14 +760,11 @@ app.get('/api/candles', async (req, res) => {
         const formatted = candles.map(c => ({ time: c.timestamp, open: c.open, high: c.high, low: c.low, close: c.close }));
         res.json({ status: "success", candles: formatted });
     } catch (error) {
-        if (error.message && error.message.includes('429')) {
-            console.log("⏳ /api/candles rate limit");
-        }
+        if (error.message && error.message.includes('429')) console.log("⏳ /api/candles rate limit");
         res.status(500).json({ status: "error", message: error.message });
     }
 });
 
-// ===== API: BACKTEST =====
 app.get('/api/backtest', async (req, res) => {
     const symbol = req.query.symbol || 'XAU/USD';
     try {
@@ -791,7 +799,6 @@ app.get('/api/backtest', async (req, res) => {
     } catch (error) { res.status(500).json({ status: "error", message: error.message }); }
 });
 
-// ===== API: NEXT NEWS =====
 app.get('/api/next-news', async (req, res) => {
     const fallback = { time: 'Akan datang', currency: 'USD', impact: 'high', event: 'US Non-Farm Payrolls', actual: '-', forecast: '180K', previous: '175K' };
     try {
@@ -828,7 +835,6 @@ app.get('/api/next-news', async (req, res) => {
     }
 });
 
-// ===== API: NEWS =====
 app.get('/api/news', async (req, res) => {
     try {
         const response = await axios.get(`${BIQUOTE_URL}/calendar`, { timeout: 10000 }).catch(() => ({ data: { events: [] } }));
@@ -845,7 +851,6 @@ app.get('/api/news', async (req, res) => {
     }
 });
 
-// ===== API: AI DESK STATS =====
 app.get('/api/ai-desk-stats', async (req, res) => {
     try {
         const markets = ['XAU/USD', 'XAG/USD', 'EUR/USD', 'GBP/USD', 'USD/JPY', 'AUD/USD'];
@@ -876,7 +881,6 @@ app.get('/api/ai-desk-stats', async (req, res) => {
     } catch (e) { res.status(500).json({ status: 'error', message: e.message }); }
 });
 
-// ===== API: AI DESK =====
 app.get('/api/ai-desk', async (req, res) => {
     const symbol = req.query.symbol || 'XAU/USD';
     const result = { timestamp: new Date().toISOString(), steps: {} };
@@ -904,8 +908,8 @@ app.get('/api/ai-desk', async (req, res) => {
         };
         let signal = "WAIT", reasons = [];
         const emaCross = ema9 > ema21 ? "BUY" : "SELL";
-        if (emaCross === "BUY" && rsi > 75) reasons.push("RSI Overbought");
-        if (emaCross === "SELL" && rsi < 25) reasons.push("RSI Oversold");
+        if (emaCross === "BUY" && rsi > 85) reasons.push("RSI Overbought");
+        if (emaCross === "SELL" && rsi < 15) reasons.push("RSI Oversold");
         if (atrPct < 0.015) reasons.push("Low Volatility");
         if (reasons.length === 0) signal = emaCross;
         result.steps.signal = { signal, reasons, emaCross };
@@ -952,14 +956,75 @@ REASON: [1 ayat BM, sebut SNR]`;
     }
 });
 
-// ===== AUTO CHECK SERVICE (FIX: 5 minit) =====
+// ===== AUTO CHECK SIGNAL & SEND TELEGRAM (5 minit) =====
+async function checkSignalAndNotify() {
+    if (!TELEGRAM_BOT_TOKEN || !TELEGRAM_CHAT_ID) return;
+    try {
+        const symbol = 'XAU/USD';
+        const candles = await getOHLC(symbol, '5min', 100);
+        if (candles.length < 50) return;
+        const closes = candles.map(c => c.close);
+        const harga = closes[closes.length - 1];
+        const ema9 = calculateEMA(closes, 9);
+        const ema21 = calculateEMA(closes, 21);
+        const rsi = calculateRSI(closes, 14);
+        const atr = calculateATR(candles, 14);
+        const atrPercent = (atr / harga) * 100;
+        const session = getMarketSession();
+        const pattern = detectLastCandlePattern(candles);
+        
+        const emaCross = ema9 > ema21 ? 'BUY' : 'SELL';
+        if ((emaCross === 'BUY' && rsi > 85) || (emaCross === 'SELL' && rsi < 15)) return;
+        if (atrPercent < 0.015) return;
+        if (session === 'CLOSED') return;
+        
+        const sltp = calculateSLTP(emaCross, harga, atr, symbol);
+        const risk = calculatePositionSize(harga, parseFloat(sltp.sl), symbol);
+        
+        let confidence = 60;
+        try {
+            const prompt = `XAUUSD. Signal: ${emaCross}. RSI: ${rsi.toFixed(1)}. EMA9: ${ema9.toFixed(2)}, EMA21: ${ema21.toFixed(2)}. Session: ${session}. Reply ONLY with number 50-95 (confidence %).`;
+            const aiText = await callAI(prompt);
+            const match = aiText.match(/(\d+)/);
+            if (match) confidence = parseInt(match[1]);
+        } catch (e) { confidence = 60; }
+        
+        const quality = await calculateSignalQuality({
+            signal: emaCross, rsi, atrPercent, session, confidence,
+            pattern: pattern.pattern, symbol
+        });
+        
+        if (quality.grade === 'SKIP') return;
+        
+        const signalKey = `${symbol}_${emaCross}_${Math.floor(harga)}_${quality.grade}`;
+        const lastKey = quality.grade === 'A+' ? lastNotifiedSignal : lastNotifiedSignalB;
+        if (lastKey === signalKey) return;
+        
+        if (quality.grade === 'A+') lastNotifiedSignal = signalKey;
+        else lastNotifiedSignalB = signalKey;
+        
+        const msg = buildSignalTelegram({
+            symbol, signal: emaCross, entry: harga.toFixed(2),
+            sltp, risk, rsi: rsi.toFixed(1), session,
+            quality
+        }, quality.grade);
+        
+        await sendTelegram(msg);
+        console.log(`📱 Telegram sent: ${quality.grade} signal`);
+    } catch (e) {
+        if (e.message && e.message.includes('429')) {
+            console.log("⏳ Rate limit — skip this cycle");
+        } else {
+            console.log("checkSignalAndNotify error:", e.message);
+        }
+    }
+}
 
-// Check news alert setiap 1 minit
+// ===== AUTO SERVICE =====
 setInterval(() => {
     newsService.checkAndAlert();
 }, 60000);
 
-// Fix: Check signal & hantar Telegram setiap 5 minit (dari 2 minit)
 setInterval(() => {
     checkSignalAndNotify();
 }, 300000);  // 5 minit

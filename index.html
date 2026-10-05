@@ -31,6 +31,29 @@ body { background: #050810; color: var(--text-white); font-family: -apple-system
 select { margin-top: 15px; padding: 10px 15px; border-radius: 10px; background: #141e30; color: white; border: 1px solid var(--border); font-weight: 700; width: 85%; font-size: 13px; }
 option { color: white; font-size: 13px; }
 
+/* ===== TIMEFRAME BUTTONS ===== */
+.tf-container { display: flex; justify-content: center; gap: 8px; margin: 12px auto 0; max-width: 90%; }
+.tf-btn { 
+  flex: 1; 
+  padding: 10px 16px; 
+  border-radius: 20px; 
+  border: 1px solid var(--border); 
+  background: var(--bg-card); 
+  color: var(--text-gray); 
+  font-weight: 900; 
+  font-size: 12px; 
+  letter-spacing: 1.5px; 
+  cursor: pointer; 
+  transition: all 0.3s ease;
+}
+.tf-btn:hover { background: rgba(56,189,248,0.15); }
+.tf-btn.active { 
+  background: linear-gradient(135deg, #38bdf8, #0ea5e9); 
+  color: white; 
+  border-color: #38bdf8; 
+  box-shadow: 0 0 20px rgba(56,189,248,0.5);
+}
+
 .screen { display: none; padding: 15px; }
 .screen.active { display: block; animation: fadeIn 0.4s ease-out; }
 .glass-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 18px; padding: 18px; margin-bottom: 15px; box-shadow: 0 8px 32px rgba(0,0,0,0.4); }
@@ -254,6 +277,13 @@ td { padding: 12px; border-bottom: 1px solid var(--border); }
     <option value="NAS100">NAS100 (Nasdaq)</option>
     <option value="US30">US30 (Dow Jones)</option>
   </select>
+
+  <!-- BUTANG TIMEFRAME M1/M5/M15 -->
+  <div class="tf-container">
+    <button id="tf-m1" class="tf-btn" onclick="tukarTF('1min', this)">M1</button>
+    <button id="tf-m5" class="tf-btn active" onclick="tukarTF('5min', this)">M5</button>
+    <button id="tf-m15" class="tf-btn" onclick="tukarTF('15min', this)">M15</button>
+  </div>
 </div>
 
 <!-- SCREEN 1: SIGNAL -->
@@ -295,7 +325,6 @@ td { padding: 12px; border-bottom: 1px solid var(--border); }
     </div>
   </div>
 
-  <!-- NEWS COUNTDOWN CARD -->
   <div id="news-countdown-card" class="glass-card news-countdown" style="display:none;">
     <p class="card-title" style="color:#ef4444;">🚨 NEWS COUNTDOWN</p>
     <div id="news-countdown-content"></div>
@@ -485,15 +514,37 @@ td { padding: 12px; border-bottom: 1px solid var(--border); }
   <button class="nav-item" onclick="switchTab('strategy', this)">⚡<span>STRATEGY</span></button>
 </nav>
 <script>
+// ===== GLOBAL VARIABLES =====
 let marketAktif = 'XAU/USD';
+let timeframeAktif = localStorage.getItem('borneo_tf') || '5min';
 let chart = null, candleSeries = null;
 let backtestChart = null, backtestSeries = null;
 let newsLoaded = false;
+let preNewsLoaded = false;
 let currentDeskPlan = null;
 let trades = JSON.parse(localStorage.getItem('borneo_trades') || '[]');
 const PIP_VALUE = 0.10;
 let graphAnimFrame = null;
+let lastSignalData = null;
 
+// ===== TIMEFRAME TOGGLE =====
+function tukarTF(tf, btn) {
+  timeframeAktif = tf;
+  localStorage.setItem('borneo_tf', tf);
+  
+  // Update butang aktif
+  document.querySelectorAll('.tf-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  
+  // Clear cache & refresh
+  lastSignalData = null;
+  dapatkanSignal();
+  dapatkanCandleData();
+  
+  console.log('📊 Timeframe tukar:', tf);
+}
+
+// ===== TAB SWITCH =====
 function switchTab(tabName, element) {
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
   document.getElementById('screen-' + tabName).classList.add('active');
@@ -501,6 +552,7 @@ function switchTab(tabName, element) {
   element.classList.add('active');
   if(tabName === 'chart' && chart) setTimeout(() => { chart.applyOptions({ width: document.getElementById('chart').clientWidth }); dapatkanCandleData(); }, 100);
   if(tabName === 'news' && !newsLoaded) loadNews();
+  if(tabName === 'signal' && !preNewsLoaded) preNewsLoaded = true;
   if(tabName === 'desk') { renderTracker(); startGraphAnimation(); loadDeskStats(); }
   else { stopGraphAnimation(); }
 }
@@ -541,7 +593,7 @@ async function loadDeskStats() {
 // ===== SIGNAL =====
 async function dapatkanSignal() {
   try {
-    const res = await fetch(`/api/signal?symbol=${marketAktif}`);
+    const res = await fetch(`/api/signal?symbol=${marketAktif}&tf=${timeframeAktif}`);
     const data = await res.json();
 
     document.getElementById('main-price-signal').innerText = data.harga;
@@ -551,7 +603,7 @@ async function dapatkanSignal() {
     document.getElementById('rsi').innerText = data.rsi;
     document.getElementById('atr').innerText = data.atrPercent + '%';
     document.getElementById('session').innerText = data.session;
-    document.getElementById('status').innerText = "Updated: " + data.masa;
+    document.getElementById('status').innerText = "Updated: " + data.masa + " | " + timeframeAktif;
 
     const spreadEl = document.getElementById('spread');
     spreadEl.innerText = data.spread || '0';
@@ -600,7 +652,7 @@ async function dapatkanSignal() {
       document.getElementById('sltp-tp2').innerText = data.sltp.tp2;
       document.getElementById('sltp-tp3').innerText = data.sltp.tp3;
       document.getElementById('sltp-slpips').innerText = data.sltp.slPips;
-      document.getElementById('sltp-tppips').innerText = data.sltp.tp2Pips + ' (' + data.sltp.tp1Pips + '/' + data.sltp.tp2Pips + ')';
+      document.getElementById('sltp-tppips').innerText = data.sltp.tp2Pips;
       const rr = (data.sltp.tp2Pips / data.sltp.slPips).toFixed(1);
       document.getElementById('sltp-rr').innerText = '1:' + rr;
     }
@@ -618,6 +670,8 @@ async function dapatkanSignal() {
       document.getElementById('snr-poc').innerText = data.snr.poc || '-';
       document.getElementById('snr-resistance').innerText = data.snr.resistance || '-';
     }
+
+    lastSignalData = data;
   } catch (e) { console.error('Signal error:', e); }
 }
 
@@ -720,7 +774,7 @@ async function dapatkanCandleData() {
     window.addEventListener('resize', () => chart.applyOptions({ width: c.clientWidth }));
   }
   try {
-    const res = await fetch(`/api/candles?symbol=${marketAktif}`);
+    const res = await fetch(`/api/candles?symbol=${marketAktif}&tf=${timeframeAktif}`);
     const data = await res.json();
     if (data.status === "success") candleSeries.setData(data.candles);
   } catch (e) {}
@@ -930,7 +984,7 @@ async function closeTrade() {
   const openTrade = trades.find(t => t.status === 'OPEN');
   if (!openTrade) return;
   let cp = openTrade.entry;
-  try { const res = await fetch(`/api/signal?symbol=${openTrade.symbol}`); const data = await res.json(); cp = parseFloat(data.harga); } catch(e) {}
+  try { const res = await fetch(`/api/signal?symbol=${openTrade.symbol}&tf=${timeframeAktif}`); const data = await res.json(); cp = parseFloat(data.harga); } catch(e) {}
   const isBuy = openTrade.direction.includes('BUY');
   const pips = isBuy ? (cp - openTrade.entry) / 0.01 : (openTrade.entry - cp) / 0.01;
   openTrade.status = pips >= 0 ? 'WIN' : 'LOSS';
@@ -998,11 +1052,24 @@ function resetHistory() {
   logFeed('[RESET] History cleared', 'info');
 }
 
+// ===== INITIALIZE BUTANG TIMEFRAME IKUT SAVED =====
+document.addEventListener('DOMContentLoaded', () => {
+  const savedTF = localStorage.getItem('borneo_tf') || '5min';
+  const btnMap = { '1min': 'tf-m1', '5min': 'tf-m5', '15min': 'tf-m15' };
+  const btnId = btnMap[savedTF];
+  if (btnId) {
+    document.querySelectorAll('.tf-btn').forEach(b => b.classList.remove('active'));
+    const btn = document.getElementById(btnId);
+    if (btn) btn.classList.add('active');
+    timeframeAktif = savedTF;
+  }
+});
+
 // ===== AUTO REFRESH =====
-setInterval(dapatkanSignal, 180000);
-setInterval(dapatkanMarketData, 180000);
-setInterval(dapatkanCandleData, 600000);
-setInterval(loadNewsPrediction, 120000);
+setInterval(dapatkanSignal, 180000);        // 3 minit
+setInterval(dapatkanMarketData, 180000);    // 3 minit
+setInterval(dapatkanCandleData, 600000);    // 10 minit
+setInterval(loadNewsPrediction, 120000);    // 2 minit
 
 // Initial load
 dapatkanSignal();
