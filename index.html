@@ -30,9 +30,14 @@ option { color: white; font-size: 13px; }
 .wait { background: #1e293b; color: #64748b; border: 2px solid #475569; }
 .buy { background: linear-gradient(135deg, #064e3b, #065f46); color: #4ade80; border: 2px solid #22c55e; box-shadow: 0 0 60px rgba(34, 197, 94, 0.5); }
 .sell { background: linear-gradient(135deg, #7f1d1d, #991b1b); color: #fca5a5; border: 2px solid #ef4444; box-shadow: 0 0 60px rgba(239, 68, 68, 0.5); }
+.lock-badge { display: inline-block; padding: 6px 14px; border-radius: 20px; font-size: 11px; font-weight: 900; letter-spacing: 2px; margin-top: 10px; }
+.lock-badge.locked { background: rgba(251, 191, 36, 0.15); color: #fbbf24; border: 1px solid rgba(251, 191, 36, 0.5); }
+.lock-badge.fresh { background: rgba(56, 189, 248, 0.15); color: #38bdf8; border: 1px solid rgba(56, 189, 248, 0.5); }
+.lock-info { text-align: center; font-size: 11px; color: #94a3b8; margin-top: 8px; }
 .filter-badge { display: inline-block; padding: 6px 12px; border-radius: 8px; font-size: 9px; font-weight: 900; letter-spacing: 1.5px; margin: 4px; text-transform: uppercase; }
 .filter-pass { background: rgba(34, 197, 94, 0.15); color: #4ade80; border: 1px solid rgba(34, 197, 94, 0.5); }
 .filter-fail { background: rgba(239, 68, 68, 0.15); color: #fca5a5; border: 1px solid rgba(239, 68, 68, 0.5); }
+.filter-info { background: rgba(251, 191, 36, 0.15); color: #fbbf24; border: 1px solid rgba(251, 191, 36, 0.5); }
 .indicator-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
 .indicator-item { text-align: center; padding: 12px 4px; background: #0a1525; border-radius: 12px; border: 1px solid var(--border); }
 .indicator-label { display: block; color: var(--text-gray); font-size: 8px; font-weight: 800; letter-spacing: 1px; margin-bottom: 6px; text-transform: uppercase; }
@@ -83,7 +88,6 @@ td { padding: 12px; border-bottom: 1px solid var(--border); }
 .pre-news-data-value { font-size: 12px; font-weight: 900; margin-top: 3px; }
 .pre-news-data-value.actual { color: var(--accent-yellow); }
 .refresh-btn { background: rgba(251,191,36,0.2); color: #fbbf24; border: 1px solid #fbbf24; padding: 5px 12px; border-radius: 8px; font-size: 10px; font-weight: 900; cursor: pointer; letter-spacing: 1px; }
-.refresh-btn:hover { background: rgba(251,191,36,0.35); }
 .desk-container { padding: 0; }
 .desk-topbar { display: flex; justify-content: space-between; align-items: center; padding: 12px 15px; background: linear-gradient(90deg, #0d1a33, #0a1525); border: 1px solid var(--border); border-radius: 12px; margin-bottom: 12px; }
 .desk-topbar-left { display: flex; align-items: center; gap: 10px; }
@@ -192,10 +196,13 @@ td { padding: 12px; border-bottom: 1px solid var(--border); }
   </select>
 </div>
 
-<!-- SCREEN 1: SIGNAL -->
 <div id="screen-signal" class="screen active">
-  <div class="price-display"><h2 class="price-value" id="main-price-signal">Loading...</h2><span class="live-badge">● LIVE</span></div>
+  <div class="price-display">
+    <h2 class="price-value" id="main-price-signal">Loading...</h2>
+    <span class="live-badge">● LIVE</span>
+  </div>
   <div id="signal-box" class="signal-box wait">WAIT</div>
+  <div id="lock-status" style="text-align:center; margin-top:-10px; margin-bottom:10px;"></div>
   <div id="filter-status" style="text-align: center; margin: 15px 0;"></div>
   <div class="glass-card">
     <p class="card-title">⚡ LIVE INDICATORS</p>
@@ -208,6 +215,14 @@ td { padding: 12px; border-bottom: 1px solid var(--border); }
       <div class="indicator-item"><span class="indicator-label">SESSION</span><span class="indicator-value blue" id="session">-</span></div>
       <div class="indicator-item"><span class="indicator-label">SPREAD</span><span class="indicator-value" id="spread" style="color:#22c55e;">-</span></div>
       <div class="indicator-item"><span class="indicator-label">BID</span><span class="indicator-value" id="bid" style="color:#22c55e;">-</span></div>
+    </div>
+    <div id="snr-info" style="margin-top:15px; display:none;">
+      <p class="card-title" style="font-size:9px; margin-bottom:8px;">📍 SNR LEVELS</p>
+      <div style="display:grid; grid-template-columns:repeat(3,1fr); gap:8px; font-size:11px; text-align:center;">
+        <div style="background:#0a1525; padding:6px; border-radius:8px;"><div style="color:#94a3b8; font-size:9px;">SUPPORT</div><div id="snr-support" style="color:#22c55e; font-weight:900;">-</div></div>
+        <div style="background:#0a1525; padding:6px; border-radius:8px;"><div style="color:#94a3b8; font-size:9px;">POC</div><div id="snr-poc" style="color:#fbbf24; font-weight:900;">-</div></div>
+        <div style="background:#0a1525; padding:6px; border-radius:8px;"><div style="color:#94a3b8; font-size:9px;">RESISTANCE</div><div id="snr-resistance" style="color:#ef4444; font-weight:900;">-</div></div>
+      </div>
     </div>
     <p id="status" style="font-size:11px; color:gray; margin-top:15px; text-align:center;">Waiting...</p>
   </div>
@@ -228,7 +243,6 @@ td { padding: 12px; border-bottom: 1px solid var(--border); }
   </div>
 </div>
 
-<!-- SCREEN 2: LEVELS -->
 <div id="screen-levels" class="screen">
   <div class="poc-banner">☆ POC <span id="poc-val">-</span></div>
   <p class="card-title">AUTO SNR LEVELS</p>
@@ -247,19 +261,16 @@ td { padding: 12px; border-bottom: 1px solid var(--border); }
   <div class="table-container"><table><thead><tr><th>PRICE</th><th>VOL</th><th>DELTA</th></tr></thead><tbody id="footprint-summary"></tbody></table></div>
 </div>
 
-<!-- SCREEN 3: CHART -->
 <div id="screen-chart" class="screen">
   <h2 style="text-align:center; letter-spacing:3px; font-size:14px; color:var(--text-gray);">CHART</h2>
   <div id="chart"></div>
 </div>
 
-<!-- SCREEN 4: NEWS -->
 <div id="screen-news" class="screen">
   <h2 style="text-align:center; color:var(--accent-yellow); margin-top:0; letter-spacing:3px; font-size:14px;">📰 NEWS</h2>
   <div id="news-list"><div style="text-align:center; padding:30px; color:#38bdf8;">⏳ Memuatkan...</div></div>
 </div>
 
-<!-- SCREEN 5: AI DESK -->
 <div id="screen-desk" class="screen">
   <div class="desk-container">
     <div class="desk-topbar">
@@ -338,7 +349,6 @@ td { padding: 12px; border-bottom: 1px solid var(--border); }
   </div>
 </div>
 
-<!-- SCREEN 6: STRATEGY -->
 <div id="screen-strategy" class="screen">
   <h2 style="text-align:center; color:var(--accent-yellow); margin-top:0; letter-spacing:3px; font-size:14px;">STRATEGY AI</h2>
   <div class="glass-card">
@@ -358,10 +368,8 @@ td { padding: 12px; border-bottom: 1px solid var(--border); }
   </div>
 </div>
 
-<!-- TP Popup -->
 <div class="tp-popup" id="tp-popup">🎯 TP HIT<br><span id="tp-pips">+0 pips</span></div>
 
-<!-- BOTTOM NAV -->
 <nav id="bottom-nav">
   <button class="nav-item active" onclick="switchTab('signal', this)">📈<span>SIGNAL</span></button>
   <button class="nav-item" onclick="switchTab('levels', this)">⭐<span>LEVELS</span></button>
@@ -389,10 +397,6 @@ function switchTab(tabName, element) {
   element.classList.add('active');
   if(tabName === 'chart' && chart) setTimeout(() => { chart.applyOptions({ width: document.getElementById('chart').clientWidth }); dapatkanCandleData(); }, 100);
   if(tabName === 'news' && !newsLoaded) loadNews();
-  if(tabName === 'signal' && !preNewsLoaded) {
-    preNewsLoaded = true;
-    loadPreNews(false);
-  }
   if(tabName === 'desk') { renderTracker(); startGraphAnimation(); loadDeskStats(); }
   else { stopGraphAnimation(); }
 }
@@ -404,6 +408,7 @@ function tukarMarket() {
 
 function logFeed(msg, type='info') {
   const feed = document.getElementById('live-feed');
+  if (!feed) return;
   const t = new Date().toLocaleTimeString();
   const div = document.createElement('div');
   div.className = 'feed-line ' + type;
@@ -448,13 +453,42 @@ async function dapatkanSignal() {
     spreadEl.style.color = sNum < th ? '#22c55e' : sNum < th*2 ? '#fbbf24' : '#ef4444';
     document.getElementById('bid').innerText = data.bid || '-';
     let badges = `<span class="filter-badge ${!data.filtered ? 'filter-pass' : 'filter-fail'}">SIGNAL ${data.filtered ? 'FILTERED' : 'ACTIVE'}</span>`;
-    if (data.reasons) data.reasons.forEach(r => badges += `<span class="filter-badge filter-fail">${r}</span>`);
+    if (data.reasons && data.reasons.length > 0) {
+      data.reasons.forEach(r => { badges += `<span class="filter-badge filter-info">${r}</span>`; });
+    }
     document.getElementById('filter-status').innerHTML = badges;
     const sb = document.getElementById('signal-box');
-    if (data.signal === "BUY") { sb.innerHTML = "BUY <br><span style='font-size:26px;'>@ " + data.harga + "</span>"; sb.className = "signal-box buy"; }
-    else if (data.signal === "SELL") { sb.innerHTML = "SELL <br><span style='font-size:26px;'>@ " + data.harga + "</span>"; sb.className = "signal-box sell"; }
-    else { sb.innerHTML = "WAIT <br><span style='font-size:14px; font-weight:400;'>Market Not Ready</span>"; sb.className = "signal-box wait"; }
-  } catch (e) {}
+    const lockStatus = document.getElementById('lock-status');
+    if (data.signal === "BUY") {
+      const displayPrice = data.harga_entry || data.harga;
+      sb.innerHTML = "BUY <br><span style='font-size:26px;'>@ " + displayPrice + "</span>";
+      sb.className = "signal-box buy";
+      if (data.locked) {
+        lockStatus.innerHTML = `<span class="lock-badge locked">🔒 LOCKED</span><div class="lock-info">Entry kekal di ${displayPrice}</div>`;
+      } else {
+        lockStatus.innerHTML = `<span class="lock-badge fresh">⚡ FRESH SIGNAL</span>`;
+      }
+    } else if (data.signal === "SELL") {
+      const displayPrice = data.harga_entry || data.harga;
+      sb.innerHTML = "SELL <br><span style='font-size:26px;'>@ " + displayPrice + "</span>";
+      sb.className = "signal-box sell";
+      if (data.locked) {
+        lockStatus.innerHTML = `<span class="lock-badge locked">🔒 LOCKED</span><div class="lock-info">Entry kekal di ${displayPrice}</div>`;
+      } else {
+        lockStatus.innerHTML = `<span class="lock-badge fresh">⚡ FRESH SIGNAL</span>`;
+      }
+    } else {
+      sb.innerHTML = "WAIT <br><span style='font-size:14px; font-weight:400;'>Market Not Ready</span>";
+      sb.className = "signal-box wait";
+      lockStatus.innerHTML = '';
+    }
+    if (data.snr) {
+      document.getElementById('snr-info').style.display = 'block';
+      document.getElementById('snr-support').innerText = data.snr.support || '-';
+      document.getElementById('snr-poc').innerText = data.snr.poc || '-';
+      document.getElementById('snr-resistance').innerText = data.snr.resistance || '-';
+    }
+  } catch (e) { console.error('Signal error:', e); }
 }
 
 async function dapatkanMarketData() {
@@ -505,21 +539,15 @@ async function dapatkanCandleData() {
 
 async function loadPreNews(isManual = false) {
   const content = document.getElementById('pre-news-content');
-  if (isManual) {
-    content.innerHTML = '<p style="text-align:center; color:#fbbf24; font-size:12px; padding:10px;">⏳ AI tengah analisa... (10-30 detik)</p>';
-  }
+  if (isManual) content.innerHTML = '<p style="text-align:center; color:#fbbf24; font-size:12px; padding:10px;">⏳ AI tengah analisa... (10-30 detik)</p>';
   try {
     const res = await fetch('/api/next-news');
     const data = await res.json();
     if (data.status === 'success' && data.event) {
       const e = data.event;
       content.innerHTML = `<div class="pre-news-event"><span class="pre-news-name">${e.event}</span><span class="pre-news-time">${e.time||'Akan datang'}</span></div><div class="pre-news-data"><div class="pre-news-data-item"><div class="pre-news-data-label">ACTUAL</div><div class="pre-news-data-value actual">${e.actual}</div></div><div class="pre-news-data-item"><div class="pre-news-data-label">FORECAST</div><div class="pre-news-data-value">${e.forecast}</div></div><div class="pre-news-data-item"><div class="pre-news-data-label">PREVIOUS</div><div class="pre-news-data-value">${e.previous}</div></div></div><p class="pre-news-prediction">${data.prediction}</p>`;
-    } else {
-      content.innerHTML = '<p style="text-align:center; color:#64748b; font-size:12px; padding:10px;">Tiada berita. Cuba tekan 🔄 REFRESH.</p>';
-    }
-  } catch (err) {
-    content.innerHTML = '<p style="text-align:center; color:#ef4444; font-size:12px;">❌ Gagal. Cuba lagi.</p>';
-  }
+    } else { content.innerHTML = '<p style="text-align:center; color:#64748b; font-size:12px; padding:10px;">Tiada berita</p>'; }
+  } catch (err) { content.innerHTML = '<p style="text-align:center; color:#ef4444; font-size:12px;">❌ Gagal. Cuba tekan 🔄 REFRESH.</p>'; }
 }
 
 async function loadNews() {
@@ -557,20 +585,13 @@ async function jalankanBacktest() {
       backtestSeries.setData(data.candles);
       backtestSeries.setMarkers(data.markers);
       try {
-        const aiRes = await fetch('/api/ai-analysis', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ price: "Backtest", ema9: "N/A", ema21: "N/A", signal_time: Date.now() / 1000, soalan: `Strategy Win Rate ${data.winRate}% with ${data.totalTrades} signals. Give a brief review in Bahasa Melayu.` }) });
+        const aiRes = await fetch('/api/ai-analysis', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ price: "Backtest", ema9: "N/A", ema21: "N/A", signal_time: Date.now() / 1000, soalan: `Strategy Win Rate ${data.winRate}% with ${data.totalTrades} signals. Brief review BM.` }) });
         const aiData = await aiRes.json();
-        if (aiData.status === 'success' && aiData.analysis) {
-          document.getElementById('bt-ai-comment').innerText = aiData.analysis;
-        } else {
-          document.getElementById('bt-ai-comment').innerText = `📊 Backtest selesai: ${data.winRate}% win rate dari ${data.totalTrades} signal.`;
-        }
-      } catch (err) {
-        document.getElementById('bt-ai-comment').innerText = `📊 Backtest selesai: ${data.winRate}% win rate dari ${data.totalTrades} signal.`;
-      }
+        if (aiData.status === 'success' && aiData.analysis) document.getElementById('bt-ai-comment').innerText = aiData.analysis;
+        else document.getElementById('bt-ai-comment').innerText = `📊 Backtest: ${data.winRate}% win rate, ${data.totalTrades} signals.`;
+      } catch (err) { document.getElementById('bt-ai-comment').innerText = `📊 Backtest: ${data.winRate}% win rate, ${data.totalTrades} signals.`; }
     }
-  } catch (e) {
-    document.getElementById('bt-ai-comment').innerText = "❌ Connection error. Cuba lagi.";
-  }
+  } catch (e) { document.getElementById('bt-ai-comment').innerText = "❌ Connection error."; }
 }
 
 let nodes = [];
@@ -581,9 +602,7 @@ function initGraph() {
   const w = canvas.clientWidth; const h = canvas.clientHeight;
   canvas.width = w; canvas.height = h;
   nodes = [];
-  for (let i = 0; i < 8; i++) {
-    nodes.push({ x: Math.random() * w, y: Math.random() * h, vx: (Math.random() - 0.5) * 0.5, vy: (Math.random() - 0.5) * 0.5, r: 4 + Math.random() * 3, color: ['#a78bfa', '#38bdf8', '#22c55e'][Math.floor(Math.random() * 3)] });
-  }
+  for (let i = 0; i < 8; i++) nodes.push({ x: Math.random() * w, y: Math.random() * h, vx: (Math.random() - 0.5) * 0.5, vy: (Math.random() - 0.5) * 0.5, r: 4 + Math.random() * 3, color: ['#a78bfa', '#38bdf8', '#22c55e'][Math.floor(Math.random() * 3)] });
   edges = [];
   for (let i = 0; i < 12; i++) edges.push({ a: Math.floor(Math.random() * 8), b: Math.floor(Math.random() * 8) });
 }
@@ -617,14 +636,8 @@ function drawGraph() {
   });
   graphAnimFrame = requestAnimationFrame(drawGraph);
 }
-function startGraphAnimation() {
-  initGraph();
-  if (graphAnimFrame) cancelAnimationFrame(graphAnimFrame);
-  drawGraph();
-}
-function stopGraphAnimation() {
-  if (graphAnimFrame) { cancelAnimationFrame(graphAnimFrame); graphAnimFrame = null; }
-}
+function startGraphAnimation() { initGraph(); if (graphAnimFrame) cancelAnimationFrame(graphAnimFrame); drawGraph(); }
+function stopGraphAnimation() { if (graphAnimFrame) { cancelAnimationFrame(graphAnimFrame); graphAnimFrame = null; } }
 
 function setPanel(n, status, desc, val, valColor) {
   const p = document.getElementById('panel-' + n);
@@ -646,10 +659,7 @@ async function runAIDesk() {
   document.getElementById('signal-result-card').style.display = 'none';
   logFeed('[CYCLE] Starting AI Desk analysis...', 'info');
   try {
-    for (let i = 1; i <= 6; i++) {
-      setPanel(i, 'running', 'Processing...');
-      await new Promise(r => setTimeout(r, 400));
-    }
+    for (let i = 1; i <= 6; i++) { setPanel(i, 'running', 'Processing...'); await new Promise(r => setTimeout(r, 400)); }
     const res = await fetch(`/api/ai-desk?symbol=${marketAktif}`);
     const data = await res.json();
     if (data.status === 'success') {
@@ -665,7 +675,7 @@ async function runAIDesk() {
       setPanel(4, 'done', `Lot fixed 0.01`, '0.01 LOT', '');
       logFeed(`[SIZE] Lot 0.01 | Risk $${s.size.riskAmount}`, 'info');
       setPanel(5, 'done', `${s.plan.action}`, s.plan.action, s.plan.action.includes('BUY') ? '' : s.plan.action.includes('SELL') ? 'red' : 'yellow');
-      logFeed(`[PLAN] ${s.plan.action}`, 'success');
+      logFeed(`[PLAN] ${s.plan.action} Entry ${s.plan.entry}`, 'success');
       setPanel(6, 'done', `Ready`, 'READY', '');
       document.getElementById('signal-result-card').style.display = 'block';
       document.getElementById('result-badge').innerText = s.plan.action;
@@ -689,10 +699,8 @@ async function runAIDesk() {
       const isWait = s.plan.action === 'WAIT';
       document.getElementById('btn-take').disabled = isWait;
       document.getElementById('btn-take').classList.toggle('btn-disabled', isWait);
-      logFeed(`[DONE] Plan: ${s.plan.action}`, 'success');
-    } else {
-      logFeed('[ERROR] ' + data.message, 'error');
-    }
+      logFeed(`[DONE] Cycle complete. Plan: ${s.plan.action}`, 'success');
+    } else { logFeed('[ERROR] ' + data.message, 'error'); }
   } catch(e) { logFeed('[ERROR] ' + e.message, 'error'); }
   btn.disabled = false; btn.innerText = '⚡ RUN AI DESK CYCLE';
 }
@@ -784,11 +792,9 @@ function resetHistory() {
   logFeed('[RESET] History cleared', 'info');
 }
 
-// ===== AUTO REFRESH (PERLAHAN — JIMAT KUOTA) =====
-setInterval(dapatkanSignal, 60000);        // 60 detik
-setInterval(dapatkanMarketData, 60000);    // 60 detik
-setInterval(dapatkanCandleData, 300000);   // 5 minit
-
+setInterval(dapatkanSignal, 60000);
+setInterval(dapatkanMarketData, 60000);
+setInterval(dapatkanCandleData, 300000);
 dapatkanSignal();
 dapatkanMarketData();
 renderTracker();
