@@ -32,11 +32,6 @@ body { background: #050810; color: var(--text-white); font-family: -apple-system
 select { margin-top: 15px; padding: 10px 15px; border-radius: 10px; background: #141e30; color: white; border: 1px solid var(--border); font-weight: 700; width: 85%; font-size: 13px; }
 option { color: white; font-size: 13px; }
 
-.tf-toggle { display: flex; justify-content: center; gap: 8px; margin-top: 12px; padding: 0 15px; }
-.tf-btn { flex: 1; padding: 10px 20px; border-radius: 25px; border: 2px solid var(--border); background: var(--bg-card); color: var(--text-gray); font-weight: 900; font-size: 13px; letter-spacing: 2px; cursor: pointer; transition: all 0.3s ease; }
-.tf-btn:hover { background: rgba(56,189,248,0.15); }
-.tf-btn.active { background: linear-gradient(135deg, #38bdf8, #0ea5e9); color: white; border-color: #38bdf8; box-shadow: 0 0 25px rgba(56,189,248,0.6); animation: pulseGlowBlue 2s infinite; }
-
 .screen { display: none; padding: 15px; }
 .screen.active { display: block; animation: fadeIn 0.4s ease-out; }
 .glass-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 18px; padding: 18px; margin-bottom: 15px; box-shadow: 0 8px 32px rgba(0,0,0,0.4); }
@@ -62,6 +57,23 @@ option { color: white; font-size: 13px; }
 .filter-pass { background: rgba(34, 197, 94, 0.15); color: #4ade80; border: 1px solid rgba(34, 197, 94, 0.5); }
 .filter-fail { background: rgba(239, 68, 68, 0.15); color: #fca5a5; border: 1px solid rgba(239, 68, 68, 0.5); }
 .filter-info { background: rgba(251, 191, 36, 0.15); color: #fbbf24; border: 1px solid rgba(251, 191, 36, 0.5); }
+
+.tf-status { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 15px 0; }
+.tf-item { text-align: center; padding: 12px 8px; border-radius: 12px; border: 2px solid var(--border); background: #0a1525; }
+.tf-item.buy { background: rgba(34,197,94,0.15); border-color: #22c55e; }
+.tf-item.sell { background: rgba(239,68,68,0.15); border-color: #ef4444; }
+.tf-item.wait { background: rgba(148,163,184,0.1); border-color: #475569; }
+.tf-label { font-size: 10px; font-weight: 900; color: #94a3b8; letter-spacing: 1px; display: block; margin-bottom: 4px; }
+.tf-value { font-size: 14px; font-weight: 900; }
+.tf-value.buy { color: #4ade80; }
+.tf-value.sell { color: #fca5a5; }
+.tf-value.wait { color: #94a3b8; }
+.tf-rsi { font-size: 9px; color: #64748b; margin-top: 2px; }
+
+.consensus-badge { display: inline-block; padding: 8px 18px; border-radius: 20px; font-size: 12px; font-weight: 900; letter-spacing: 2px; margin: 10px auto; }
+.consensus-A { background: linear-gradient(135deg, #fbbf24, #f59e0b); color: #050810; box-shadow: 0 0 30px rgba(251,191,36,0.5); }
+.consensus-B { background: rgba(56,189,248,0.15); color: #38bdf8; border: 1px solid #38bdf8; }
+.consensus-SKIP { background: rgba(148,163,184,0.1); color: #94a3b8; border: 1px solid #475569; }
 
 .sltp-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-top: 12px; }
 .sltp-item { text-align: center; background: #0a1525; padding: 10px 6px; border-radius: 10px; border: 1px solid var(--border); }
@@ -262,11 +274,6 @@ td { padding: 12px; border-bottom: 1px solid var(--border); }
     <option value="NAS100">NAS100 (Nasdaq)</option>
     <option value="US30">US30 (Dow Jones)</option>
   </select>
-  <div class="tf-toggle">
-    <button id="tf-m1" class="tf-btn" onclick="tukarTF('1min', this)">M1</button>
-    <button id="tf-m5" class="tf-btn active" onclick="tukarTF('5min', this)">M5</button>
-    <button id="tf-m15" class="tf-btn" onclick="tukarTF('15min', this)">M15</button>
-  </div>
 </div>
 
 <!-- SCREEN 1: SIGNAL -->
@@ -277,6 +284,29 @@ td { padding: 12px; border-bottom: 1px solid var(--border); }
   </div>
   <div id="signal-box" class="signal-box wait">WAIT</div>
   <div id="lock-status" style="text-align:center; margin-top:-10px; margin-bottom:10px;"></div>
+  <div id="consensus-display" style="text-align:center;"></div>
+  
+  <div class="glass-card">
+    <p class="card-title">📊 3 TIMEFRAME CONFIRMATION</p>
+    <div class="tf-status">
+      <div class="tf-item" id="tf-m1-box">
+        <span class="tf-label">M1</span>
+        <span class="tf-value" id="tf-m1-val">-</span>
+        <div class="tf-rsi" id="tf-m1-rsi">-</div>
+      </div>
+      <div class="tf-item" id="tf-m5-box">
+        <span class="tf-label">M5</span>
+        <span class="tf-value" id="tf-m5-val">-</span>
+        <div class="tf-rsi" id="tf-m5-rsi">-</div>
+      </div>
+      <div class="tf-item" id="tf-m15-box">
+        <span class="tf-label">M15</span>
+        <span class="tf-value" id="tf-m15-val">-</span>
+        <div class="tf-rsi" id="tf-m15-rsi">-</div>
+      </div>
+    </div>
+  </div>
+  
   <div id="pattern-display"></div>
   <div id="filter-status" style="text-align: center; margin: 15px 0;"></div>
   
@@ -498,7 +528,6 @@ td { padding: 12px; border-bottom: 1px solid var(--border); }
 </nav>
 <script>
 let marketAktif = 'XAU/USD';
-let timeframeAktif = localStorage.getItem('borneo_tf') || '5min';
 let chart = null, candleSeries = null;
 let backtestChart = null, backtestSeries = null;
 let newsLoaded = false;
@@ -506,27 +535,6 @@ let currentDeskPlan = null;
 let trades = JSON.parse(localStorage.getItem('borneo_trades') || '[]');
 const PIP_VALUE = 0.10;
 let graphAnimFrame = null;
-
-// Initialize TF button from saved
-document.addEventListener('DOMContentLoaded', () => {
-  const btnMap = { '1min': 'tf-m1', '5min': 'tf-m5', '15min': 'tf-m15' };
-  const btnId = btnMap[timeframeAktif];
-  if (btnId) {
-    document.querySelectorAll('.tf-btn').forEach(b => b.classList.remove('active'));
-    const btn = document.getElementById(btnId);
-    if (btn) btn.classList.add('active');
-  }
-});
-
-function tukarTF(tf, btn) {
-  timeframeAktif = tf;
-  localStorage.setItem('borneo_tf', tf);
-  document.querySelectorAll('.tf-btn').forEach(b => b.classList.remove('active'));
-  btn.classList.add('active');
-  console.log('📊 Timeframe tukar:', tf);
-  dapatkanSignal();
-  dapatkanCandleData();
-}
 
 function switchTab(tabName, element) {
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
@@ -572,10 +580,10 @@ async function loadDeskStats() {
   } catch(e) {}
 }
 
-// ===== SIGNAL (dengan COOLDOWN + TF) =====
+// ===== SIGNAL (dengan 3 TF + COOLDOWN) =====
 async function dapatkanSignal() {
   try {
-    const res = await fetch(`/api/signal?symbol=${marketAktif}&tf=${timeframeAktif}`);
+    const res = await fetch(`/api/signal?symbol=${marketAktif}`);
     const data = await res.json();
 
     document.getElementById('main-price-signal').innerText = data.harga;
@@ -585,7 +593,7 @@ async function dapatkanSignal() {
     document.getElementById('rsi').innerText = data.rsi;
     document.getElementById('atr').innerText = data.atrPercent + '%';
     document.getElementById('session').innerText = data.session;
-    document.getElementById('status').innerText = "Updated: " + data.masa + " | TF: " + (data.tf || timeframeAktif);
+    document.getElementById('status').innerText = "Updated: " + data.masa;
 
     const spreadEl = document.getElementById('spread');
     spreadEl.innerText = data.spread || '0';
@@ -593,6 +601,31 @@ async function dapatkanSignal() {
     const th = marketAktif.includes('XAU') ? 0.30 : marketAktif.includes('XAG') ? 0.02 : 0.0003;
     spreadEl.style.color = sNum < th ? '#22c55e' : sNum < th*2 ? '#fbbf24' : '#ef4444';
     document.getElementById('bid').innerText = data.bid || '-';
+
+    // ===== 3 TF DISPLAY =====
+    if (data.tf3) {
+      const tf3 = data.tf3;
+      ['m1', 'm5', 'm15'].forEach(k => {
+        const box = document.getElementById(`tf-${k}-box`);
+        const val = document.getElementById(`tf-${k}-val`);
+        const rsiEl = document.getElementById(`tf-${k}-rsi`);
+        if (box && val) {
+          const sig = tf3[k].toLowerCase();
+          box.className = 'tf-item ' + sig;
+          val.className = 'tf-value ' + sig;
+          val.innerText = tf3[k];
+        }
+        if (rsiEl) rsiEl.innerText = 'RSI: ' + tf3[`${k}rsi`];
+      });
+
+      // Consensus badge
+      const consensusDisplay = document.getElementById('consensus-display');
+      if (tf3.grade !== 'SKIP') {
+        consensusDisplay.innerHTML = `<span class="consensus-badge consensus-${tf3.grade.replace('+', '')}">${tf3.grade === 'A+' ? '🚀' : '⭐'} ${tf3.consensus} — ${tf3.confirmCount}/3 CONFIRM</span>`;
+      } else {
+        consensusDisplay.innerHTML = `<span class="consensus-badge consensus-SKIP">⏸️ ${tf3.consensus} — ${tf3.confirmCount}/3 (SKIP)</span>`;
+      }
+    }
 
     let badges = `<span class="filter-badge ${!data.filtered ? 'filter-pass' : 'filter-fail'}">SIGNAL ${data.filtered ? 'FILTERED' : 'ACTIVE'}</span>`;
     if (data.reasons && data.reasons.length > 0) {
@@ -676,7 +709,6 @@ async function dapatkanMarketData() {
   } catch (e) {}
 }
 
-// ===== NEWS COUNTDOWN =====
 async function loadNewsPrediction() {
   try {
     const res = await fetch('/api/news-prediction');
@@ -737,7 +769,7 @@ async function dapatkanCandleData() {
     window.addEventListener('resize', () => chart.applyOptions({ width: c.clientWidth }));
   }
   try {
-    const res = await fetch(`/api/candles?symbol=${marketAktif}&tf=${timeframeAktif}`);
+    const res = await fetch(`/api/candles?symbol=${marketAktif}&tf=5min`);
     const data = await res.json();
     if (data.status === "success") candleSeries.setData(data.candles);
   } catch (e) {}
@@ -1011,10 +1043,10 @@ function resetHistory() {
 }
 
 // ===== AUTO REFRESH =====
-setInterval(dapatkanSignal, 180000);       // 3 minit
-setInterval(dapatkanMarketData, 180000);   // 3 minit
-setInterval(dapatkanCandleData, 600000);   // 10 minit
-setInterval(loadNewsPrediction, 120000);   // 2 minit
+setInterval(dapatkanSignal, 180000);
+setInterval(dapatkanMarketData, 180000);
+setInterval(dapatkanCandleData, 600000);
+setInterval(loadNewsPrediction, 120000);
 
 dapatkanSignal();
 dapatkanMarketData();
