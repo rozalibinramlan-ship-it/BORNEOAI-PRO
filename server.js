@@ -146,6 +146,7 @@ function getMarketSession() {
     return "CLOSED";
 }
 
+// ===== SNR =====
 function detectSNR(candles) {
     if (candles.length < 20) return { resistance: 0, support: 0, poc: 0 };
     const recent = candles.slice(-50);
@@ -161,7 +162,151 @@ function detectSNR(candles) {
     return { resistance, support, poc };
 }
 
-// ===== FORMAT MASA LOCK (FIX) =====
+// ===== DETECT FVG (Fair Value Gap) =====
+function detectFVG(candles) {
+    if (!candles || candles.length < 3) return { zones: [] };
+    const zones = [];
+    const recent = candles.slice(-20);
+    
+    for (let i = 1; i < recent.length - 1; i++) {
+        const c1 = recent[i - 1];
+        const c2 = recent[i];
+        const c3 = recent[i + 1];
+        
+        // Bullish FVG: gap antara c1.high dan c3.low
+        if (c3.low > c1.high) {
+            zones.push({
+                type: 'BULLISH',
+                top: c3.low,
+                bottom: c1.high,
+                mid: (c3.low + c1.high) / 2,
+                time: c3.time
+            });
+        }
+        
+        // Bearish FVG: gap antara c3.high dan c1.low
+        if (c3.high < c1.low) {
+            zones.push({
+                type: 'BEARISH',
+                top: c1.low,
+                bottom: c3.high,
+                mid: (c1.low + c3.high) / 2,
+                time: c3.time
+            });
+        }
+    }
+    
+    const lastPrice = candles[candles.length - 1].close;
+    zones.sort((a, b) => Math.abs(a.mid - lastPrice) - Math.abs(b.mid - lastPrice));
+    
+    return { zones: zones.slice(0, 3) };
+}
+
+// ===== DETECT POC (Point of Control) =====
+function detectPOC(candles, bins = 20) {
+    if (!candles || candles.length < 20) return null;
+    const recent = candles.slice(-50);
+    const highs = recent.map(c => c.high);
+    const lows = recent.map(c => c.low);
+    const maxPrice = Math.max(...highs);
+    const minPrice = Math.min(...lows);
+    const range = maxPrice - minPrice;
+    const binSize = range / bins;
+    
+    const volumeMap = new Array(bins).fill(0);
+    
+    recent.forEach(c => {
+        const midBin = Math.floor((c.close - minPrice) / binSize);
+        if (midBin >= 0 && midBin < bins) {
+            const vol = Math.abs(c.close - c.open) * 1000;
+            volumeMap[midBin] += vol;
+        }
+    });
+    
+    let maxVol = 0;
+    let pocBin = 0;
+    for (let i = 0; i < volumeMap.length; i++) {
+        if (volumeMap[i] > maxVol) {
+            maxVol = volumeMap[i];
+            pocBin = i;
+        }
+    }
+    
+    const poc = minPrice + (pocBin * binSize) + (binSize / 2);
+    return { poc, minPrice, maxPrice, pocVolume: maxVol };
+}
+
+// ===== CEK SENTUH SNR / FVG / POC =====
+function checkLevelTouch(price, snr, fvgZones, pocData, threshold = 0.0005) {
+    const touched = [];
+    
+    // SNR
+    const nearSupport = Math.abs(price - snr.support) / price < threshold;
+    const nearResistance = Math.abs(price - snr.resistance) / price < threshold;
+    if (nearSupport) touched.push({ type: 'SNR_SUPPORT', level: snr.support });
+    if (nearResistance) touched.push({ type: 'SNR_RESISTANCE', level: snr.resistance });
+    
+    // FVG
+    if (fvgZones && fvgZones.length > 0) {
+        for (const zone of fvgZones) {
+            if (price >= zone.bottom && price <= zone.top) {
+                touched.push({ type: 'FVG_' + zone.type, level: zone.mid });
+                break;
+            }
+        }
+    }
+    
+    // POC
+    if (pocData && pocData.poc) {
+        if (Math.abs(price - pocData.poc) / price < threshold) {
+            touched.push({ type: 'POC', level: pocData.poc });
+        }
+    }
+    
+    return { touched: touched.length > 0, levels: touched };
+}
+
+// ===== CEK CANDLE CONFIRM (BUKAN WICK) =====
+function isCandleConfirm(candles, signal) {
+    if (!candles || candles.length < 2) return { confirm: false, reason: "Data tak cukup" };
+    
+    // Guna candle CLOSED (bukan live) untuk confirm
+    const c = candles[candles.length - 2];
+    const body = Math.abs(c.close - c.open);
+    const range = c.high - c.low;
+    const upperWick = c.high - Math.max(c.open, c.close);
+    const lowerWick = Math.min(c.open, c.close) - c.low;
+    const isBullish = c.close > c.open;
+    const isBearish = c.close < c.open;
+    const bodyPct = range > 0 ? body / range : 0;
+    
+    const wickTotal = upperWick + lowerWick;
+    const isWickDominant = wickTotal > body * 2;
+    const isDoji = bodyPct < 0.15;
+    const isSpinningTop = bodyPct < 0.3 && upperWick > body && lowerWick > body;
+    
+    const hasBody = bodyPct > 0.4;
+    const isSolid = !isWickDominant && !isDoji && !isSpinningTop;
+    
+    // SELL signal: candle kena merah solid
+    if (signal === "SELL") {
+        if (!isBearish) return { confirm: false, reason: "Candle closed BUKAN merah" };
+        if (!hasBody) return { confirm: false, reason: "Body candle kecil (bukan solid)" };
+        if (!isSolid) return { confirm: false, reason: "Candle wick/doji (tunggu confirm)" };
+        return { confirm: true, reason: "Candle merah solid" };
+    }
+    
+    // BUY signal: candle kena hijau solid
+    if (signal === "BUY") {
+        if (!isBullish) return { confirm: false, reason: "Candle closed BUKAN hijau" };
+        if (!hasBody) return { confirm: false, reason: "Body candle kecil (bukan solid)" };
+        if (!isSolid) return { confirm: false, reason: "Candle wick/doji (tunggu confirm)" };
+        return { confirm: true, reason: "Candle hijau solid" };
+    }
+    
+    return { confirm: false, reason: "Signal tidak jelas" };
+}
+
 function formatLockAge(minutes) {
     if (minutes < 60) return `${minutes} minit`;
     const h = Math.floor(minutes / 60);
@@ -329,7 +474,7 @@ async function getTick(symbol) {
 }
 
 const ohlcCache = new Map();
-const OHLC_CACHE_MS = 180000;  // 3 minit cache
+const OHLC_CACHE_MS = 180000;
 
 async function getOHLC(symbol, interval = '15m', limit = 100) {
     const cacheKey = `${symbol}_${interval}_${limit}`;
@@ -385,7 +530,18 @@ async function getOHLC(symbol, interval = '15m', limit = 100) {
     throw new Error(`Semua ${totalKeys} API key gagal`);
 }
 
-// ===== 4 TIMEFRAME CONFIRMATION =====
+function analyzeCandles(candles) {
+    if (!candles || candles.length < 20) return null;
+    const closes = candles.map(c => c.close);
+    const ema9 = calculateEMA(closes, 9);
+    const ema21 = calculateEMA(closes, 21);
+    const rsi = calculateRSI(closes, 14);
+    let sig = ema9 > ema21 ? 'BUY' : 'SELL';
+    if ((sig === 'BUY' && rsi > 75) || (sig === 'SELL' && rsi < 25)) sig = 'WAIT';
+    return { signal: sig, rsi: rsi.toFixed(1) };
+}
+
+// ===== 4 TIMEFRAME (DENGAN RETRY) =====
 async function checkMultiTimeframe(symbol) {
     const timeframes = [
         { tf: '5min', label: 'M5' },
@@ -394,7 +550,10 @@ async function checkMultiTimeframe(symbol) {
         { tf: '4h', label: 'H4' }
     ];
     const results = [];
+    
     for (const item of timeframes) {
+        let tfResult = null;
+        
         try {
             const cacheKey = `${symbol}_${item.tf}_50`;
             const cached = ohlcCache.get(cacheKey);
@@ -402,23 +561,28 @@ async function checkMultiTimeframe(symbol) {
             if (cached && Date.now() - cached.time < OHLC_CACHE_MS) {
                 candles = cached.data;
             } else {
-                await new Promise(r => setTimeout(r, 1200));  // delay 1.2s
+                await new Promise(r => setTimeout(r, 1200));
                 candles = await getOHLC(symbol, item.tf, 50);
             }
-            if (candles.length < 20) { 
-                results.push({ tf: item.tf, label: item.label, signal: 'WAIT', rsi: '-' }); 
-                continue; 
+            tfResult = analyzeCandles(candles);
+        } catch (e) {
+            console.log(`MTF ${item.label} attempt 1 fail: ${e.message}`);
+        }
+        
+        if (!tfResult) {
+            try {
+                await new Promise(r => setTimeout(r, 2000));
+                const candles = await getOHLC(symbol, item.tf, 50);
+                tfResult = analyzeCandles(candles);
+            } catch (e2) {
+                console.log(`MTF ${item.label} attempt 2 fail: ${e2.message}`);
             }
-            const closes = candles.map(c => c.close);
-            const ema9 = calculateEMA(closes, 9);
-            const ema21 = calculateEMA(closes, 21);
-            const rsi = calculateRSI(closes, 14);
-            let sig = ema9 > ema21 ? 'BUY' : 'SELL';
-            if ((sig === 'BUY' && rsi > 75) || (sig === 'SELL' && rsi < 25)) sig = 'WAIT';
-            results.push({ tf: item.tf, label: item.label, signal: sig, rsi: rsi.toFixed(1) });
-        } catch (e) { 
-            console.log(`MTF ${item.label} fail: ${e.message}`);
-            results.push({ tf: item.tf, label: item.label, signal: 'WAIT', rsi: '-' }); 
+        }
+        
+        if (tfResult) {
+            results.push({ tf: item.tf, label: item.label, signal: tfResult.signal, rsi: tfResult.rsi });
+        } else {
+            results.push({ tf: item.tf, label: item.label, signal: 'WAIT', rsi: '-' });
         }
     }
     
@@ -447,8 +611,8 @@ async function checkMultiTimeframe(symbol) {
 // ===== SIGNAL LOCK + COOLDOWN =====
 const signalLock = new Map();
 const signalCooldown = new Map();
-const COOLDOWN_MS = 5 * 60 * 1000;       // 5 minit
-const MAX_LOCK_MS = 1 * 60 * 60 * 1000;  // 1 jam max lock
+const COOLDOWN_MS = 5 * 60 * 1000;
+const MAX_LOCK_MS = 1 * 60 * 60 * 1000;
 const patternHistory = [];
 const tradeJournal = [];
 let lastNotifiedSignal = null;
@@ -478,8 +642,8 @@ function checkCandleAgainstSignal(candles, signal) {
     const isBullish = last.close > last.open;
     const isBearish = last.close < last.open;
     
-    if (signal === "SELL" && isBullish) return { against: true, reason: "Candle bullish lawan SELL" };
-    if (signal === "BUY" && isBearish) return { against: true, reason: "Candle bearish lawan BUY" };
+    if (signal === "SELL" && isBullish) return { against: true, reason: "Candle live TIDAK merah" };
+    if (signal === "BUY" && isBearish) return { against: true, reason: "Candle live TIDAK hijau" };
     return { against: false };
 }
 
@@ -545,6 +709,8 @@ app.get('/api/signal', async (req, res) => {
         const atrPercent = (atr / harga) * 100;
         const session = getMarketSession();
         const snr = detectSNR(candles);
+        const fvgData = detectFVG(candles);
+        const pocData = detectPOC(candles);
         const lastPattern = detectLastCandlePattern(candles);
         
         let spread = 0, bid = 0, ask = 0;
@@ -565,6 +731,8 @@ app.get('/api/signal', async (req, res) => {
         let isLocked = false;
         let resetPattern = null;
         let lockAgeMin = 0;
+        let levelCheck = { touched: false, levels: [] };
+        let confirmCheck = { confirm: false, reason: 'N/A' };
 
         if (isCooldown) {
             reasons.push(`Cooldown: ${cooldownRemain} minit lagi`);
@@ -584,7 +752,7 @@ app.get('/api/signal', async (req, res) => {
                     signalCooldown.set(symbol, { time: Date.now() });
                     resetPattern = candleCheck.reason;
                 } else if (mtfOverride) {
-                    console.log(`🔓 Reset — 4TF override (${mtf.consensus} vs ${existingLock.direction})`);
+                    console.log(`🔓 Reset — 4TF override`);
                     signalLock.delete(symbol);
                     signalCooldown.set(symbol, { time: Date.now() });
                     resetPattern = `4TF override: ${mtf.consensus}`;
@@ -603,6 +771,7 @@ app.get('/api/signal', async (req, res) => {
             }
         }
 
+        // ===== SIGNAL BARU =====
         if (!isLocked && !isCooldown) {
             const mtfSignal = mtf.consensus;
             const mtfGrade = mtf.grade;
@@ -611,18 +780,41 @@ app.get('/api/signal', async (req, res) => {
                 filtered = true;
                 reasons.push(`4TF: ${mtf.agreement} (perlu ≥3/4)`);
             } else {
+                // Cek candle LIVE
                 const candleCheck = checkCandleAgainstSignal(candles, mtfSignal);
                 if (candleCheck.against) {
                     filtered = true;
                     reasons.push(`⚠️ ${candleCheck.reason}`);
                 } else {
-                    signal = mtfSignal;
-                    warna = signal === "BUY" ? "#22c55e" : "#ef4444";
-                    signalLock.set(symbol, { direction: signal, entry: harga, lockedAt: Date.now(), timestamp: new Date().toISOString() });
-                    lockedEntry = harga;
-                    isLocked = true;
-                    lockAgeMin = 0;
-                    reasons.push(`4TF: ${mtf.agreement} → ${mtfGrade}`);
+                    // Cek sentuh SNR/FVG/POC
+                    levelCheck = checkLevelTouch(harga, snr, fvgData.zones, pocData, 0.0005);
+                    
+                    if (!levelCheck.touched) {
+                        filtered = true;
+                        const distSNR = Math.min(
+                            Math.abs(harga - snr.support) / harga * 100,
+                            Math.abs(harga - snr.resistance) / harga * 100
+                        ).toFixed(2);
+                        reasons.push(`⏳ Tunggu sentuh level (SNR ${distSNR}% jauh)`);
+                    } else {
+                        // Cek candle CONFIRM (bukan wick)
+                        confirmCheck = isCandleConfirm(candles, mtfSignal);
+                        
+                        if (!confirmCheck.confirm) {
+                            filtered = true;
+                            reasons.push(`⚠️ Sentuh level tapi candle ${confirmCheck.reason}`);
+                        } else {
+                            // SEMUA LULUS → SIGNAL KELUAR
+                            signal = mtfSignal;
+                            warna = signal === "BUY" ? "#22c55e" : "#ef4444";
+                            signalLock.set(symbol, { direction: signal, entry: harga, lockedAt: Date.now(), timestamp: new Date().toISOString() });
+                            lockedEntry = harga;
+                            isLocked = true;
+                            lockAgeMin = 0;
+                            const levelNames = levelCheck.levels.map(l => l.type).join(', ');
+                            reasons.push(`4TF: ${mtf.agreement} → ${mtfGrade} | Sentuh: ${levelNames} | ${confirmCheck.reason}`);
+                        }
+                    }
                 }
             }
         }
@@ -658,11 +850,15 @@ app.get('/api/signal', async (req, res) => {
                 consensus: mtf.consensus,
                 confidence: mtf.confidence
             },
+            level_check: levelCheck,
+            candle_confirm: confirmCheck,
             cooldown: { active: isCooldown, remainMin: cooldownRemain },
             ema9: ema9.toFixed(decimal), ema21: ema21.toFixed(decimal), ema50: ema50.toFixed(decimal),
             rsi: rsi.toFixed(1), atrPercent: atrPercent.toFixed(3), session,
             spread: spread.toFixed(decimal), bid: bid.toFixed(decimal), ask: ask.toFixed(decimal),
             snr: { support: snr.support.toFixed(decimal), resistance: snr.resistance.toFixed(decimal), poc: snr.poc.toFixed(decimal) },
+            fvg_zones: fvgData.zones.map(z => ({ type: z.type, top: z.top.toFixed(decimal), bottom: z.bottom.toFixed(decimal) })),
+            poc_price: pocData ? pocData.poc.toFixed(decimal) : '-',
             candle_pattern: { pattern: lastPattern.pattern, bias: lastPattern.bias, strength: lastPattern.strength, icon: lastPattern.icon },
             sltp: { sl: sltp.sl, tp1: sltp.tp1, tp2: sltp.tp2, tp3: sltp.tp3, slPips: sltp.slPips, tp1Pips: sltp.tp1Pips, tp2Pips: sltp.tp2Pips, tp3Pips: sltp.tp3Pips },
             risk_mgmt: riskMgmt, reset_pattern: resetPattern, filtered, reasons, masa: new Date().toLocaleTimeString(), status: "LIVE"
@@ -673,7 +869,7 @@ app.get('/api/signal', async (req, res) => {
         } else {
             console.error("/api/signal ERROR:", error.message);
         }
-        res.json({ symbol, harga: "0.00", harga_entry: "0.00", signal: "WAIT", warna: "#94a3b8", locked: false, mtf: { timeframes: [{ label: 'M5', signal: 'WAIT', rsi: '-' }, { label: 'M15', signal: 'WAIT', rsi: '-' }, { label: 'H1', signal: 'WAIT', rsi: '-' }, { label: 'H4', signal: 'WAIT', rsi: '-' }], agreement: '0/4', grade: 'SKIP', consensus: 'WAIT', buyCount: 0, sellCount: 0, confidence: 'LOW' }, ema9: "0", ema21: "0", ema50: "0", rsi: "50", atrPercent: "0", session: "CLOSED", spread: "0", bid: "0", ask: "0", filtered: true, reasons: ["Data Error"], masa: new Date().toLocaleTimeString(), status: "ERROR" });
+        res.json({ symbol, harga: "0.00", harga_entry: "0.00", signal: "WAIT", warna: "#94a3b8", locked: false, mtf: { timeframes: [{ label: 'M5', signal: 'WAIT', rsi: '-' }, { label: 'M15', signal: 'WAIT', rsi: '-' }, { label: 'H1', signal: 'WAIT', rsi: '-' }, { label: 'H4', signal: 'WAIT', rsi: '-' }], agreement: '0/4', grade: 'SKIP', consensus: 'WAIT', buyCount: 0, sellCount: 0, confidence: 'LOW' }, level_check: { touched: false, levels: [] }, candle_confirm: { confirm: false, reason: 'N/A' }, ema9: "0", ema21: "0", ema50: "0", rsi: "50", atrPercent: "0", session: "CLOSED", spread: "0", bid: "0", ask: "0", filtered: true, reasons: ["Data Error"], masa: new Date().toLocaleTimeString(), status: "ERROR" });
     }
 });
 
@@ -918,7 +1114,6 @@ app.get('/api/ai-desk', async (req, res) => {
     } catch (e) { res.status(500).json({ status: "error", message: e.message }); }
 });
 
-// ===== AUTO CHECK SIGNAL & SEND TELEGRAM =====
 async function checkSignalAndNotify() {
     if (!TELEGRAM_BOT_TOKEN || !TELEGRAM_CHAT_ID) return;
     try {
@@ -933,10 +1128,19 @@ async function checkSignalAndNotify() {
         const atr = calculateATR(candles, 14);
         const session = getMarketSession();
         const rsi = calculateRSI(closes, 14);
+        const snr = detectSNR(candles);
+        const fvgData = detectFVG(candles);
+        const pocData = detectPOC(candles);
         
         if (session === 'CLOSED') return;
         const candleCheck = checkCandleAgainstSignal(candles, mtf.consensus);
         if (candleCheck.against) return;
+        
+        const levelCheck = checkLevelTouch(harga, snr, fvgData.zones, pocData, 0.0005);
+        if (!levelCheck.touched) return;
+        
+        const confirmCheck = isCandleConfirm(candles, mtf.consensus);
+        if (!confirmCheck.confirm) return;
         
         const lastCandleTime = candles[candles.length - 1].timestamp;
         const signalKey = `${symbol}_${mtf.consensus}_${mtf.grade}_${lastCandleTime}`;
@@ -952,10 +1156,11 @@ async function checkSignalAndNotify() {
         signalCooldown.set('TELEGRAM_' + symbol, { time: now });
         
         const tfLines = mtf.timeframes.map(t => ` ${t.label}: ${t.signal} (RSI ${t.rsi})`).join('\n');
-        const msg = `🚀 <b>SIGNAL ${mtf.grade} (${mtf.agreement})</b>\n━━━━━━━━━━━━━━━━\n📊 ${symbol} — <b>${mtf.consensus}</b>\n🎯 Entry: ${harga.toFixed(2)}\n\n🛑 SL: ${sltp.sl}\n✅ TP1: ${sltp.tp1}\n✅ TP2: ${sltp.tp2}\n\n📊 4TF:\n${tfLines}\n\n📈 RSI: ${rsi.toFixed(1)} | ⏰ ${session}\n💰 Lot: ${risk.lotSize} | Risk: $${risk.riskAmount}`;
+        const levelNames = levelCheck.levels.map(l => l.type).join(', ');
+        const msg = `🚀 <b>SIGNAL ${mtf.grade} (${mtf.agreement})</b>\n━━━━━━━━━━━━━━━━\n📊 ${symbol} — <b>${mtf.consensus}</b>\n🎯 Entry: ${harga.toFixed(2)}\n\n🛑 SL: ${sltp.sl}\n✅ TP1: ${sltp.tp1}\n✅ TP2: ${sltp.tp2}\n\n📊 4TF:\n${tfLines}\n\n📍 Sentuh: ${levelNames}\n✅ Candle: ${confirmCheck.reason}\n\n📈 RSI: ${rsi.toFixed(1)} | ⏰ ${session}\n💰 Lot: ${risk.lotSize} | Risk: $${risk.riskAmount}`;
         
         await sendTelegram(msg);
-        console.log(`📱 Telegram sent: ${mtf.grade} signal`);
+        console.log(`📱 Telegram sent: ${mtf.grade} | ${levelNames}`);
     } catch (e) {
         if (e.message && e.message.includes('429')) {
             console.log("⏳ Rate limit — skip this cycle");
@@ -965,17 +1170,16 @@ async function checkSignalAndNotify() {
     }
 }
 
-// ===== AUTO SERVICE =====
 setInterval(() => {
     newsService.checkAndAlert();
 }, 60000);
 
 setInterval(() => {
     checkSignalAndNotify();
-}, 300000);  // 5 minit
+}, 300000);
 
 console.log('✅ News alert service berjalan (1 minit)');
 console.log('✅ Signal alert service berjalan (5 minit)');
 
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log('🚀 Server berjalan di port ' + PORT + ' | LOCK 1 JAM + TF LIVE ANTI-429'));
+app.listen(PORT, () => console.log('🚀 Server berjalan di port ' + PORT + ' | SENTUH SNR/FVG/POC + CANDLE CONFIRM'));
