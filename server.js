@@ -40,7 +40,7 @@ function getCurrentKey() {
 function switchKey() {
     if (TWELVEDATA_KEYS.length > 1) {
         currentKeyIndex = (currentKeyIndex + 1) % TWELVEDATA_KEYS.length;
-        console.log(`🔄 Switch ke API key #${currentKeyIndex + 1} (dari ${TWELVEDATA_KEYS.length} key)`);
+        console.log(`🔄 Switch ke API key #${currentKeyIndex + 1}`);
     }
 }
 
@@ -138,6 +138,20 @@ function calculateEMA(closes, period) {
     return e;
 }
 
+function calculateSMA(values, period) {
+    if (values.length < period) return 0;
+    const slice = values.slice(-period);
+    return slice.reduce((a, b) => a + b, 0) / period;
+}
+
+function calculateStdDev(values, period) {
+    if (values.length < period) return 0;
+    const slice = values.slice(-period);
+    const mean = slice.reduce((a, b) => a + b, 0) / period;
+    const variance = slice.reduce((s, v) => s + Math.pow(v - mean, 2), 0) / period;
+    return Math.sqrt(variance);
+}
+
 function getMarketSession() {
     const h = new Date().getUTCHours();
     if (h >= 7 && h < 16) return "LONDON";
@@ -146,8 +160,9 @@ function getMarketSession() {
     return "CLOSED";
 }
 
+// ===== DETECT SNR (ZONES) =====
 function detectSNR(candles) {
-    if (candles.length < 20) return { resistance: 0, support: 0, poc: 0 };
+    if (candles.length < 20) return { resistance: 0, support: 0, poc: 0, zones: [] };
     const recent = candles.slice(-50);
     const last = recent[recent.length - 1].close;
     const highs = recent.map(c => c.high);
@@ -161,57 +176,127 @@ function detectSNR(candles) {
     return { resistance, support, poc };
 }
 
-function calculateSLTP(direction, entry, atr, symbol) {
-    const slDistance = atr * 1.5;
-    const tp1Distance = atr * 1.0;
-    const tp2Distance = atr * 2.0;
-    const tp3Distance = atr * 3.0;
-    const pipSize = 0.01;
-
-    if (direction === "BUY") {
-        return {
-            sl: (entry - slDistance).toFixed(getDecimal(symbol)),
-            tp1: (entry + tp1Distance).toFixed(getDecimal(symbol)),
-            tp2: (entry + tp2Distance).toFixed(getDecimal(symbol)),
-            tp3: (entry + tp3Distance).toFixed(getDecimal(symbol)),
-            slPips: Math.round(slDistance / pipSize),
-            tp1Pips: Math.round(tp1Distance / pipSize),
-            tp2Pips: Math.round(tp2Distance / pipSize),
-            tp3Pips: Math.round(tp3Distance / pipSize)
-        };
-    } else {
-        return {
-            sl: (entry + slDistance).toFixed(getDecimal(symbol)),
-            tp1: (entry - tp1Distance).toFixed(getDecimal(symbol)),
-            tp2: (entry - tp2Distance).toFixed(getDecimal(symbol)),
-            tp3: (entry - tp3Distance).toFixed(getDecimal(symbol)),
-            slPips: Math.round(slDistance / pipSize),
-            tp1Pips: Math.round(tp1Distance / pipSize),
-            tp2Pips: Math.round(tp2Distance / pipSize),
-            tp3Pips: Math.round(tp3Distance / pipSize)
-        };
+// ===== DETECT FVG (Fair Value Gap) =====
+function detectFVG(candles) {
+    const fvgs = [];
+    if (candles.length < 3) return fvgs;
+    for (let i = 1; i < candles.length - 1; i++) {
+        const prev = candles[i - 1];
+        const curr = candles[i];
+        const next = candles[i + 1];
+        // Bullish FVG: gap antara prev.high dan next.low
+        if (prev.high < next.low) {
+            fvgs.push({
+                type: 'BULLISH',
+                top: next.low,
+                bottom: prev.high,
+                time: curr.time,
+                filled: false
+            });
+        }
+        // Bearish FVG: gap antara next.high dan prev.low
+        if (prev.low > next.high) {
+            fvgs.push({
+                type: 'BEARISH',
+                top: prev.low,
+                bottom: next.high,
+                time: curr.time,
+                filled: false
+            });
+        }
     }
+    // Kira yang belum filled
+    const lastPrice = candles[candles.length - 1].close;
+    fvgs.forEach(fvg => {
+        if (fvg.type === 'BULLISH' && lastPrice > fvg.top) fvg.filled = true;
+        if (fvg.type === 'BEARISH' && lastPrice < fvg.bottom) fvg.filled = true;
+    });
+    return fvgs.filter(f => !f.filled).slice(-5);
 }
 
-function calculatePositionSize(entry, sl, symbol) {
-    const balance = ACCOUNT_BALANCE;
-    const riskPercent = RISK_PERCENT;
-    const riskAmount = balance * (riskPercent / 100);
-    const slDistance = Math.abs(entry - sl);
-    const pipSize = 0.01;
-    const slPips = slDistance / pipSize;
-    const pipValuePer001Lot = 0.10;
-    const lotSize = riskAmount / (slPips * pipValuePer001Lot);
-    return {
-        balance: balance.toFixed(2),
-        riskPercent: riskPercent,
-        riskAmount: riskAmount.toFixed(2),
-        slPips: Math.round(slPips),
-        lotSize: Math.max(0.01, lotSize).toFixed(2),
-        potentialLoss: riskAmount.toFixed(2)
-    };
+// ===== KIRA BOLLINGER BANDS =====
+function calculateBB(closes, period = 20, stdDevMult = 2) {
+    if (closes.length < period) return { upper: 0, middle: 0, lower: 0, squeeze: false };
+    const middle = calculateSMA(closes, period);
+    const stdDev = calculateStdDev(closes, period);
+    const upper = middle + (stdDev * stdDevMult);
+    const lower = middle - (stdDev * stdDevMult);
+    const bandwidth = (upper - lower) / middle * 100;
+    const squeeze = bandwidth < 0.5;  // Bandwidth < 0.5% = squeeze
+    return { upper, middle, lower, bandwidth, squeeze };
 }
 
+// ===== VOLUME ANALYSIS =====
+function analyzeVolume(candles) {
+    if (candles.length < 20) return { avg: 0, current: 0, spike: false, ratio: 0, bias: 'NEUTRAL' };
+    const last20 = candles.slice(-20);
+    const volumes = last20.map(c => c.volume || 0).filter(v => v > 0);
+    if (volumes.length === 0) return { avg: 0, current: 0, spike: false, ratio: 0, bias: 'NEUTRAL' };
+    const avg = volumes.reduce((a, b) => a + b, 0) / volumes.length;
+    const current = candles[candles.length - 1].volume || 0;
+    const ratio = avg > 0 ? current / avg : 0;
+    const spike = ratio > 1.5;
+    const lastCandle = candles[candles.length - 1];
+    const bias = lastCandle.close > lastCandle.open ? 'BULLISH' : 'BEARISH';
+    return { avg, current, spike, ratio, bias };
+}
+
+// ===== DETECT LIQUIDITY TOUCH =====
+function detectLiquidityTouch(currentPrice, snr, fvgs, zoneWidth = 5) {
+    const zones = [];
+    
+    // SNR zones
+    if (snr.support > 0) {
+        zones.push({
+            type: 'SNR-SUPPORT',
+            bottom: snr.support - zoneWidth,
+            top: snr.support + zoneWidth,
+            level: snr.support,
+            direction: 'BUY'
+        });
+    }
+    if (snr.resistance > 0) {
+        zones.push({
+            type: 'SNR-RESISTANCE',
+            bottom: snr.resistance - zoneWidth,
+            top: snr.resistance + zoneWidth,
+            level: snr.resistance,
+            direction: 'SELL'
+        });
+    }
+    if (snr.poc > 0) {
+        zones.push({
+            type: 'POC',
+            bottom: snr.poc - zoneWidth,
+            top: snr.poc + zoneWidth,
+            level: snr.poc,
+            direction: 'NEUTRAL'
+        });
+    }
+    
+    // FVG zones
+    fvgs.forEach(fvg => {
+        zones.push({
+            type: 'FVG-' + fvg.type,
+            bottom: fvg.bottom,
+            top: fvg.top,
+            level: (fvg.bottom + fvg.top) / 2,
+            direction: fvg.type === 'BULLISH' ? 'BUY' : 'SELL'
+        });
+    });
+    
+    // Check touch
+    let touched = [];
+    zones.forEach(z => {
+        if (currentPrice >= z.bottom && currentPrice <= z.top) {
+            touched.push(z);
+        }
+    });
+    
+    return { zones, touched, inZone: touched.length > 0 };
+}
+
+// ===== DETECT CANDLE PATTERN =====
 function detectCandlePattern(candle, prevCandle) {
     const body = Math.abs(candle.close - candle.open);
     const range = candle.high - candle.low;
@@ -249,11 +334,11 @@ function detectCandleReaction(candles, direction) {
     });
     if (direction === "SELL") {
         const bullishPatterns = patterns.filter(p => p.bias === "BULLISH" && p.strength >= 70);
-        return { hasReversal: bullishPatterns.length >= 3, patterns: patterns.map(p => p.pattern), avgStrength: patterns.reduce((s, p) => s + p.strength, 0) / patterns.length, strongPattern: bullishPatterns[0] || null };
+        return { hasReversal: bullishPatterns.length >= 3, patterns: patterns.map(p => p.pattern), strongPattern: bullishPatterns[0] || null };
     }
     if (direction === "BUY") {
         const bearishPatterns = patterns.filter(p => p.bias === "BEARISH" && p.strength >= 70);
-        return { hasReversal: bearishPatterns.length >= 3, patterns: patterns.map(p => p.pattern), avgStrength: patterns.reduce((s, p) => s + p.strength, 0) / patterns.length, strongPattern: bearishPatterns[0] || null };
+        return { hasReversal: bearishPatterns.length >= 3, patterns: patterns.map(p => p.pattern), strongPattern: bearishPatterns[0] || null };
     }
     return { hasReversal: false, patterns: [], avgStrength: 0 };
 }
@@ -300,7 +385,7 @@ async function getTick(symbol) {
             const d = response.data;
             if (d.status === 'error' || d.code) {
                 if (d.code === 429 || (d.message && d.message.includes('429'))) {
-                    console.log(`⏳ Key #${keyIndex + 1} rate limit, cuba seterusnya...`);
+                    console.log(`⏳ Key #${keyIndex + 1} rate limit`);
                     switchKey();
                     continue;
                 }
@@ -311,19 +396,18 @@ async function getTick(symbol) {
             const price = parseFloat(d.close || d.price || 0);
             const mid = price || (bid + ask) / 2 || 0;
             if (mid === 0) throw new Error('Harga 0.00');
-            const result = { bid: bid || mid, ask: ask || mid, mid, spread: parseFloat(d.spread || (ask - bid) || 0), marketState: 'open', stale: false, change: parseFloat(d.change || 0), percentChange: parseFloat(d.percent_change || 0) };
+            const result = { bid: bid || mid, ask: ask || mid, mid, spread: parseFloat(d.spread || (ask - bid) || 0), marketState: 'open', stale: false, change: parseFloat(d.change || 0) };
             tickCache.set(cacheKey, { data: result, time: Date.now() });
             return result;
         } catch (e) {
             if (e.message && e.message.includes('429')) {
-                console.log(`⏳ Key #${keyIndex + 1} 429, cuba seterusnya...`);
                 switchKey();
                 continue;
             }
             if (attempts >= maxAttempts) throw e;
         }
     }
-    throw new Error(`Semua ${totalKeys} API key gagal`);
+    throw new Error(`Semua API key gagal`);
 }
 
 const ohlcCache = new Map();
@@ -349,7 +433,7 @@ async function getOHLC(symbol, interval = '15m', limit = 100) {
             const d = response.data;
             if (d.status === 'error' || d.code) {
                 if (d.code === 429 || (d.message && d.message.includes('429'))) {
-                    console.log(`⏳ OHLC Key #${keyIndex + 1} rate limit, cuba seterusnya...`);
+                    console.log(`⏳ OHLC Key #${keyIndex + 1} rate limit`);
                     switchKey();
                     continue;
                 }
@@ -362,23 +446,23 @@ async function getOHLC(symbol, interval = '15m', limit = 100) {
                 open: parseFloat(c.open || 0),
                 high: parseFloat(c.high || 0),
                 low: parseFloat(c.low || 0),
-                close: parseFloat(c.close || 0)
+                close: parseFloat(c.close || 0),
+                volume: parseFloat(c.volume || 0)
             })).filter(c => !isNaN(c.timestamp) && c.close > 0);
             ohlcCache.set(cacheKey, { data: result, time: Date.now() });
             return result;
         } catch (e) {
             if (e.message && e.message.includes('429')) {
-                console.log(`⏳ OHLC Key #${keyIndex + 1} 429, cuba seterusnya...`);
                 switchKey();
                 continue;
             }
             if (attempts >= maxAttempts) throw e;
         }
     }
-    throw new Error(`Semua ${totalKeys} API key gagal`);
+    throw new Error(`Semua API key gagal`);
 }
 
-// ===== CEK TF INDIVIDU =====
+// ===== CHECK TF INDIVIDU =====
 async function checkTF(symbol, tf) {
     try {
         const candles = await getOHLC(symbol, tf, 50);
@@ -395,35 +479,75 @@ async function checkTF(symbol, tf) {
     }
 }
 
-// ===== CEK 3 TF CONFIRM =====
+// ===== CHECK 3 TF =====
 async function check3TF(symbol) {
     const m1 = await checkTF(symbol, '1min');
     const m5 = await checkTF(symbol, '5min');
     const m15 = await checkTF(symbol, '15min');
-    
     const signals = [m1.signal, m5.signal, m15.signal];
     const buyCount = signals.filter(s => s === 'BUY').length;
     const sellCount = signals.filter(s => s === 'SELL').length;
-    
     let consensus = 'WAIT';
     let confirmCount = 0;
     if (buyCount >= 2) { consensus = 'BUY'; confirmCount = buyCount; }
     else if (sellCount >= 2) { consensus = 'SELL'; confirmCount = sellCount; }
-    
     let grade = 'SKIP';
     if (confirmCount === 3) grade = 'A+';
     else if (confirmCount === 2) grade = 'B';
-    
     return {
-        consensus,
-        confirmCount,
-        grade,
-        m1: m1.signal,
-        m5: m5.signal,
-        m15: m15.signal,
-        m1rsi: m1.rsi.toFixed(1),
-        m5rsi: m5.rsi.toFixed(1),
-        m15rsi: m15.rsi.toFixed(1)
+        consensus, confirmCount, grade,
+        m1: m1.signal, m5: m5.signal, m15: m15.signal,
+        m1rsi: m1.rsi.toFixed(1), m5rsi: m5.rsi.toFixed(1), m15rsi: m15.rsi.toFixed(1)
+    };
+}
+
+// ===== CALCULATE SL/TP =====
+function calculateSLTP(direction, entry, atr, symbol) {
+    const slDistance = atr * 1.5;
+    const tp1Distance = atr * 1.0;
+    const tp2Distance = atr * 2.0;
+    const tp3Distance = atr * 3.0;
+    const pipSize = 0.01;
+    if (direction === "BUY") {
+        return {
+            sl: (entry - slDistance).toFixed(getDecimal(symbol)),
+            tp1: (entry + tp1Distance).toFixed(getDecimal(symbol)),
+            tp2: (entry + tp2Distance).toFixed(getDecimal(symbol)),
+            tp3: (entry + tp3Distance).toFixed(getDecimal(symbol)),
+            slPips: Math.round(slDistance / pipSize),
+            tp1Pips: Math.round(tp1Distance / pipSize),
+            tp2Pips: Math.round(tp2Distance / pipSize),
+            tp3Pips: Math.round(tp3Distance / pipSize)
+        };
+    } else {
+        return {
+            sl: (entry + slDistance).toFixed(getDecimal(symbol)),
+            tp1: (entry - tp1Distance).toFixed(getDecimal(symbol)),
+            tp2: (entry - tp2Distance).toFixed(getDecimal(symbol)),
+            tp3: (entry - tp3Distance).toFixed(getDecimal(symbol)),
+            slPips: Math.round(slDistance / pipSize),
+            tp1Pips: Math.round(tp1Distance / pipSize),
+            tp2Pips: Math.round(tp2Distance / pipSize),
+            tp3Pips: Math.round(tp3Distance / pipSize)
+        };
+    }
+}
+
+function calculatePositionSize(entry, sl, symbol) {
+    const balance = ACCOUNT_BALANCE;
+    const riskPercent = RISK_PERCENT;
+    const riskAmount = balance * (riskPercent / 100);
+    const slDistance = Math.abs(entry - sl);
+    const pipSize = 0.01;
+    const slPips = slDistance / pipSize;
+    const pipValuePer001Lot = 0.10;
+    const lotSize = riskAmount / (slPips * pipValuePer001Lot);
+    return {
+        balance: balance.toFixed(2),
+        riskPercent: riskPercent,
+        riskAmount: riskAmount.toFixed(2),
+        slPips: Math.round(slPips),
+        lotSize: Math.max(0.01, lotSize).toFixed(2)
     };
 }
 // ===== SIGNAL LOCK + COOLDOWN =====
@@ -484,17 +608,14 @@ app.get('/api/news-prediction', async (req, res) => {
     } catch (e) { res.status(500).json({ status: 'error', message: e.message }); }
 });
 
-// ===== API: SIGNAL (UTAMA — CONFIRM 3 TF) =====
+// ===== API: SIGNAL (UTAMA — 8 LAYER CONFIRM) =====
 app.get('/api/signal', async (req, res) => {
     const symbol = req.query.symbol || 'XAU/USD';
     const decimal = getDecimal(symbol);
     try {
-        // Cek 3 TF serentak
-        const tf3 = await check3TF(symbol);
-        
-        // Guna M5 sebagai utama untuk indikator
         const candles = await getOHLC(symbol, '5min', 100);
         if (candles.length < 50) throw new Error("Data tak cukup");
+        
         const closes = candles.map(c => c.close);
         const harga = closes[closes.length - 1];
         const ema9 = calculateEMA(closes, 9);
@@ -504,7 +625,22 @@ app.get('/api/signal', async (req, res) => {
         const atr = calculateATR(candles, 14);
         const atrPercent = (atr / harga) * 100;
         const session = getMarketSession();
+        
+        // ===== LAYER 1: LIQUIDITY =====
         const snr = detectSNR(candles);
+        const fvgs = detectFVG(candles);
+        const liquidity = detectLiquidityTouch(harga, snr, fvgs, 5);
+        
+        // ===== LAYER 2: VOLUME =====
+        const volume = analyzeVolume(candles);
+        
+        // ===== LAYER 3: BOLLINGER BANDS =====
+        const bb = calculateBB(closes, 20, 2);
+        
+        // ===== LAYER 4: 3 TF =====
+        const tf3 = await check3TF(symbol);
+        
+        // ===== LAYER 5: PATTERN =====
         const lastPattern = detectLastCandlePattern(candles);
         
         let spread = 0, bid = 0, ask = 0;
@@ -529,34 +665,25 @@ app.get('/api/signal', async (req, res) => {
 
         if (isCooldown) {
             reasons.push(`Cooldown: ${cooldownRemain} minit lagi`);
-            signal = "WAIT";
-            warna = "#94a3b8";
             filtered = true;
         } else if (existingLock) {
-            // Cek momentum masih valid
             const momentumValid = checkMomentumValid(existingLock, ema9, ema21, rsi, harga, atrPercent);
             if (momentumValid) {
-                // Cek pattern reversal kuat
                 const reaction = detectCandleReaction(candles, existingLock.direction);
                 const strongReversal = reaction.hasReversal && reaction.strongPattern;
-                
-                // Cek 3 TF lawan
                 const tfOpposes = (existingLock.direction === 'BUY' && tf3.consensus === 'SELL') ||
                                    (existingLock.direction === 'SELL' && tf3.consensus === 'BUY');
-                
                 if (strongReversal || tfOpposes) {
                     signalLock.delete(symbol);
                     signalCooldown.set(symbol, { time: Date.now() });
                     resetPattern = reaction.strongPattern ? reaction.strongPattern.pattern : 'TF Conflict';
                 } else {
-                    // KEKAL LOCK — entry asal
                     signal = existingLock.direction;
                     warna = signal === "BUY" ? "#22c55e" : "#ef4444";
                     lockedEntry = existingLock.entry;
                     isLocked = true;
                     reasons.push(`Locked sejak ${new Date(existingLock.lockedAt).toLocaleTimeString()}`);
-                    reasons.push(`TF: ${tf3.confirmCount}/3 confirm`);
-                    if (lastPattern.pattern !== "NONE" && lastPattern.pattern !== "DOJI") reasons.push(`Pattern: ${lastPattern.pattern}`);
+                    reasons.push(`Confirm ${existingLock.confirm}/8`);
                 }
             } else {
                 signalLock.delete(symbol);
@@ -564,40 +691,158 @@ app.get('/api/signal', async (req, res) => {
             }
         }
 
-        // ===== SIGNAL BARU (kalau tak lock + tak cooldown) =====
+        // ===== SIGNAL BARU (8 LAYER CONFIRM) =====
         if (!isLocked && !isCooldown) {
-            // Guna consensus 3 TF
-            const emaCross = tf3.consensus;
+            // Kira score 8 layer
+            let score = 0;
+            const layers = {
+                liquidity: false,
+                volume: false,
+                volumeBias: false,
+                ema: false,
+                bb: false,
+                tf: false,
+                pattern: false,
+                rsi: false
+            };
             
-            if (emaCross === 'WAIT') {
-                filtered = true;
-                reasons.push(`TF Mixed (${tf3.m1}/${tf3.m5}/${tf3.m15})`);
-            } else if (tf3.grade === 'SKIP') {
-                filtered = true;
-                reasons.push(`Confirm rendah (${tf3.confirmCount}/3)`);
+            const reasons_detail = [];
+            
+            // Layer 1: Liquidity
+            if (liquidity.inZone) {
+                score++;
+                layers.liquidity = true;
+                reasons_detail.push(`✓ Liquidity: ${liquidity.touched.map(z => z.type).join(', ')}`);
             } else {
-                // Cek filter lain
-                if (emaCross === "BUY" && rsi > 85) { filtered = true; reasons.push("RSI Overbought"); }
-                if (emaCross === "SELL" && rsi < 15) { filtered = true; reasons.push("RSI Oversold"); }
-                if (atrPercent < 0.015) { filtered = true; reasons.push("Low Volatility"); }
-                if (session === "CLOSED") { filtered = true; reasons.push("Market Closed"); }
-                if (newsBlocking) { filtered = true; reasons.push("News Time — Block"); }
+                reasons_detail.push(`✗ Tak sentuh liquidity zone`);
             }
             
-            if (!filtered) {
-                signal = emaCross;
+            // Layer 2: Volume spike
+            if (volume.spike) {
+                score++;
+                layers.volume = true;
+                reasons_detail.push(`✓ Volume spike (${volume.ratio.toFixed(1)}x avg)`);
+            } else {
+                reasons_detail.push(`✗ Volume rendah (${volume.ratio.toFixed(1)}x)`);
+            }
+            
+            // Layer 3: Volume bias
+            const expectedBias = tf3.consensus === 'BUY' ? 'BULLISH' : 'BEARISH';
+            if (volume.bias === expectedBias && tf3.consensus !== 'WAIT') {
+                score++;
+                layers.volumeBias = true;
+                reasons_detail.push(`✓ Volume bias: ${volume.bias}`);
+            } else {
+                reasons_detail.push(`✗ Volume bias lawan`);
+            }
+            
+            // Layer 4: EMA confirm
+            if ((tf3.consensus === 'BUY' && ema9 > ema21 && ema21 > ema50) ||
+                (tf3.consensus === 'SELL' && ema9 < ema21 && ema21 < ema50)) {
+                score++;
+                layers.ema = true;
+                reasons_detail.push(`✓ EMA align (9/21/50)`);
+            } else {
+                reasons_detail.push(`✗ EMA tak align`);
+            }
+            
+            // Layer 5: BB confirm
+            const nearLower = harga <= bb.lower + atr * 0.5;
+            const nearUpper = harga >= bb.upper - atr * 0.5;
+            if ((tf3.consensus === 'BUY' && nearLower) || (tf3.consensus === 'SELL' && nearUpper)) {
+                score++;
+                layers.bb = true;
+                reasons_detail.push(`✓ BB extreme (${tf3.consensus})`);
+            } else {
+                reasons_detail.push(`✗ BB tengah`);
+            }
+            
+            // Layer 6: TF
+            if (tf3.confirmCount >= 2) {
+                score++;
+                layers.tf = true;
+                reasons_detail.push(`✓ TF ${tf3.confirmCount}/3`);
+            } else {
+                reasons_detail.push(`✗ TF conflict`);
+            }
+            
+            // Layer 7: Pattern
+            if (lastPattern.pattern !== "NONE" && lastPattern.pattern !== "DOJI" && lastPattern.strength >= 70) {
+                score++;
+                layers.pattern = true;
+                reasons_detail.push(`✓ Pattern: ${lastPattern.pattern}`);
+            } else {
+                reasons_detail.push(`✗ Tak ada pattern kuat`);
+            }
+            
+            // Layer 8: RSI
+            if (rsi >= 25 && rsi <= 75) {
+                score++;
+                layers.rsi = true;
+                reasons_detail.push(`✓ RSI OK (${rsi.toFixed(1)})`);
+            } else {
+                reasons_detail.push(`✗ RSI extreme`);
+            }
+            
+            reasons = reasons_detail;
+            
+            // Cek grade
+            let grade = 'SKIP';
+            if (score >= 7) grade = 'A+';
+            else if (score >= 5) grade = 'B';
+            
+            if (grade !== 'SKIP' && tf3.consensus !== 'WAIT' && !newsBlocking && session !== 'CLOSED') {
+                signal = tf3.consensus;
                 warna = signal === "BUY" ? "#22c55e" : "#ef4444";
-                signalLock.set(symbol, { 
-                    direction: signal, 
-                    entry: harga, 
-                    lockedAt: Date.now(), 
+                signalLock.set(symbol, {
+                    direction: signal,
+                    entry: harga,
+                    lockedAt: Date.now(),
                     timestamp: new Date().toISOString(),
-                    grade: tf3.grade,
-                    confirm: tf3.confirmCount
+                    grade: grade,
+                    confirm: score,
+                    layers: layers
                 });
                 lockedEntry = harga;
                 isLocked = true;
-                reasons.push(`Confirm ${tf3.confirmCount}/3 (${tf3.grade})`);
+                filtered = false;
+                reasons.unshift(`🎯 Signal ${grade} (${score}/8)`);
+                
+                // Telegram
+                if (TELEGRAM_BOT_TOKEN && TELEGRAM_CHAT_ID) {
+                    const signalKey = `${symbol}_${signal}_${Math.floor(harga)}_${grade}`;
+                    const lastKey = grade === 'A+' ? lastNotifiedSignal : lastNotifiedSignalB;
+                    if (lastKey !== signalKey) {
+                        if (grade === 'A+') lastNotifiedSignal = signalKey;
+                        else lastNotifiedSignalB = signalKey;
+                        const sltp = calculateSLTP(signal, harga, atr, symbol);
+                        const risk = calculatePositionSize(harga, parseFloat(sltp.sl), symbol);
+                        const emoji = grade === 'A+' ? '🚀' : '⭐';
+                        const msg = `${emoji} <b>SIGNAL ${grade} (${score}/8)</b>\n` +
+                            `━━━━━━━━━━━━━━━━\n` +
+                            `📊 ${symbol} — <b>${signal}</b>\n` +
+                            `🎯 Entry: ${harga.toFixed(decimal)}\n\n` +
+                            `🛑 SL: ${sltp.sl}\n` +
+                            `✅ TP1: ${sltp.tp1}\n` +
+                            `✅ TP2: ${sltp.tp2}\n\n` +
+                            `📊 Confirm: ${score}/8\n` +
+                            `   Liquidity: ${layers.liquidity ? '✓' : '✗'}\n` +
+                            `   Volume: ${layers.volume ? '✓' : '✗'}\n` +
+                            `   EMA: ${layers.ema ? '✓' : '✗'}\n` +
+                            `   BB: ${layers.bb ? '✓' : '✗'}\n` +
+                            `   TF: ${layers.tf ? '✓' : '✗'} (${tf3.confirmCount}/3)\n` +
+                            `   Pattern: ${layers.pattern ? '✓' : '✗'}\n` +
+                            `   RSI: ${layers.rsi ? '✓' : '✗'}\n\n` +
+                            `💰 Lot: ${risk.lotSize}`;
+                        await sendTelegram(msg);
+                    }
+                }
+            } else {
+                filtered = true;
+                if (tf3.consensus === 'WAIT') reasons.unshift('⏸️ TF Mixed');
+                else if (newsBlocking) reasons.unshift('⏸️ News Block');
+                else if (session === 'CLOSED') reasons.unshift('⏸️ Market Closed');
+                else reasons.unshift(`⏸️ Score rendah (${score}/8)`);
             }
         }
 
@@ -610,35 +855,30 @@ app.get('/api/signal', async (req, res) => {
         const sltp = calculateSLTP(signal, displayPrice, atr, symbol);
         const riskMgmt = calculatePositionSize(displayPrice, parseFloat(sltp.sl), symbol);
 
-        if (isLocked && signal !== "WAIT") {
-            const lastJournal = tradeJournal[0];
-            const journalKey = `${symbol}_${signal}_${Math.floor(displayPrice)}`;
-            if (!lastJournal || lastJournal.key !== journalKey) {
-                tradeJournal.unshift({ key: journalKey, time: new Date().toLocaleString(), symbol, signal, entry: displayPrice.toFixed(decimal), sl: sltp.sl, tp1: sltp.tp1, tp2: sltp.tp2, tp3: sltp.tp3, lot: riskMgmt.lotSize, risk: riskMgmt.riskAmount, rsi: rsi.toFixed(1), pattern: lastPattern.pattern, session });
-                if (tradeJournal.length > 200) tradeJournal.pop();
-            }
-        }
-
         res.json({
-            symbol, 
-            harga: harga.toFixed(decimal), 
-            harga_entry: displayPrice.toFixed(decimal), 
-            signal, 
-            warna, 
-            locked: isLocked, 
-            cooldown: isCooldown, 
+            symbol,
+            harga: harga.toFixed(decimal),
+            harga_entry: displayPrice.toFixed(decimal),
+            signal,
+            warna,
+            locked: isLocked,
+            cooldown: isCooldown,
             cooldown_remain: cooldownRemain,
             news_blocking: newsBlocking,
-            ema9: ema9.toFixed(decimal), 
-            ema21: ema21.toFixed(decimal), 
+            ema9: ema9.toFixed(decimal),
+            ema21: ema21.toFixed(decimal),
             ema50: ema50.toFixed(decimal),
-            rsi: rsi.toFixed(1), 
-            atrPercent: atrPercent.toFixed(3), 
+            rsi: rsi.toFixed(1),
+            atrPercent: atrPercent.toFixed(3),
             session,
-            spread: spread.toFixed(decimal), 
-            bid: bid.toFixed(decimal), 
+            spread: spread.toFixed(decimal),
+            bid: bid.toFixed(decimal),
             ask: ask.toFixed(decimal),
             snr: { support: snr.support.toFixed(decimal), resistance: snr.resistance.toFixed(decimal), poc: snr.poc.toFixed(decimal) },
+            bb: { upper: bb.upper.toFixed(decimal), middle: bb.middle.toFixed(decimal), lower: bb.lower.toFixed(decimal), squeeze: bb.squeeze },
+            volume: { current: volume.current, avg: volume.avg.toFixed(0), ratio: volume.ratio.toFixed(2), spike: volume.spike, bias: volume.bias },
+            liquidity: { inZone: liquidity.inZone, touched: liquidity.touched },
+            fvg_count: fvgs.length,
             candle_pattern: { pattern: lastPattern.pattern, bias: lastPattern.bias, strength: lastPattern.strength, icon: lastPattern.icon },
             sltp: { sl: sltp.sl, tp1: sltp.tp1, tp2: sltp.tp2, tp3: sltp.tp3, slPips: sltp.slPips, tp1Pips: sltp.tp1Pips, tp2Pips: sltp.tp2Pips, tp3Pips: sltp.tp3Pips },
             risk_mgmt: riskMgmt,
@@ -646,17 +886,13 @@ app.get('/api/signal', async (req, res) => {
                 consensus: tf3.consensus,
                 confirm: tf3.confirmCount,
                 grade: tf3.grade,
-                m1: tf3.m1,
-                m5: tf3.m5,
-                m15: tf3.m15,
-                m1rsi: tf3.m1rsi,
-                m5rsi: tf3.m5rsi,
-                m15rsi: tf3.m15rsi
+                m1: tf3.m1, m5: tf3.m5, m15: tf3.m15,
+                m1rsi: tf3.m1rsi, m5rsi: tf3.m5rsi, m15rsi: tf3.m15rsi
             },
-            reset_pattern: resetPattern, 
-            filtered, 
-            reasons, 
-            masa: new Date().toLocaleTimeString(), 
+            reset_pattern: resetPattern,
+            filtered,
+            reasons,
+            masa: new Date().toLocaleTimeString(),
             status: "LIVE"
         });
     } catch (error) {
@@ -688,14 +924,32 @@ app.get('/api/pattern', async (req, res) => {
         const patterns = [];
         for (let i = 1; i < last5.length; i++) {
             const p = detectCandlePattern(last5[i], last5[i - 1]);
-            patterns.push({ time: last5[i].time, pattern: p.pattern, bias: p.bias, strength: p.strength, icon: p.icon, open: last5[i].open, close: last5[i].close, high: last5[i].high, low: last5[i].low });
+            patterns.push({ time: last5[i].time, pattern: p.pattern, bias: p.bias, strength: p.strength, icon: p.icon });
         }
         res.json({ status: "success", symbol, patterns, latest: patterns[patterns.length - 1] });
     } catch (error) { res.status(500).json({ status: "error", message: error.message }); }
 });
 
-app.get('/api/pattern-history', (req, res) => res.json({ status: 'success', history: patternHistory.slice(0, 50) }));
-app.get('/api/trade-journal', (req, res) => res.json({ status: 'success', journal: tradeJournal.slice(0, 100) }));
+// ===== API: LIQUIDITY ZONES =====
+app.get('/api/liquidity', async (req, res) => {
+    const symbol = req.query.symbol || 'XAU/USD';
+    try {
+        const candles = await getOHLC(symbol, '5min', 100);
+        const harga = candles[candles.length - 1].close;
+        const snr = detectSNR(candles);
+        const fvgs = detectFVG(candles);
+        const liquidity = detectLiquidityTouch(harga, snr, fvgs, 5);
+        res.json({
+            status: 'success',
+            harga,
+            snr,
+            fvgs,
+            zones: liquidity.zones,
+            touched: liquidity.touched,
+            inZone: liquidity.inZone
+        });
+    } catch (e) { res.status(500).json({ status: 'error', message: e.message }); }
+});
 
 // ===== API: MARKET =====
 app.get('/api/market', async (req, res) => {
@@ -727,19 +981,8 @@ app.get('/api/market', async (req, res) => {
         });
     } catch (error) {
         if (error.message && error.message.includes('429')) console.log("⏳ /api/market rate limit");
-        else console.error("/api/market ERROR:", error.message);
         res.status(500).json({ status: "error", message: error.message });
     }
-});
-
-// ===== API: AI ANALYSIS =====
-app.post('/api/ai-analysis', async (req, res) => {
-    try {
-        const { price, ema9, ema21, signal_time, soalan, rsi, atr, session, reasons, spread } = req.body;
-        const prompt = `Analyst XAUUSD. Price: ${price}. EMA9: ${ema9}, EMA21: ${ema21}. RSI: ${rsi}. ATR%: ${atr}. Session: ${session}. Spread: ${spread}. Filtered: ${reasons ? reasons.join(', ') : 'None'}. Question: "${soalan}". Answer in 2-3 sentences in Bahasa Melayu.`;
-        const text = await callAI(prompt);
-        res.json({ status: "success", analysis: text });
-    } catch (error) { res.status(500).json({ status: "error", message: "AI busy." }); }
 });
 
 // ===== API: CANDLES =====
@@ -770,7 +1013,7 @@ app.get('/api/backtest', async (req, res) => {
             const rsi = calculateRSI(closesSlice.slice(-30), 14);
             const atr = calculateATR(candles.slice(Math.max(0, i - 30), i + 1), 14);
             const atrPercent = (atr / current.close) * 100;
-            if (ema9 > ema21 && rsi < 85 && atrPercent > 0.015) {
+            if (ema9 > ema21 && rsi < 75 && atrPercent > 0.015) {
                 const tp = current.close * 1.001;
                 const sl = current.close * 0.999;
                 let result = null;
@@ -844,7 +1087,16 @@ app.get('/api/news', async (req, res) => {
     }
 });
 
-// ===== API: AI DESK =====
+// ===== API: AI =====
+app.post('/api/ai-analysis', async (req, res) => {
+    try {
+        const { price, ema9, ema21, signal_time, soalan, rsi, atr, session, reasons, spread } = req.body;
+        const prompt = `Analyst XAUUSD. Price: ${price}. EMA9: ${ema9}, EMA21: ${ema21}. RSI: ${rsi}. ATR%: ${atr}. Session: ${session}. Spread: ${spread}. Filtered: ${reasons ? reasons.join(', ') : 'None'}. Question: "${soalan}". Answer in 2-3 sentences in Bahasa Melayu.`;
+        const text = await callAI(prompt);
+        res.json({ status: "success", analysis: text });
+    } catch (error) { res.status(500).json({ status: "error", message: "AI busy." }); }
+});
+
 app.get('/api/ai-desk-stats', async (req, res) => {
     try {
         const markets = ['XAU/USD', 'XAG/USD', 'EUR/USD', 'GBP/USD', 'USD/JPY', 'AUD/USD'];
@@ -889,28 +1141,17 @@ app.get('/api/ai-desk', async (req, res) => {
         const atr = calculateATR(candles, 14);
         const atrPct = (atr / price) * 100;
         const session = getMarketSession();
-        let tick = { mid: price, spread: 0, bid: price, ask: price };
-        try { tick = await getTick(symbol); } catch (e) { }
         const snr = detectSNR(candles);
-        const distToResistance = ((snr.resistance - price) / price * 100).toFixed(2);
-        const distToSupport = ((price - snr.support) / price * 100).toFixed(2);
         const tf3 = await check3TF(symbol);
-        result.steps.scan = {
-            price: price.toFixed(2), spread: tick.spread.toFixed(2),
-            rsi: rsi.toFixed(1), atr: atrPct.toFixed(3), session,
-            ema9: ema9.toFixed(2), ema21: ema21.toFixed(2), ema50: ema50.toFixed(2),
-            snr: { resistance: snr.resistance.toFixed(2), support: snr.support.toFixed(2), distToResistance: distToResistance + '%', distToSupport: distToSupport + '%' }
-        };
-        let signal = "WAIT", reasons = [];
-        const emaCross = ema9 > ema21 ? "BUY" : "SELL";
-        if (emaCross === "BUY" && rsi > 85) reasons.push("RSI Overbought");
-        if (emaCross === "SELL" && rsi < 15) reasons.push("RSI Oversold");
-        if (atrPct < 0.015) reasons.push("Low Volatility");
-        if (reasons.length === 0) signal = emaCross;
-        result.steps.signal = { signal, reasons, emaCross, tf3 };
+        const bb = calculateBB(closes, 20, 2);
+        const volume = analyzeVolume(candles);
+        
+        result.steps.scan = { price: price.toFixed(2), rsi: rsi.toFixed(1), atr: atrPct.toFixed(3), session };
+        result.steps.signal = { signal: tf3.consensus, reasons: [], emaCross: ema9 > ema21 ? 'BUY' : 'SELL', tf3, bb, volume };
+        
         let aiPredict = { bias: "NEUTRAL", confidence: 50, reason: "Technical only" };
         try {
-            const prompt = `XAUUSD Analyst. Price: ${price.toFixed(2)}. RSI: ${rsi.toFixed(1)}. EMA9: ${ema9.toFixed(2)}, EMA21: ${ema21.toFixed(2)}. Session: ${session}. TF: M1=${tf3.m1}, M5=${tf3.m5}, M15=${tf3.m15}. Reply exactly 3 lines:
+            const prompt = `XAUUSD Analyst. Price: ${price.toFixed(2)}. RSI: ${rsi.toFixed(1)}. TF: M1=${tf3.m1}, M5=${tf3.m5}, M15=${tf3.m15}. Reply exactly 3 lines:
 BIAS: [BULLISH/BEARISH/NEUTRAL]
 CONFIDENCE: [50-95]
 REASON: [1 ayat BM]`;
@@ -924,26 +1165,23 @@ REASON: [1 ayat BM]`;
                 reason: reasonM ? reasonM[1].trim().substring(0, 200) : "Analysis done"
             };
         } catch (e) {
-            aiPredict = { bias: ema9 > ema21 ? "BULLISH" : "BEARISH", confidence: 55, reason: `AI offline. Teknikal: EMA9 ${ema9 > ema21 ? '>' : '<'} EMA21.` };
+            aiPredict = { bias: ema9 > ema21 ? "BULLISH" : "BEARISH", confidence: 55, reason: `AI offline.` };
         }
         result.steps.predict = aiPredict;
+        
         const lotSize = "0.01";
         const slPips = atrPct < 0.1 ? 20 : 30;
         const tpPips = slPips * 2;
-        const pipValue = 0.10;
-        const riskAmount = (slPips * pipValue).toFixed(2);
-        const potentialProfit = (tpPips * pipValue).toFixed(2);
-        result.steps.size = { lotSize, slPips, tpPips, riskAmount, potentialProfit };
-        const isBearish = aiPredict.bias.includes("BEARISH");
-        const isBullish = aiPredict.bias.includes("BULLISH");
-        let action = "WAIT", direction = 0;
-        if (signal === "BUY" || (signal === "WAIT" && isBullish && aiPredict.confidence >= 65)) { action = "BUY"; direction = 1; }
-        else if (signal === "SELL" || (signal === "WAIT" && isBearish && aiPredict.confidence >= 65)) { action = "SELL"; direction = -1; }
+        const riskAmount = (slPips * 0.10).toFixed(2);
+        result.steps.size = { lotSize, slPips, tpPips, riskAmount };
+        
+        let action = tf3.consensus, direction = tf3.consensus === 'BUY' ? 1 : tf3.consensus === 'SELL' ? -1 : 0;
         const pipSize = 0.01;
         const entryPrice = direction === 1 ? price - slPips * pipSize * 0.3 : direction === -1 ? price + slPips * pipSize * 0.3 : price;
         const slPrice = direction === 1 ? entryPrice - slPips * pipSize : entryPrice + slPips * pipSize;
         const tpPrice = direction === 1 ? entryPrice + tpPips * pipSize : entryPrice - tpPips * pipSize;
-        result.steps.plan = { action, direction, entry: entryPrice.toFixed(2), sl: slPrice.toFixed(2), tp: tpPrice.toFixed(2), rr: "1:2", slPips, tpPips, currentPrice: price.toFixed(2), lotSize };
+        result.steps.plan = { action, direction, entry: entryPrice.toFixed(2), sl: slPrice.toFixed(2), tp: tpPrice.toFixed(2), slPips, tpPips, currentPrice: price.toFixed(2), lotSize };
+        
         res.json({ status: "success", ...result });
     } catch (e) {
         console.error("AI Desk Error:", e.message);
@@ -951,60 +1189,11 @@ REASON: [1 ayat BM]`;
     }
 });
 
-// ===== AUTO TELEGRAM =====
-async function checkSignalAndNotify() {
-    if (!TELEGRAM_BOT_TOKEN || !TELEGRAM_CHAT_ID) return;
-    try {
-        const symbol = 'XAU/USD';
-        const tf3 = await check3TF(symbol);
-        if (tf3.grade === 'SKIP') return;
-        
-        const candles = await getOHLC(symbol, '5min', 100);
-        if (candles.length < 50) return;
-        const closes = candles.map(c => c.close);
-        const harga = closes[closes.length - 1];
-        const atr = calculateATR(candles, 14);
-        const rsi = calculateRSI(closes, 14);
-        const session = getMarketSession();
-        const sltp = calculateSLTP(tf3.consensus, harga, atr, symbol);
-        const risk = calculatePositionSize(harga, parseFloat(sltp.sl), symbol);
-        
-        const signalKey = `${symbol}_${tf3.consensus}_${Math.floor(harga)}_${tf3.grade}`;
-        if (tf3.grade === 'A+' && lastNotifiedSignal === signalKey) return;
-        if (tf3.grade === 'B' && lastNotifiedSignalB === signalKey) return;
-        
-        if (tf3.grade === 'A+') lastNotifiedSignal = signalKey;
-        else lastNotifiedSignalB = signalKey;
-        
-        const emoji = tf3.grade === 'A+' ? '🚀' : '⭐';
-        const msg = `${emoji} <b>SIGNAL ${tf3.grade} (${tf3.confirmCount}/3)</b>\n` +
-            `━━━━━━━━━━━━━━━━\n` +
-            `📊 ${symbol} — <b>${tf3.consensus}</b>\n` +
-            `🎯 Entry: ${harga.toFixed(2)}\n\n` +
-            `🛑 SL: ${sltp.sl}\n` +
-            `✅ TP1: ${sltp.tp1}\n` +
-            `✅ TP2: ${sltp.tp2}\n\n` +
-            `✅ Confirm: ${tf3.confirmCount}/3\n` +
-            `   M1: ${tf3.m1}\n` +
-            `   M5: ${tf3.m5}\n` +
-            `   M15: ${tf3.m15}\n\n` +
-            `📈 RSI: ${rsi.toFixed(1)} | ⏰ ${session}\n` +
-            `💰 Lot: ${risk.lotSize}`;
-        
-        await sendTelegram(msg);
-        console.log(`📱 Telegram: ${tf3.grade} signal`);
-    } catch (e) {
-        if (e.message && e.message.includes('429')) console.log("⏳ Rate limit");
-        else console.log("checkSignalAndNotify error:", e.message);
-    }
-}
-
 // ===== AUTO SERVICE =====
 setInterval(() => { newsService.checkAndAlert(); }, 60000);
-setInterval(() => { checkSignalAndNotify(); }, 300000);
 
 console.log('✅ News alert service berjalan (1 minit)');
-console.log('✅ Signal alert service berjalan (5 minit)');
+console.log('✅ Signal: 8-layer confirm (Liquidity + Volume + EMA + BB + TF + Pattern + RSI)');
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log('🚀 Server berjalan di port ' + PORT));
