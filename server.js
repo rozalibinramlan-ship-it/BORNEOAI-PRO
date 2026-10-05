@@ -410,19 +410,16 @@ async function checkMultiTimeframe(symbol) {
         }
     }
     
-    // Kira agreement
     const buyCount = results.filter(r => r.signal === 'BUY').length;
     const sellCount = results.filter(r => r.signal === 'SELL').length;
     const total = results.length;
     const maxCount = Math.max(buyCount, sellCount);
     const majoritySignal = buyCount > sellCount ? 'BUY' : sellCount > buyCount ? 'SELL' : 'WAIT';
     
-    // Grade
     let grade = 'SKIP';
     let confidence = 'LOW';
     if (maxCount === 4) { grade = 'A+'; confidence = 'HIGH'; }
     else if (maxCount === 3) { grade = 'B'; confidence = 'MEDIUM'; }
-    else { grade = 'SKIP'; confidence = 'LOW'; }
     
     return {
         timeframes: results,
@@ -436,20 +433,29 @@ async function checkMultiTimeframe(symbol) {
     };
 }
 
-// ===== SIGNAL LOCK + COOLDOWN =====
+// ===== SIGNAL LOCK + COOLDOWN + MAX DURATION =====
 const signalLock = new Map();
 const signalCooldown = new Map();
-const COOLDOWN_MS = 15 * 60 * 1000; // 15 minit
+const COOLDOWN_MS = 15 * 60 * 1000;       // 15 minit cooldown
+const MAX_LOCK_MS = 4 * 60 * 60 * 1000;   // 4 JAM max lock (FIX!)
 const patternHistory = [];
 const tradeJournal = [];
 let lastNotifiedSignal = null;
 let lastNotifiedSignalB = null;
 
-// ====== MOMENTUM CHECK (threshold 5%, RSI 15/85) ======
+// ====== FIX: MOMENTUM CHECK + MAX LOCK 4 JAM ======
 function checkMomentumValid(lockData, ema9, ema21, rsi, currentPrice, atrPercent) {
     if (!lockData) return false;
-    const { direction, entry } = lockData;
+    const { direction, entry, lockedAt } = lockData;
     const percentMove = Math.abs(currentPrice - entry) / entry * 100;
+    
+    // ===== FIX 1: MAX LOCK 4 JAM =====
+    const lockAge = Date.now() - lockedAt;
+    if (lockAge > MAX_LOCK_MS) {
+        console.log(`⏰ Lock dah ${Math.round(lockAge / 60000)} minit — reset (max 4 jam)`);
+        return false;
+    }
+    
     if (direction === "SELL") {
         if (ema9 > ema21) return false;
         if (rsi < 15) return false;
@@ -474,12 +480,8 @@ function checkCandleAgainstSignal(candles, signal) {
     const isBullish = last.close > last.open;
     const isBearish = last.close < last.open;
     
-    if (signal === "SELL" && isBullish) {
-        return { against: true, reason: "Candle bullish lawan SELL" };
-    }
-    if (signal === "BUY" && isBearish) {
-        return { against: true, reason: "Candle bearish lawan BUY" };
-    }
+    if (signal === "SELL" && isBullish) return { against: true, reason: "Candle bullish lawan SELL" };
+    if (signal === "BUY" && isBearish) return { against: true, reason: "Candle bearish lawan BUY" };
     return { against: false };
 }
 
@@ -533,10 +535,8 @@ app.get('/api/signal', async (req, res) => {
     const tf = req.query.tf || '5min';
     const decimal = getDecimal(symbol);
     try {
-        // Kira 4TF Confirmation
         const mtf = await checkMultiTimeframe(symbol);
         
-        // Ambil candle untuk timeframe utama
         const candles = await getOHLC(symbol, tf, 100);
         if (candles.length < 50) throw new Error("Data tak cukup");
         const closes = candles.map(c => c.close);
@@ -570,6 +570,7 @@ app.get('/api/signal', async (req, res) => {
         let lockedEntry = null;
         let isLocked = false;
         let resetPattern = null;
+        let lockAgeMin = 0;
 
         // ===== DALAM COOLDOWN =====
         if (isCooldown) {
@@ -577,26 +578,36 @@ app.get('/api/signal', async (req, res) => {
             filtered = true;
         } else if (existingLock) {
             const momentumValid = checkMomentumValid(existingLock, ema9, ema21, rsi, harga, atrPercent);
+            const lockAge = Date.now() - existingLock.lockedAt;
+            lockAgeMin = Math.round(lockAge / 60000);
             
             if (momentumValid) {
                 // Cek candle lawan signal lock
                 const candleCheck = checkCandleAgainstSignal(candles, existingLock.direction);
+                
+                // ===== FIX 2: MULTI-TF OVERRIDE =====
+                const mtfOverride = mtf.consensus !== existingLock.direction && mtf.grade !== 'SKIP' && mtf.grade === 'A+';
                 
                 if (candleCheck.against) {
                     console.log(`🔓 Reset — ${candleCheck.reason}`);
                     signalLock.delete(symbol);
                     signalCooldown.set(symbol, { time: Date.now() });
                     resetPattern = candleCheck.reason;
+                } else if (mtfOverride) {
+                    console.log(`🔓 Reset — 4TF override (${mtf.consensus} vs ${existingLock.direction})`);
+                    signalLock.delete(symbol);
+                    signalCooldown.set(symbol, { time: Date.now() });
+                    resetPattern = `4TF override: ${mtf.consensus}`;
                 } else {
                     signal = existingLock.direction;
                     warna = signal === "BUY" ? "#22c55e" : "#ef4444";
                     lockedEntry = existingLock.entry;
                     isLocked = true;
-                    reasons.push(`Locked sejak ${new Date(existingLock.lockedAt).toLocaleTimeString()}`);
+                    reasons.push(`Locked sejak ${new Date(existingLock.lockedAt).toLocaleTimeString()} (${lockAgeMin} minit)`);
                     if (lastPattern.pattern !== "NONE" && lastPattern.pattern !== "DOJI") reasons.push(`Pattern: ${lastPattern.pattern}`);
                 }
             } else {
-                console.log(`🔓 Reset — momentum hilang`);
+                console.log(`🔓 Reset — momentum hilang / max lock`);
                 signalLock.delete(symbol);
                 signalCooldown.set(symbol, { time: Date.now() });
             }
@@ -604,28 +615,25 @@ app.get('/api/signal', async (req, res) => {
 
         // ===== SIGNAL BARU =====
         if (!isLocked && !isCooldown) {
-            // Guna 4TF Confirmation
             const mtfSignal = mtf.consensus;
             const mtfGrade = mtf.grade;
             
-            // Kena sekurang-kurangnya 3/4 setuju (grade B atau A+)
             if (mtfGrade === 'SKIP') {
                 filtered = true;
                 reasons.push(`4TF: ${mtf.agreement} (perlu ≥3/4)`);
             } else {
-                // Cek candle lawan
                 const candleCheck = checkCandleAgainstSignal(candles, mtfSignal);
                 
                 if (candleCheck.against) {
                     filtered = true;
                     reasons.push(`⚠️ ${candleCheck.reason}`);
                 } else {
-                    // Semua OK
                     signal = mtfSignal;
                     warna = signal === "BUY" ? "#22c55e" : "#ef4444";
                     signalLock.set(symbol, { direction: signal, entry: harga, lockedAt: Date.now(), timestamp: new Date().toISOString() });
                     lockedEntry = harga;
                     isLocked = true;
+                    lockAgeMin = 0;
                     reasons.push(`4TF: ${mtf.agreement} → ${mtfGrade}`);
                 }
             }
@@ -651,6 +659,7 @@ app.get('/api/signal', async (req, res) => {
 
         res.json({
             symbol, tf, harga: harga.toFixed(decimal), harga_entry: displayPrice.toFixed(decimal), signal, warna, locked: isLocked, news_blocking: newsBlocking,
+            lockAgeMin: lockAgeMin,
             mtf: {
                 timeframes: mtf.timeframes,
                 buyCount: mtf.buyCount,
@@ -884,17 +893,16 @@ app.get('/api/ai-desk', async (req, res) => {
         const session = getMarketSession();
         let tick = { mid: price, spread: 0, bid: price, ask: price };
         try { tick = await getTick(symbol); } catch (e) { }
-        const snr = detectSNR(candles);
         result.steps.scan = { price: price.toFixed(2), spread: tick.spread.toFixed(2), rsi: rsi.toFixed(1), atr: atrPct.toFixed(3), session, ema9: ema9.toFixed(2), ema21: ema21.toFixed(2), ema50: ema50.toFixed(2) };
         let signal = "WAIT", reasons = [];
         const emaCross = ema9 > ema21 ? "BUY" : "SELL";
-        if (emaCross === "BUY" && rsi > 75) reasons.push("RSI Overbought");
-        if (emaCross === "SELL" && rsi < 25) reasons.push("RSI Oversold");
+        if (emaCross === "BUY" && rsi > 85) reasons.push("RSI Overbought");
+        if (emaCross === "SELL" && rsi < 15) reasons.push("RSI Oversold");
         if (reasons.length === 0) signal = emaCross;
         result.steps.signal = { signal, reasons, emaCross };
         let aiPredict = { bias: "NEUTRAL", confidence: 50, reason: "Technical only" };
         try {
-            const prompt = `XAUUSD Analyst. Price: ${price.toFixed(2)}. RSI: ${rsi.toFixed(1)}. Reply 3 lines: BIAS, CONFIDENCE, REASON. BM.`;
+            const prompt = `XAUUSD. Price: ${price.toFixed(2)}. RSI: ${rsi.toFixed(1)}. Reply 3 lines: BIAS, CONFIDENCE, REASON. BM.`;
             const aiText = await callAI(prompt);
             const biasM = aiText.match(/BIAS:\s*(\w+)/i);
             const confM = aiText.match(/CONFIDENCE:\s*(\d+)/i);
@@ -920,44 +928,35 @@ app.get('/api/ai-desk', async (req, res) => {
         res.json({ status: "success", ...result });
     } catch (e) { res.status(500).json({ status: "error", message: e.message }); }
 });
-// ===== SIGNAL QUALITY (A+/B) untuk Telegram =====
+
+// ===== AUTO CHECK SIGNAL & SEND TELEGRAM (5 minit) =====
 async function checkSignalAndNotify() {
     if (!TELEGRAM_BOT_TOKEN || !TELEGRAM_CHAT_ID) return;
     try {
         const symbol = 'XAU/USD';
-        
-        // Guna 4TF Confirmation
         const mtf = await checkMultiTimeframe(symbol);
         
-        // Skip kalau bukan A+ atau B
+        // Signal A+ atau B sahaja
         if (mtf.grade === 'SKIP') return;
         
-        // Ambil candle utama (M5)
         const candles = await getOHLC(symbol, '5min', 100);
         if (candles.length < 50) return;
         const closes = candles.map(c => c.close);
         const harga = closes[closes.length - 1];
-        const rsi = calculateRSI(closes, 14);
         const atr = calculateATR(candles, 14);
-        const atrPercent = (atr / harga) * 100;
         const session = getMarketSession();
         const pattern = detectLastCandlePattern(candles);
+        const rsi = calculateRSI(closes, 14);
         
-        // Skip kalau session CLOSED
         if (session === 'CLOSED') return;
         
-        // Cek candle lawan signal
+        // Cek candle lawan
         const candleCheck = checkCandleAgainstSignal(candles, mtf.consensus);
-        if (candleCheck.against) {
-            console.log(`⏸️ Signal ${mtf.consensus} tapi candle lawan — skip`);
-            return;
-        }
+        if (candleCheck.against) return;
         
-        // Kira SL/TP & Risk
         const sltp = calculateSLTP(mtf.consensus, harga, atr, symbol);
         const risk = calculatePositionSize(harga, parseFloat(sltp.sl), symbol);
         
-        // Signal key untuk elak spam
         const signalKey = `${symbol}_${mtf.consensus}_${Math.floor(harga)}_${mtf.grade}`;
         const lastKey = mtf.grade === 'A+' ? lastNotifiedSignal : lastNotifiedSignalB;
         if (lastKey === signalKey) return;
@@ -965,35 +964,25 @@ async function checkSignalAndNotify() {
         if (mtf.grade === 'A+') lastNotifiedSignal = signalKey;
         else lastNotifiedSignalB = signalKey;
         
-        // Build message
         const emoji = mtf.grade === 'A+' ? '🚀' : '⭐';
-        const title = mtf.grade === 'A+' ? 'SIGNAL A+' : 'SIGNAL B';
+        const tfLines = mtf.timeframes.map(t => `   ${t.label}: ${t.signal} (RSI ${t.rsi})`).join('\n');
         
-        // TF Confirmation string
-        let tfConfirm = '';
-        for (const t of mtf.timeframes) {
-            const isOk = t.signal === mtf.consensus;
-            tfConfirm += `   ${isOk ? '✓' : '✗'} ${t.label}: ${t.signal} (RSI ${t.rsi})\n`;
-        }
-        
-        const msg = `${emoji} <b>${title} (${mtf.agreement})</b>\n` +
+        const msg = `${emoji} <b>SIGNAL ${mtf.grade} (${mtf.agreement})</b>\n` +
             `━━━━━━━━━━━━━━━━\n` +
             `📊 ${symbol} — <b>${mtf.consensus}</b>\n` +
             `🎯 Entry: ${harga.toFixed(2)}\n\n` +
             `🛑 SL: ${sltp.sl}\n` +
             `✅ TP1: ${sltp.tp1}\n` +
             `✅ TP2: ${sltp.tp2}\n\n` +
-            `📊 4TF Confirmation:\n` +
-            `${tfConfirm}\n` +
-            `🔨 Pattern: ${pattern.pattern} (${pattern.strength}%)\n` +
+            `📊 4TF Confirmation:\n${tfLines}\n\n` +
             `📈 RSI: ${rsi.toFixed(1)} | ⏰ ${session}\n` +
             `💰 Lot: ${risk.lotSize} | Risk: $${risk.riskAmount}`;
         
         await sendTelegram(msg);
-        console.log(`📱 Telegram sent: ${mtf.grade} signal — ${mtf.consensus}`);
+        console.log(`📱 Telegram sent: ${mtf.grade} signal`);
     } catch (e) {
         if (e.message && e.message.includes('429')) {
-            console.log("⏳ Rate limit — skip Telegram this cycle");
+            console.log("⏳ Rate limit — skip this cycle");
         } else {
             console.log("checkSignalAndNotify error:", e.message);
         }
@@ -1001,16 +990,13 @@ async function checkSignalAndNotify() {
 }
 
 // ===== AUTO SERVICE =====
-
-// News alert — setiap 1 minit
 setInterval(() => {
     newsService.checkAndAlert();
 }, 60000);
 
-// Signal & Telegram — setiap 5 minit
 setInterval(() => {
     checkSignalAndNotify();
-}, 300000);
+}, 300000);  // 5 minit
 
 console.log('✅ News alert service berjalan (1 minit)');
 console.log('✅ Signal alert service berjalan (5 minit)');
