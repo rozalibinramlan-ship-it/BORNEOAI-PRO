@@ -25,7 +25,7 @@ const TELEGRAM_CHAT_ID = process.env.TELEGRAM_CHAT_ID || '';
 const ACCOUNT_BALANCE = parseFloat(process.env.ACCOUNT_BALANCE || '1000');
 const RISK_PERCENT = parseFloat(process.env.RISK_PERCENT || '1');
 
-// ===== MULTI API KEY =====
+// ===== MULTI API KEY (3 AKAUN) =====
 const TWELVEDATA_KEYS = [
     process.env.TWELVEDATA_API_KEY || '',
     process.env.TWELVEDATA_API_KEY_2 || '',
@@ -240,7 +240,6 @@ function detectLastCandlePattern(candles) {
     return detectCandlePattern(candles[candles.length - 1], candles[candles.length - 2]);
 }
 
-// ===== CANDLE REACTION (FIX: 5 candle + 3 reversal) =====
 function detectCandleReaction(candles, direction) {
     const last5 = candles.slice(-5);
     if (last5.length < 5) return { hasReversal: false, patterns: [], avgStrength: 0 };
@@ -311,7 +310,6 @@ async function isNewsTime() {
     } catch (e) { return false; }
 }
 
-// ===== CACHE =====
 const tickCache = new Map();
 const TICK_CACHE_MS = 30000;
 
@@ -319,22 +317,18 @@ async function getTick(symbol) {
     const cacheKey = symbol;
     const cached = tickCache.get(cacheKey);
     if (cached && Date.now() - cached.time < TICK_CACHE_MS) return cached.data;
-    
     const tdSymbol = toTwelveData(symbol);
     const totalKeys = TWELVEDATA_KEYS.length;
     let attempts = 0;
     let maxAttempts = totalKeys * 2;
-    
     while (attempts < maxAttempts) {
         attempts++;
         const keyIndex = currentKeyIndex;
         const key = getCurrentKey();
         const url = `${TWELVEDATA_URL}/quote?symbol=${encodeURIComponent(tdSymbol)}&apikey=${key}`;
-        
         try {
             const response = await axios.get(url, { timeout: 10000 });
             const d = response.data;
-            
             if (d.status === 'error' || d.code) {
                 if (d.code === 429 || (d.message && d.message.includes('429'))) {
                     console.log(`⏳ Key #${keyIndex + 1} rate limit, cuba seterusnya...`);
@@ -343,23 +337,12 @@ async function getTick(symbol) {
                 }
                 throw new Error(d.message || 'TwelveData error');
             }
-            
             const bid = parseFloat(d.bid || 0);
             const ask = parseFloat(d.ask || 0);
             const price = parseFloat(d.close || d.price || 0);
             const mid = price || (bid + ask) / 2 || 0;
             if (mid === 0) throw new Error('Harga 0.00');
-            
-            const result = { 
-                bid: bid || mid, 
-                ask: ask || mid, 
-                mid, 
-                spread: parseFloat(d.spread || (ask - bid) || 0), 
-                marketState: 'open', 
-                stale: false, 
-                change: parseFloat(d.change || 0), 
-                percentChange: parseFloat(d.percent_change || 0) 
-            };
+            const result = { bid: bid || mid, ask: ask || mid, mid, spread: parseFloat(d.spread || (ask - bid) || 0), marketState: 'open', stale: false, change: parseFloat(d.change || 0), percentChange: parseFloat(d.percent_change || 0) };
             tickCache.set(cacheKey, { data: result, time: Date.now() });
             return result;
         } catch (e) {
@@ -381,24 +364,20 @@ async function getOHLC(symbol, interval = '15m', limit = 100) {
     const cacheKey = `${symbol}_${interval}_${limit}`;
     const cached = ohlcCache.get(cacheKey);
     if (cached && Date.now() - cached.time < OHLC_CACHE_MS) return cached.data;
-    
     const tdSymbol = toTwelveData(symbol);
     const intervalMap = { '1min': '1min', '5min': '5min', '15min': '15min', '30min': '30min', '1h': '1h', '4h': '4h', '1day': '1day' };
     const tdInterval = intervalMap[interval] || '15min';
     const totalKeys = TWELVEDATA_KEYS.length;
     let attempts = 0;
     let maxAttempts = totalKeys * 2;
-    
     while (attempts < maxAttempts) {
         attempts++;
         const keyIndex = currentKeyIndex;
         const key = getCurrentKey();
         const url = `${TWELVEDATA_URL}/time_series?symbol=${encodeURIComponent(tdSymbol)}&interval=${tdInterval}&outputsize=${limit}&apikey=${key}`;
-        
         try {
             const response = await axios.get(url, { timeout: 10000 });
             const d = response.data;
-            
             if (d.status === 'error' || d.code) {
                 if (d.code === 429 || (d.message && d.message.includes('429'))) {
                     console.log(`⏳ OHLC Key #${keyIndex + 1} rate limit, cuba seterusnya...`);
@@ -407,9 +386,7 @@ async function getOHLC(symbol, interval = '15m', limit = 100) {
                 }
                 throw new Error(d.message || 'TwelveData error');
             }
-            
             if (!d.values || !Array.isArray(d.values)) return [];
-            
             const result = d.values.slice().reverse().map(c => ({
                 time: c.datetime,
                 timestamp: Math.floor(new Date(c.datetime).getTime() / 1000),
@@ -418,7 +395,6 @@ async function getOHLC(symbol, interval = '15m', limit = 100) {
                 low: parseFloat(c.low || 0),
                 close: parseFloat(c.close || 0)
             })).filter(c => !isNaN(c.timestamp) && c.close > 0);
-            
             ohlcCache.set(cacheKey, { data: result, time: Date.now() });
             return result;
         } catch (e) {
@@ -432,7 +408,7 @@ async function getOHLC(symbol, interval = '15m', limit = 100) {
     }
     throw new Error(`Semua ${totalKeys} API key gagal`);
 }
-// ===== MULTI-TIMEFRAME (M5 + M15 + H1) =====
+// ===== MULTI-TIMEFRAME =====
 async function checkMultiTimeframe(symbol) {
     const timeframes = ['5min', '15min', '1h'];
     const results = [];
@@ -460,59 +436,54 @@ async function checkMultiTimeframe(symbol) {
     };
 }
 
-// ===== SIGNAL LOCK =====
+// ===== SIGNAL LOCK + COOLDOWN =====
 const signalLock = new Map();
+const signalCooldown = new Map();
+const COOLDOWN_MS = 15 * 60 * 1000;  // 15 minit
 const patternHistory = [];
 const tradeJournal = [];
 let lastNotifiedSignal = null;
 let lastNotifiedSignalB = null;
 
-// ====== FIX: THRESHOLD 5% + RSI 15/85 ======
 function checkMomentumValid(lockData, ema9, ema21, rsi, currentPrice, atrPercent) {
     if (!lockData) return false;
     const { direction, entry } = lockData;
     const percentMove = Math.abs(currentPrice - entry) / entry * 100;
     if (direction === "SELL") {
         if (ema9 > ema21) return false;
-        if (rsi < 15) return false;           // Fix: 25 → 15
-        if (percentMove > 5) return false;    // Fix: 2 → 5
+        if (rsi < 15) return false;
+        if (percentMove > 5) return false;
         if (atrPercent < 0.015) return false;
         return true;
     }
     if (direction === "BUY") {
         if (ema9 < ema21) return false;
-        if (rsi > 85) return false;           // Fix: 75 → 85
-        if (percentMove > 5) return false;    // Fix: 2 → 5
+        if (rsi > 85) return false;
+        if (percentMove > 5) return false;
         if (atrPercent < 0.015) return false;
         return true;
     }
     return false;
 }
 
-// ===== SIGNAL QUALITY (A+/B) =====
 async function calculateSignalQuality(signalData) {
     const { signal, rsi, atrPercent, session, confidence, pattern, symbol } = signalData;
     let score = 0;
     const checks = [];
-
     if (signal === "BUY" || signal === "SELL") { score++; checks.push({ name: 'Signal Utama', ok: true }); }
     else checks.push({ name: 'Signal Utama', ok: false });
-
     try {
         const mtf = await checkMultiTimeframe(symbol);
         const mtfOk = mtf.confidence === 'HIGH' || mtf.confidence === 'MEDIUM';
         if (mtfOk && mtf.consensus === signal) { score++; checks.push({ name: `Multi-TF (${mtf.agreement})`, ok: true }); }
         else checks.push({ name: `Multi-TF (${mtf.agreement})`, ok: false });
     } catch (e) { checks.push({ name: 'Multi-TF', ok: false }); }
-
     const patternOk = pattern && pattern !== 'NONE' && pattern !== 'DOJI';
     if (patternOk) { score++; checks.push({ name: `Pattern (${pattern})`, ok: true }); }
     else checks.push({ name: 'Pattern', ok: false });
-
     const confOk = confidence >= 65;
     if (confOk) { score++; checks.push({ name: `AI Confidence ${confidence}%`, ok: true }); }
     else checks.push({ name: `AI Confidence ${confidence}%`, ok: false });
-
     return { score, total: 4, checks, grade: score >= 3 ? 'A+' : score === 2 ? 'B' : 'SKIP' };
 }
 
@@ -521,7 +492,6 @@ function buildSignalTelegram(data, grade) {
     const title = grade === 'A+' ? 'SIGNAL A+' : 'SIGNAL B';
     const conf = data.quality.checks.filter(c => c.ok).map(c => `   ✓ ${c.name}`).join('\n');
     const fail = data.quality.checks.filter(c => !c.ok).map(c => `   ✗ ${c.name}`).join('\n');
-    
     return `${emoji} <b>${title} (${data.quality.score}/${data.quality.total})</b>\n` +
         `━━━━━━━━━━━━━━━━\n` +
         `📊 ${data.symbol} — <b>${data.signal}</b>\n` +
@@ -597,21 +567,40 @@ app.get('/api/signal', async (req, res) => {
 
         const newsBlocking = await isNewsTime();
 
+        // ===== CEK COOLDOWN =====
+        const cooldownData = signalCooldown.get(symbol);
+        const now = Date.now();
+        const isCooldown = cooldownData && (now - cooldownData.time) < COOLDOWN_MS;
+        const cooldownRemain = isCooldown ? Math.ceil((COOLDOWN_MS - (now - cooldownData.time)) / 60000) : 0;
+
         const existingLock = signalLock.get(symbol);
         let signal = "WAIT", warna = "#94a3b8", reasons = [], filtered = false;
         let lockedEntry = null;
         let isLocked = false;
         let resetPattern = null;
 
-        if (existingLock) {
+        if (isCooldown) {
+            reasons.push(`Cooldown: ${cooldownRemain} minit lagi`);
+            signal = "WAIT";
+            warna = "#94a3b8";
+            filtered = true;
+        } else if (existingLock) {
             const momentumValid = checkMomentumValid(existingLock, ema9, ema21, rsi, harga, atrPercent);
             if (momentumValid) {
                 const snrTouch = detectSNRTouch(harga, snr, existingLock.direction, candles);
                 const pocTouch = detectPOCTouch(harga, snr.poc, existingLock.direction, candles);
                 const reaction = detectCandleReaction(candles, existingLock.direction);
                 const strongReversal = reaction.hasReversal && reaction.strongPattern;
-                if (strongReversal && snrTouch.touched) { signalLock.delete(symbol); resetPattern = reaction.strongPattern.pattern; }
-                else if (strongReversal && pocTouch.touched) { signalLock.delete(symbol); resetPattern = reaction.strongPattern.pattern; }
+                if (strongReversal && snrTouch.touched) {
+                    signalLock.delete(symbol);
+                    signalCooldown.set(symbol, { time: Date.now() });
+                    resetPattern = reaction.strongPattern.pattern;
+                }
+                else if (strongReversal && pocTouch.touched) {
+                    signalLock.delete(symbol);
+                    signalCooldown.set(symbol, { time: Date.now() });
+                    resetPattern = reaction.strongPattern.pattern;
+                }
                 else {
                     signal = existingLock.direction;
                     warna = signal === "BUY" ? "#22c55e" : "#ef4444";
@@ -622,20 +611,19 @@ app.get('/api/signal', async (req, res) => {
                     if (pocTouch.touched) reasons.push("Dekat POC");
                     if (lastPattern.pattern !== "NONE" && lastPattern.pattern !== "DOJI") reasons.push(`Pattern: ${lastPattern.pattern}`);
                 }
-            } else signalLock.delete(symbol);
+            } else {
+                signalLock.delete(symbol);
+                signalCooldown.set(symbol, { time: Date.now() });
+            }
         }
 
-        if (!isLocked) {
+        if (!isLocked && !isCooldown) {
             const emaCross = ema9 > ema21 ? "BUY" : "SELL";
-            
-            // ===== FIX: RSI 15/85 + BUANG FILTER ASIA =====
             if (emaCross === "BUY" && rsi > 85) { filtered = true; reasons.push("RSI Overbought"); }
             if (emaCross === "SELL" && rsi < 15) { filtered = true; reasons.push("RSI Oversold"); }
             if (atrPercent < 0.015) { filtered = true; reasons.push("Low Volatility"); }
-            // Asia filter DIBUANG — boleh trade
             if (session === "CLOSED") { filtered = true; reasons.push("Market Closed"); }
             if (newsBlocking) { filtered = true; reasons.push("News Time — Block"); }
-            
             if (!filtered) {
                 signal = emaCross;
                 warna = signal === "BUY" ? "#22c55e" : "#ef4444";
@@ -664,7 +652,7 @@ app.get('/api/signal', async (req, res) => {
         }
 
         res.json({
-            symbol, tf, harga: harga.toFixed(decimal), harga_entry: displayPrice.toFixed(decimal), signal, warna, locked: isLocked, news_blocking: newsBlocking,
+            symbol, tf, harga: harga.toFixed(decimal), harga_entry: displayPrice.toFixed(decimal), signal, warna, locked: isLocked, cooldown: isCooldown, cooldown_remain: cooldownRemain, news_blocking: newsBlocking,
             ema9: ema9.toFixed(decimal), ema21: ema21.toFixed(decimal), ema50: ema50.toFixed(decimal),
             rsi: rsi.toFixed(1), atrPercent: atrPercent.toFixed(3), session,
             spread: spread.toFixed(decimal), bid: bid.toFixed(decimal), ask: ask.toFixed(decimal),
@@ -972,15 +960,12 @@ async function checkSignalAndNotify() {
         const atrPercent = (atr / harga) * 100;
         const session = getMarketSession();
         const pattern = detectLastCandlePattern(candles);
-        
         const emaCross = ema9 > ema21 ? 'BUY' : 'SELL';
         if ((emaCross === 'BUY' && rsi > 85) || (emaCross === 'SELL' && rsi < 15)) return;
         if (atrPercent < 0.015) return;
         if (session === 'CLOSED') return;
-        
         const sltp = calculateSLTP(emaCross, harga, atr, symbol);
         const risk = calculatePositionSize(harga, parseFloat(sltp.sl), symbol);
-        
         let confidence = 60;
         try {
             const prompt = `XAUUSD. Signal: ${emaCross}. RSI: ${rsi.toFixed(1)}. EMA9: ${ema9.toFixed(2)}, EMA21: ${ema21.toFixed(2)}. Session: ${session}. Reply ONLY with number 50-95 (confidence %).`;
@@ -988,27 +973,21 @@ async function checkSignalAndNotify() {
             const match = aiText.match(/(\d+)/);
             if (match) confidence = parseInt(match[1]);
         } catch (e) { confidence = 60; }
-        
         const quality = await calculateSignalQuality({
             signal: emaCross, rsi, atrPercent, session, confidence,
             pattern: pattern.pattern, symbol
         });
-        
         if (quality.grade === 'SKIP') return;
-        
         const signalKey = `${symbol}_${emaCross}_${Math.floor(harga)}_${quality.grade}`;
         const lastKey = quality.grade === 'A+' ? lastNotifiedSignal : lastNotifiedSignalB;
         if (lastKey === signalKey) return;
-        
         if (quality.grade === 'A+') lastNotifiedSignal = signalKey;
         else lastNotifiedSignalB = signalKey;
-        
         const msg = buildSignalTelegram({
             symbol, signal: emaCross, entry: harga.toFixed(2),
             sltp, risk, rsi: rsi.toFixed(1), session,
             quality
         }, quality.grade);
-        
         await sendTelegram(msg);
         console.log(`📱 Telegram sent: ${quality.grade} signal`);
     } catch (e) {
@@ -1027,7 +1006,7 @@ setInterval(() => {
 
 setInterval(() => {
     checkSignalAndNotify();
-}, 300000);  // 5 minit
+}, 300000);
 
 console.log('✅ News alert service berjalan (1 minit)');
 console.log('✅ Signal alert service berjalan (5 minit)');

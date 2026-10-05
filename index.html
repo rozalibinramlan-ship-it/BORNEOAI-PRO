@@ -19,6 +19,7 @@ body { background: #050810; color: var(--text-white); font-family: -apple-system
 @keyframes pulseGlow { 0%, 100% { box-shadow: 0 0 30px rgba(239,68,68,0.4); } 50% { box-shadow: 0 0 60px rgba(239,68,68,0.8); } }
 @keyframes pulseGlowGreen { 0%, 100% { box-shadow: 0 0 30px rgba(34,197,94,0.4); } 50% { box-shadow: 0 0 60px rgba(34,197,94,0.8); } }
 @keyframes pulseGlowYellow { 0%, 100% { box-shadow: 0 0 20px rgba(251,191,36,0.4); } 50% { box-shadow: 0 0 40px rgba(251,191,36,0.8); } }
+@keyframes pulseGlowBlue { 0%, 100% { box-shadow: 0 0 20px rgba(56,189,248,0.4); } 50% { box-shadow: 0 0 40px rgba(56,189,248,0.8); } }
 @keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
 @keyframes shimmer { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } }
 @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
@@ -31,28 +32,10 @@ body { background: #050810; color: var(--text-white); font-family: -apple-system
 select { margin-top: 15px; padding: 10px 15px; border-radius: 10px; background: #141e30; color: white; border: 1px solid var(--border); font-weight: 700; width: 85%; font-size: 13px; }
 option { color: white; font-size: 13px; }
 
-/* ===== TIMEFRAME BUTTONS ===== */
-.tf-container { display: flex; justify-content: center; gap: 8px; margin: 12px auto 0; max-width: 90%; }
-.tf-btn { 
-  flex: 1; 
-  padding: 10px 16px; 
-  border-radius: 20px; 
-  border: 1px solid var(--border); 
-  background: var(--bg-card); 
-  color: var(--text-gray); 
-  font-weight: 900; 
-  font-size: 12px; 
-  letter-spacing: 1.5px; 
-  cursor: pointer; 
-  transition: all 0.3s ease;
-}
+.tf-toggle { display: flex; justify-content: center; gap: 8px; margin-top: 12px; padding: 0 15px; }
+.tf-btn { flex: 1; padding: 10px 20px; border-radius: 25px; border: 2px solid var(--border); background: var(--bg-card); color: var(--text-gray); font-weight: 900; font-size: 13px; letter-spacing: 2px; cursor: pointer; transition: all 0.3s ease; }
 .tf-btn:hover { background: rgba(56,189,248,0.15); }
-.tf-btn.active { 
-  background: linear-gradient(135deg, #38bdf8, #0ea5e9); 
-  color: white; 
-  border-color: #38bdf8; 
-  box-shadow: 0 0 20px rgba(56,189,248,0.5);
-}
+.tf-btn.active { background: linear-gradient(135deg, #38bdf8, #0ea5e9); color: white; border-color: #38bdf8; box-shadow: 0 0 25px rgba(56,189,248,0.6); animation: pulseGlowBlue 2s infinite; }
 
 .screen { display: none; padding: 15px; }
 .screen.active { display: block; animation: fadeIn 0.4s ease-out; }
@@ -67,10 +50,12 @@ option { color: white; font-size: 13px; }
 .wait { background: #1e293b; color: #64748b; border: 2px solid #475569; }
 .buy { background: linear-gradient(135deg, #064e3b, #065f46); color: #4ade80; border: 2px solid #22c55e; animation: pulseGlowGreen 2s infinite; }
 .sell { background: linear-gradient(135deg, #7f1d1d, #991b1b); color: #fca5a5; border: 2px solid #ef4444; animation: pulseGlow 2s infinite; }
+.cooldown { background: linear-gradient(135deg, #1e3a5f, #0c4a6e); color: #38bdf8; border: 2px solid #38bdf8; animation: pulseGlowBlue 2s infinite; }
 
 .lock-badge { display: inline-block; padding: 6px 14px; border-radius: 20px; font-size: 11px; font-weight: 900; letter-spacing: 2px; margin-top: 10px; }
 .lock-badge.locked { background: rgba(251, 191, 36, 0.15); color: #fbbf24; border: 1px solid rgba(251, 191, 36, 0.5); animation: pulseGlowYellow 3s infinite; }
 .lock-badge.fresh { background: rgba(56, 189, 248, 0.15); color: #38bdf8; border: 1px solid rgba(56, 189, 248, 0.5); }
+.lock-badge.cooldown { background: rgba(56, 189, 248, 0.15); color: #38bdf8; border: 1px solid rgba(56, 189, 248, 0.5); }
 .lock-info { text-align: center; font-size: 11px; color: #94a3b8; margin-top: 8px; }
 
 .filter-badge { display: inline-block; padding: 6px 12px; border-radius: 8px; font-size: 9px; font-weight: 900; letter-spacing: 1.5px; margin: 4px; text-transform: uppercase; }
@@ -277,9 +262,7 @@ td { padding: 12px; border-bottom: 1px solid var(--border); }
     <option value="NAS100">NAS100 (Nasdaq)</option>
     <option value="US30">US30 (Dow Jones)</option>
   </select>
-
-  <!-- BUTANG TIMEFRAME M1/M5/M15 -->
-  <div class="tf-container">
+  <div class="tf-toggle">
     <button id="tf-m1" class="tf-btn" onclick="tukarTF('1min', this)">M1</button>
     <button id="tf-m5" class="tf-btn active" onclick="tukarTF('5min', this)">M5</button>
     <button id="tf-m15" class="tf-btn" onclick="tukarTF('15min', this)">M15</button>
@@ -514,37 +497,37 @@ td { padding: 12px; border-bottom: 1px solid var(--border); }
   <button class="nav-item" onclick="switchTab('strategy', this)">⚡<span>STRATEGY</span></button>
 </nav>
 <script>
-// ===== GLOBAL VARIABLES =====
 let marketAktif = 'XAU/USD';
 let timeframeAktif = localStorage.getItem('borneo_tf') || '5min';
 let chart = null, candleSeries = null;
 let backtestChart = null, backtestSeries = null;
 let newsLoaded = false;
-let preNewsLoaded = false;
 let currentDeskPlan = null;
 let trades = JSON.parse(localStorage.getItem('borneo_trades') || '[]');
 const PIP_VALUE = 0.10;
 let graphAnimFrame = null;
-let lastSignalData = null;
 
-// ===== TIMEFRAME TOGGLE =====
+// Initialize TF button from saved
+document.addEventListener('DOMContentLoaded', () => {
+  const btnMap = { '1min': 'tf-m1', '5min': 'tf-m5', '15min': 'tf-m15' };
+  const btnId = btnMap[timeframeAktif];
+  if (btnId) {
+    document.querySelectorAll('.tf-btn').forEach(b => b.classList.remove('active'));
+    const btn = document.getElementById(btnId);
+    if (btn) btn.classList.add('active');
+  }
+});
+
 function tukarTF(tf, btn) {
   timeframeAktif = tf;
   localStorage.setItem('borneo_tf', tf);
-  
-  // Update butang aktif
   document.querySelectorAll('.tf-btn').forEach(b => b.classList.remove('active'));
   btn.classList.add('active');
-  
-  // Clear cache & refresh
-  lastSignalData = null;
+  console.log('📊 Timeframe tukar:', tf);
   dapatkanSignal();
   dapatkanCandleData();
-  
-  console.log('📊 Timeframe tukar:', tf);
 }
 
-// ===== TAB SWITCH =====
 function switchTab(tabName, element) {
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
   document.getElementById('screen-' + tabName).classList.add('active');
@@ -552,7 +535,6 @@ function switchTab(tabName, element) {
   element.classList.add('active');
   if(tabName === 'chart' && chart) setTimeout(() => { chart.applyOptions({ width: document.getElementById('chart').clientWidth }); dapatkanCandleData(); }, 100);
   if(tabName === 'news' && !newsLoaded) loadNews();
-  if(tabName === 'signal' && !preNewsLoaded) preNewsLoaded = true;
   if(tabName === 'desk') { renderTracker(); startGraphAnimation(); loadDeskStats(); }
   else { stopGraphAnimation(); }
 }
@@ -590,7 +572,7 @@ async function loadDeskStats() {
   } catch(e) {}
 }
 
-// ===== SIGNAL =====
+// ===== SIGNAL (dengan COOLDOWN + TF) =====
 async function dapatkanSignal() {
   try {
     const res = await fetch(`/api/signal?symbol=${marketAktif}&tf=${timeframeAktif}`);
@@ -603,7 +585,7 @@ async function dapatkanSignal() {
     document.getElementById('rsi').innerText = data.rsi;
     document.getElementById('atr').innerText = data.atrPercent + '%';
     document.getElementById('session').innerText = data.session;
-    document.getElementById('status').innerText = "Updated: " + data.masa + " | " + timeframeAktif;
+    document.getElementById('status').innerText = "Updated: " + data.masa + " | TF: " + (data.tf || timeframeAktif);
 
     const spreadEl = document.getElementById('spread');
     spreadEl.innerText = data.spread || '0';
@@ -621,7 +603,12 @@ async function dapatkanSignal() {
     const sb = document.getElementById('signal-box');
     const lockStatus = document.getElementById('lock-status');
 
-    if (data.signal === "BUY") {
+    // ===== COOLDOWN DISPLAY =====
+    if (data.cooldown && data.cooldown_remain > 0) {
+      sb.innerHTML = `COOLDOWN<br><span style='font-size:22px;'>⏳ ${data.cooldown_remain} minit</span>`;
+      sb.className = "signal-box cooldown";
+      lockStatus.innerHTML = `<span class="lock-badge cooldown">⏳ COOLDOWN</span><div class="lock-info">Tunggu ${data.cooldown_remain} minit sebelum signal baru</div>`;
+    } else if (data.signal === "BUY") {
       const displayPrice = data.harga_entry || data.harga;
       sb.innerHTML = "BUY <br><span style='font-size:26px;'>@ " + displayPrice + "</span>";
       sb.className = "signal-box buy";
@@ -652,7 +639,7 @@ async function dapatkanSignal() {
       document.getElementById('sltp-tp2').innerText = data.sltp.tp2;
       document.getElementById('sltp-tp3').innerText = data.sltp.tp3;
       document.getElementById('sltp-slpips').innerText = data.sltp.slPips;
-      document.getElementById('sltp-tppips').innerText = data.sltp.tp2Pips;
+      document.getElementById('sltp-tppips').innerText = data.sltp.tp2Pips + ' (' + data.sltp.tp1Pips + '/' + data.sltp.tp2Pips + ')';
       const rr = (data.sltp.tp2Pips / data.sltp.slPips).toFixed(1);
       document.getElementById('sltp-rr').innerText = '1:' + rr;
     }
@@ -670,8 +657,6 @@ async function dapatkanSignal() {
       document.getElementById('snr-poc').innerText = data.snr.poc || '-';
       document.getElementById('snr-resistance').innerText = data.snr.resistance || '-';
     }
-
-    lastSignalData = data;
   } catch (e) { console.error('Signal error:', e); }
 }
 
@@ -698,47 +683,27 @@ async function loadNewsPrediction() {
     const data = await res.json();
     const card = document.getElementById('news-countdown-card');
     const content = document.getElementById('news-countdown-content');
-
-    if (!data.hasNews || !data.event) {
-      card.style.display = 'none';
-      return;
-    }
-
+    if (!data.hasNews || !data.event) { card.style.display = 'none'; return; }
     const e = data.event;
     const p = data.prediction;
-    
     let urgencyColor = '#94a3b8';
     if (e.minutesUntil <= 5) urgencyColor = '#ef4444';
     else if (e.minutesUntil <= 15) urgencyColor = '#fbbf24';
     else if (e.minutesUntil <= 30) urgencyColor = '#22c55e';
-
     let biasColor = p.bias.includes('BEARISH') ? '#ef4444' : p.bias.includes('BULLISH') ? '#22c55e' : '#94a3b8';
-
     content.innerHTML = `
       <div class="countdown-timer" style="color:${urgencyColor};">⏰ ${e.countdown}</div>
       <div class="countdown-label">${e.time}</div>
       <div class="news-info-box">
         <div class="news-info-title">${e.name}</div>
         <div class="news-info-stats">
-          <div style="text-align:center;">
-            <div class="news-info-stat-label">ACTUAL</div>
-            <div class="news-info-stat-value">${e.actual}</div>
-          </div>
-          <div style="text-align:center;">
-            <div class="news-info-stat-label">FORECAST</div>
-            <div class="news-info-stat-value" style="color:#f1f5f9;">${e.forecast}</div>
-          </div>
-          <div style="text-align:center;">
-            <div class="news-info-stat-label">PREVIOUS</div>
-            <div class="news-info-stat-value" style="color:#f1f5f9;">${e.previous}</div>
-          </div>
+          <div style="text-align:center;"><div class="news-info-stat-label">ACTUAL</div><div class="news-info-stat-value">${e.actual}</div></div>
+          <div style="text-align:center;"><div class="news-info-stat-label">FORECAST</div><div class="news-info-stat-value" style="color:#f1f5f9;">${e.forecast}</div></div>
+          <div style="text-align:center;"><div class="news-info-stat-label">PREVIOUS</div><div class="news-info-stat-value" style="color:#f1f5f9;">${e.previous}</div></div>
         </div>
       </div>
       <div class="bias-box" style="background:linear-gradient(135deg, #0d1a33, #101c33); border-left:3px solid ${biasColor};">
-        <div class="bias-header">
-          <span class="bias-label">BIAS PREDICTION</span>
-          <span class="bias-confidence" style="color:${urgencyColor};">${p.confidence}%</span>
-        </div>
+        <div class="bias-header"><span class="bias-label">BIAS PREDICTION</span><span class="bias-confidence" style="color:${urgencyColor};">${p.confidence}%</span></div>
         <div class="bias-value" style="color:${biasColor};">${p.bias}</div>
         <div class="bias-reason">${p.reason}</div>
         <div class="bias-action">💡 ${p.action}</div>
@@ -748,7 +713,6 @@ async function loadNewsPrediction() {
   } catch (err) { console.error('News prediction error:', err); }
 }
 
-// ===== ASK AI =====
 async function tanyaAI() {
   const harga = document.getElementById('main-price-signal').innerText;
   const soalan = document.getElementById('soalan-ai').value;
@@ -764,7 +728,6 @@ async function tanyaAI() {
   } catch (e) { text.innerText = "Connection error."; }
 }
 
-// ===== CHART =====
 async function dapatkanCandleData() {
   if (!chart) {
     const c = document.getElementById('chart');
@@ -780,7 +743,6 @@ async function dapatkanCandleData() {
   } catch (e) {}
 }
 
-// ===== PRE-NEWS =====
 async function loadPreNews(isManual = false) {
   const content = document.getElementById('pre-news-content');
   if (isManual) content.innerHTML = '<p style="text-align:center; color:#fbbf24; font-size:12px; padding:10px;">⏳ AI tengah analisa...</p>';
@@ -794,7 +756,6 @@ async function loadPreNews(isManual = false) {
   } catch (err) { content.innerHTML = '<p style="text-align:center; color:#ef4444; font-size:12px;">❌ Gagal. Cuba tekan 🔄 REFRESH.</p>'; }
 }
 
-// ===== NEWS LIST =====
 async function loadNews() {
   newsLoaded = true;
   const list = document.getElementById('news-list');
@@ -814,7 +775,6 @@ async function loadNews() {
   } catch (err) { list.innerHTML = '<div style="text-align:center; padding:30px; color:#ef4444;">❌ Gagal</div>'; }
 }
 
-// ===== BACKTEST =====
 async function jalankanBacktest() {
   document.getElementById('bt-ai-comment').innerText = "Analyzing historical data...";
   document.getElementById('bt-winrate').innerText = "...";
@@ -840,7 +800,6 @@ async function jalankanBacktest() {
   } catch (e) { document.getElementById('bt-ai-comment').innerText = "❌ Connection error."; }
 }
 
-/* GRAPH ANIMATION */
 let nodes = [];
 let edges = [];
 function initGraph() {
@@ -894,7 +853,6 @@ function stopGraphAnimation() {
   if (graphAnimFrame) { cancelAnimationFrame(graphAnimFrame); graphAnimFrame = null; }
 }
 
-/* AI DESK */
 function setPanel(n, status, desc, val, valColor) {
   const p = document.getElementById('panel-' + n);
   if (!p) return;
@@ -984,7 +942,7 @@ async function closeTrade() {
   const openTrade = trades.find(t => t.status === 'OPEN');
   if (!openTrade) return;
   let cp = openTrade.entry;
-  try { const res = await fetch(`/api/signal?symbol=${openTrade.symbol}&tf=${timeframeAktif}`); const data = await res.json(); cp = parseFloat(data.harga); } catch(e) {}
+  try { const res = await fetch(`/api/signal?symbol=${openTrade.symbol}`); const data = await res.json(); cp = parseFloat(data.harga); } catch(e) {}
   const isBuy = openTrade.direction.includes('BUY');
   const pips = isBuy ? (cp - openTrade.entry) / 0.01 : (openTrade.entry - cp) / 0.01;
   openTrade.status = pips >= 0 ? 'WIN' : 'LOSS';
@@ -1052,26 +1010,12 @@ function resetHistory() {
   logFeed('[RESET] History cleared', 'info');
 }
 
-// ===== INITIALIZE BUTANG TIMEFRAME IKUT SAVED =====
-document.addEventListener('DOMContentLoaded', () => {
-  const savedTF = localStorage.getItem('borneo_tf') || '5min';
-  const btnMap = { '1min': 'tf-m1', '5min': 'tf-m5', '15min': 'tf-m15' };
-  const btnId = btnMap[savedTF];
-  if (btnId) {
-    document.querySelectorAll('.tf-btn').forEach(b => b.classList.remove('active'));
-    const btn = document.getElementById(btnId);
-    if (btn) btn.classList.add('active');
-    timeframeAktif = savedTF;
-  }
-});
-
 // ===== AUTO REFRESH =====
-setInterval(dapatkanSignal, 180000);        // 3 minit
-setInterval(dapatkanMarketData, 180000);    // 3 minit
-setInterval(dapatkanCandleData, 600000);    // 10 minit
-setInterval(loadNewsPrediction, 120000);    // 2 minit
+setInterval(dapatkanSignal, 180000);       // 3 minit
+setInterval(dapatkanMarketData, 180000);   // 3 minit
+setInterval(dapatkanCandleData, 600000);   // 10 minit
+setInterval(loadNewsPrediction, 120000);   // 2 minit
 
-// Initial load
 dapatkanSignal();
 dapatkanMarketData();
 loadNewsPrediction();
