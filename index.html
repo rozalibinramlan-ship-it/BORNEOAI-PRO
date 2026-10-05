@@ -1,850 +1,281 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Borneo Pro Trade V3</title>
-<script src="https://unpkg.com/lightweight-charts@4.1.3/dist/lightweight-charts.standalone.production.js"></script>
-<style>
-* { box-sizing: border-box; }
-:root { 
-  --bg-dark: #050810; --bg-card: #0d1526; --bg-panel: #101c33; --border: #1f2d42;
-  --accent-yellow: #fbbf24; --accent-blue: #38bdf8; --accent-purple: #a78bfa;
-  --accent-green: #22c55e; --accent-red: #ef4444;
-  --text-gray: #94a3b8; --text-white: #f1f5f9;
-}
-body { background: #050810; color: var(--text-white); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif; margin: 0; padding: 0; padding-bottom: 80px; overflow-x: hidden; min-height: 100vh; }
-
-@keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-@keyframes pulseGlow { 0%, 100% { box-shadow: 0 0 30px rgba(239,68,68,0.4); } 50% { box-shadow: 0 0 60px rgba(239,68,68,0.8); } }
-@keyframes pulseGlowGreen { 0%, 100% { box-shadow: 0 0 30px rgba(34,197,94,0.4); } 50% { box-shadow: 0 0 60px rgba(34,197,94,0.8); } }
-@keyframes pulseGlowYellow { 0%, 100% { box-shadow: 0 0 20px rgba(251,191,36,0.4); } 50% { box-shadow: 0 0 40px rgba(251,191,36,0.8); } }
-@keyframes pulseGlowBlue { 0%, 100% { box-shadow: 0 0 20px rgba(56,189,248,0.4); } 50% { box-shadow: 0 0 40px rgba(56,189,248,0.8); } }
-@keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
-@keyframes shimmer { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } }
-@keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
-@keyframes scan { 0% { transform: translateX(-100%); } 100% { transform: translateX(100%); } }
-
-.header { padding: 25px 15px 15px; text-align: center; border-bottom: 1px solid var(--border); background: #0a1525; position: relative; overflow: hidden; }
-.header::before { content: ''; position: absolute; top: 0; left: -100%; width: 100%; height: 100%; background: linear-gradient(90deg, transparent, rgba(56,189,248,0.1), transparent); animation: shimmer 4s infinite; }
-.header img { display: block; margin: 0 auto 12px; width: 70px; height: 70px; border-radius: 50%; object-fit: cover; box-shadow: 0 0 40px rgba(56, 189, 248, 0.6); border: 2px solid var(--accent-blue); }
-.header h1 { margin: 0; color: var(--accent-yellow); font-size: 14px; letter-spacing: 4px; font-weight: 900; }
-select { margin-top: 15px; padding: 10px 15px; border-radius: 10px; background: #141e30; color: white; border: 1px solid var(--border); font-weight: 700; width: 85%; font-size: 13px; }
-option { color: white; font-size: 13px; }
-
-.screen { display: none; padding: 15px; }
-.screen.active { display: block; animation: fadeIn 0.4s ease-out; }
-.glass-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 18px; padding: 18px; margin-bottom: 15px; box-shadow: 0 8px 32px rgba(0,0,0,0.4); }
-
-.card-title { font-size: 10px; font-weight: 800; color: var(--text-gray); margin-top: 0; margin-bottom: 12px; letter-spacing: 2.5px; text-transform: uppercase; }
-.price-display { text-align: center; margin: 20px 0; }
-.price-value { font-size: 52px; font-weight: 900; margin: 0; letter-spacing: -2px; }
-.live-badge { background: rgba(34, 197, 94, 0.15); color: #4ade80; padding: 5px 14px; border-radius: 20px; font-size: 10px; font-weight: 900; letter-spacing: 2px; border: 1px solid rgba(34, 197, 94, 0.4); display: inline-block; }
-
-.signal-box { padding: 30px 20px; border-radius: 22px; font-size: 42px; font-weight: 900; text-align: center; margin: 20px auto; letter-spacing: 4px; transition: all 0.4s ease; }
-.wait { background: #1e293b; color: #64748b; border: 2px solid #475569; }
-.buy { background: linear-gradient(135deg, #064e3b, #065f46); color: #4ade80; border: 2px solid #22c55e; animation: pulseGlowGreen 2s infinite; }
-.sell { background: linear-gradient(135deg, #7f1d1d, #991b1b); color: #fca5a5; border: 2px solid #ef4444; animation: pulseGlow 2s infinite; }
-.cooldown { background: linear-gradient(135deg, #1e3a5f, #0c4a6e); color: #38bdf8; border: 2px solid #38bdf8; animation: pulseGlowBlue 2s infinite; }
-
-.grade-badge { display: inline-block; padding: 6px 16px; border-radius: 20px; font-size: 12px; font-weight: 900; letter-spacing: 2px; margin: 5px; }
-.grade-A { background: linear-gradient(135deg, #fbbf24, #f59e0b); color: #050810; box-shadow: 0 0 20px rgba(251,191,36,0.6); }
-.grade-B { background: rgba(56,189,248,0.2); color: #38bdf8; border: 1px solid #38bdf8; }
-.grade-SKIP { background: rgba(148,163,184,0.1); color: #94a3b8; border: 1px solid #475569; }
-
-.lock-badge { display: inline-block; padding: 6px 14px; border-radius: 20px; font-size: 11px; font-weight: 900; letter-spacing: 2px; margin-top: 10px; }
-.lock-badge.locked { background: rgba(251, 191, 36, 0.15); color: #fbbf24; border: 1px solid rgba(251, 191, 36, 0.5); animation: pulseGlowYellow 3s infinite; }
-.lock-badge.fresh { background: rgba(56, 189, 248, 0.15); color: #38bdf8; border: 1px solid rgba(56, 189, 248, 0.5); }
-.lock-badge.cooldown { background: rgba(56, 189, 248, 0.15); color: #38bdf8; border: 1px solid rgba(56, 189, 248, 0.5); }
-.lock-info { text-align: center; font-size: 11px; color: #94a3b8; margin-top: 8px; }
-
-.filter-badge { display: inline-block; padding: 6px 12px; border-radius: 8px; font-size: 9px; font-weight: 900; letter-spacing: 1.5px; margin: 4px; text-transform: uppercase; }
-.filter-pass { background: rgba(34, 197, 94, 0.15); color: #4ade80; border: 1px solid rgba(34, 197, 94, 0.5); }
-.filter-fail { background: rgba(239, 68, 68, 0.15); color: #fca5a5; border: 1px solid rgba(239, 68, 68, 0.5); }
-.filter-info { background: rgba(251, 191, 36, 0.15); color: #fbbf24; border: 1px solid rgba(251, 191, 36, 0.5); }
-
-.layer-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
-.layer-item { padding: 8px 10px; border-radius: 8px; font-size: 10px; font-weight: 800; letter-spacing: 0.5px; display: flex; justify-content: space-between; align-items: center; }
-.layer-item.ok { background: rgba(34,197,94,0.15); color: #4ade80; border: 1px solid rgba(34,197,94,0.4); }
-.layer-item.fail { background: rgba(239,68,68,0.1); color: #94a3b8; border: 1px solid rgba(239,68,68,0.3); }
-.layer-icon { font-size: 12px; }
-
-.liquidity-status { text-align: center; padding: 12px; border-radius: 12px; margin-bottom: 10px; font-weight: 900; font-size: 13px; letter-spacing: 1px; }
-.liquidity-in { background: linear-gradient(135deg, #064e3b, #065f46); color: #4ade80; border: 1px solid #22c55e; }
-.liquidity-out { background: #1e293b; color: #64748b; border: 1px solid #475569; }
-.zone-list { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; margin-top: 8px; }
-.zone-badge { padding: 4px 10px; border-radius: 6px; font-size: 9px; font-weight: 900; letter-spacing: 1px; }
-.zone-SNR { background: rgba(56,189,248,0.2); color: #38bdf8; border: 1px solid #38bdf8; }
-.zone-POC { background: rgba(251,191,36,0.2); color: #fbbf24; border: 1px solid #fbbf24; }
-.zone-FVG { background: rgba(167,139,250,0.2); color: #a78bfa; border: 1px solid #a78bfa; }
-
-.volume-bar { background: #0a1525; border-radius: 8px; padding: 10px; margin-top: 8px; }
-.volume-label { display: flex; justify-content: space-between; font-size: 10px; color: #94a3b8; margin-bottom: 6px; font-weight: 800; letter-spacing: 1px; }
-.volume-fill { height: 12px; background: #1e293b; border-radius: 6px; overflow: hidden; position: relative; }
-.volume-progress { height: 100%; border-radius: 6px; transition: width 0.5s ease; }
-.volume-progress.spike { background: linear-gradient(90deg, #fbbf24, #ef4444); }
-.volume-progress.normal { background: linear-gradient(90deg, #22c55e, #16a34a); }
-.volume-bias { display: flex; gap: 8px; margin-top: 8px; font-size: 11px; }
-.volume-bias-buy { flex: 1; text-align: center; padding: 6px; border-radius: 6px; background: rgba(34,197,94,0.15); color: #4ade80; font-weight: 900; }
-.volume-bias-sell { flex: 1; text-align: center; padding: 6px; border-radius: 6px; background: rgba(239,68,68,0.15); color: #fca5a5; font-weight: 900; }
-
-.tf-status { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin: 15px 0; }
-.tf-item { text-align: center; padding: 10px 4px; border-radius: 12px; border: 2px solid var(--border); background: #0a1525; }
-.tf-item.buy { background: rgba(34,197,94,0.15); border-color: #22c55e; }
-.tf-item.sell { background: rgba(239,68,68,0.15); border-color: #ef4444; }
-.tf-item.wait { background: rgba(148,163,184,0.1); border-color: #475569; }
-.tf-label { font-size: 10px; font-weight: 900; color: #94a3b8; letter-spacing: 1px; display: block; margin-bottom: 4px; }
-.tf-value { font-size: 13px; font-weight: 900; }
-.tf-value.buy { color: #4ade80; }
-.tf-value.sell { color: #fca5a5; }
-.tf-value.wait { color: #94a3b8; }
-.tf-rsi { font-size: 9px; color: #64748b; margin-top: 2px; }
-
-.sltp-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-top: 12px; }
-.sltp-item { text-align: center; background: #0a1525; padding: 10px 6px; border-radius: 10px; border: 1px solid var(--border); }
-.sltp-label { font-size: 8px; color: #94a3b8; font-weight: 800; letter-spacing: 1px; display: block; margin-bottom: 4px; }
-.sltp-value { font-size: 13px; font-weight: 900; }
-.sltp-value.sl { color: #ef4444; }
-.sltp-value.tp { color: #22c55e; }
-.sltp-value.entry { color: #38bdf8; }
-
-.pattern-badge { display: flex; align-items: center; justify-content: center; gap: 8px; padding: 10px 16px; border-radius: 12px; margin: 12px auto; max-width: 90%; animation: slideUp 0.4s ease; }
-.pattern-badge.bullish { background: rgba(34,197,94,0.15); border: 1px solid #22c55e; }
-.pattern-badge.bearish { background: rgba(239,68,68,0.15); border: 1px solid #ef4444; }
-.pattern-badge.neutral { background: rgba(148,163,184,0.15); border: 1px solid #94a3b8; }
-.pattern-icon { font-size: 24px; }
-.pattern-text { font-size: 12px; font-weight: 900; letter-spacing: 1px; }
-.pattern-strength { font-size: 10px; color: #94a3b8; margin-left: auto; }
-
-.risk-panel { background: linear-gradient(135deg, #0d1a33, #101c33); border: 1px solid var(--border); border-radius: 14px; padding: 14px; margin-top: 12px; }
-.risk-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-.risk-item { text-align: center; background: rgba(0,0,0,0.3); padding: 8px; border-radius: 8px; }
-.risk-label { font-size: 9px; color: #94a3b8; font-weight: 700; }
-.risk-value { font-size: 14px; font-weight: 900; margin-top: 4px; color: #fbbf24; }
-
-.indicator-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
-.indicator-item { text-align: center; padding: 12px 4px; background: #0a1525; border-radius: 12px; border: 1px solid var(--border); }
-.indicator-label { display: block; color: var(--text-gray); font-size: 8px; font-weight: 800; letter-spacing: 1px; margin-bottom: 6px; text-transform: uppercase; }
-.indicator-value { font-size: 13px; font-weight: 900; }
-.indicator-value.blue { color: var(--accent-blue); }
-.indicator-value.yellow { color: var(--accent-yellow); }
-
-.snr-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 15px; }
-.snr-box { background: var(--bg-card); padding: 14px 8px; border-radius: 12px; text-align: center; border: 1px solid var(--border); }
-.snr-box .label { font-size: 10px; margin-bottom: 6px; font-weight: 900; }
-.snr-box .value { font-size: 15px; font-weight: 900; }
-.snr-box.red .label { color: #ef4444; } .snr-box.green .label { color: #22c55e; } .snr-box.blue .label { color: #3b82f6; }
-.snr-box.yellow { background: linear-gradient(135deg, #fbbf24, #f59e0b); border: none; } 
-.snr-box.yellow .label, .snr-box.yellow .value { color: #050810; }
-
-.table-container { background: var(--bg-card); border-radius: 14px; overflow: hidden; border: 1px solid var(--border); }
-table { width: 100%; border-collapse: collapse; font-size: 13px; }
-th { background: #0a1525; padding: 12px; color: var(--text-gray); text-align: left; font-size: 10px; letter-spacing: 1.5px; font-weight: 900; text-transform: uppercase; }
-td { padding: 12px; border-bottom: 1px solid var(--border); }
-.highlight-row { background: linear-gradient(90deg, rgba(251,191,36,0.2), transparent); color: var(--accent-yellow); font-weight: 900; }
-.text-green { color: var(--accent-green); } .text-red { color: var(--accent-red); }
-
-#chart, #chart-backtest { width: 100%; background: #0a1525; border-radius: 14px; border: 1px solid var(--border); overflow: hidden; }
-#chart { height: 420px; } #chart-backtest { height: 260px; }
-.poc-banner { background: linear-gradient(135deg, #fbbf24, #f59e0b); color: #050810; font-weight: 900; text-align: center; padding: 16px; border-radius: 14px; margin-bottom: 15px; font-size: 16px; letter-spacing: 2px; }
-
-.ai-input-container { display: flex; gap: 8px; margin-top: 15px; }
-.ai-input { flex: 1; padding: 14px 18px; border-radius: 25px; border: 1px solid var(--border); background: var(--bg-card); color: white; font-size: 14px; outline: none; }
-.ai-input::placeholder { color: #64748b; }
-.ai-send-btn { background: linear-gradient(135deg, #2196F3, #1976D2); color: white; padding: 14px 22px; border-radius: 25px; border: none; cursor: pointer; font-weight: 900; font-size: 13px; }
-.ai-result-box { margin-top: 15px; padding: 18px; background: #0a1525; border-radius: 14px; border-left: 3px solid var(--accent-blue); display: none; }
-.ai-result-header { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
-.ai-result-header b { color: var(--accent-blue); font-size: 11px; text-transform: uppercase; letter-spacing: 2.5px; font-weight: 900; }
-.ai-result-text { color: #cbd5e1; font-size: 14px; line-height: 1.8; margin: 0; white-space: pre-wrap; }
-
-.news-item { background: var(--bg-card); border: 1px solid var(--border); border-radius: 14px; padding: 16px; margin-bottom: 12px; border-left: 4px solid var(--accent-yellow); }
-.news-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
-.news-time { font-size: 11px; color: var(--accent-blue); font-weight: 900; }
-.news-currency { background: rgba(56, 189, 248, 0.15); color: var(--accent-blue); padding: 3px 8px; border-radius: 4px; font-size: 10px; font-weight: 900; }
-.news-event { font-size: 14px; color: var(--text-white); font-weight: 700; margin-bottom: 10px; }
-
-.pre-news-event { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; padding-bottom: 12px; border-bottom: 1px solid var(--border); }
-.pre-news-name { font-size: 13px; font-weight: 800; }
-.pre-news-time { font-size: 10px; color: var(--accent-blue); font-weight: 700; }
-.pre-news-prediction { font-size: 12px; line-height: 1.7; white-space: pre-wrap; margin: 0; background: rgba(0,0,0,0.3); padding: 12px; border-radius: 8px; color: #cbd5e1; }
-.pre-news-data { display: flex; gap: 8px; margin-bottom: 10px; }
-.pre-news-data-item { flex: 1; text-align: center; background: rgba(0,0,0,0.3); padding: 6px; border-radius: 6px; }
-.pre-news-data-label { font-size: 8px; color: var(--text-gray); font-weight: 700; }
-.pre-news-data-value { font-size: 12px; font-weight: 900; margin-top: 3px; }
-.pre-news-data-value.actual { color: var(--accent-yellow); }
-.refresh-btn { background: rgba(251,191,36,0.2); color: #fbbf24; border: 1px solid #fbbf24; padding: 5px 12px; border-radius: 8px; font-size: 10px; font-weight: 900; cursor: pointer; letter-spacing: 1px; }
-
-.news-countdown { border-left: 4px solid #ef4444; }
-.countdown-timer { text-align: center; font-size: 36px; font-weight: 900; letter-spacing: 2px; margin-bottom: 4px; }
-.countdown-label { text-align: center; font-size: 11px; color: #94a3b8; margin-bottom: 12px; }
-.news-info-box { background: rgba(0,0,0,0.3); padding: 12px; border-radius: 10px; margin-bottom: 10px; }
-.news-info-title { font-size: 13px; font-weight: 900; margin-bottom: 8px; }
-.news-info-stats { display: grid; grid-template-columns: repeat(3,1fr); gap: 8px; font-size: 11px; }
-.news-info-stat-label { color: #94a3b8; font-size: 9px; }
-.news-info-stat-value { color: #fbbf24; font-weight: 900; }
-.bias-box { padding: 12px; border-radius: 10px; }
-.bias-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
-.bias-label { font-size: 10px; color: #94a3b8; font-weight: 900; letter-spacing: 1px; }
-.bias-confidence { font-size: 10px; font-weight: 900; }
-.bias-value { font-size: 15px; font-weight: 900; margin-bottom: 6px; }
-.bias-reason { font-size: 11px; color: #cbd5e1; line-height: 1.5; }
-.bias-action { margin-top: 8px; font-size: 11px; color: #fbbf24; font-weight: 900; }
-
-.desk-container { padding: 0; }
-.desk-topbar { display: flex; justify-content: space-between; align-items: center; padding: 12px 15px; background: linear-gradient(90deg, #0d1a33, #0a1525); border: 1px solid var(--border); border-radius: 12px; margin-bottom: 12px; }
-.desk-topbar-left { display: flex; align-items: center; gap: 10px; }
-.desk-logo { font-size: 16px; font-weight: 900; color: #a78bfa; letter-spacing: 2px; }
-.desk-live { font-size: 10px; color: var(--accent-green); font-weight: 900; letter-spacing: 1px; }
-.desk-live::before { content: '●'; margin-right: 5px; animation: blink 1s infinite; }
-.desk-topbar-right { display: flex; gap: 12px; font-size: 10px; }
-.desk-stat { text-align: right; }
-.desk-stat-label { color: var(--text-gray); font-size: 9px; letter-spacing: 1px; }
-.desk-stat-value { color: var(--accent-yellow); font-weight: 900; font-size: 12px; }
-.desk-run-btn { background: linear-gradient(135deg, #a78bfa, #7c3aed); color: white; padding: 16px; border-radius: 12px; border: none; cursor: pointer; width: 100%; font-weight: 900; letter-spacing: 2px; font-size: 14px; margin-bottom: 12px; box-shadow: 0 4px 20px rgba(167, 139, 250, 0.4); }
-.signal-result-card { background: linear-gradient(135deg, #0d1a33, #101c33); border: 2px solid var(--accent-purple); border-radius: 14px; padding: 16px; margin-bottom: 12px; }
-.signal-result-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; padding-bottom: 10px; border-bottom: 1px solid var(--border); }
-.signal-result-title { font-size: 11px; color: var(--accent-purple); font-weight: 900; letter-spacing: 2px; }
-.signal-badge { padding: 4px 10px; border-radius: 6px; font-size: 10px; font-weight: 900; letter-spacing: 1px; }
-.signal-badge.buy { background: rgba(34,197,94,0.2); color: #22c55e; border: 1px solid #22c55e; }
-.signal-badge.sell { background: rgba(239,68,68,0.2); color: #ef4444; border: 1px solid #ef4444; }
-.signal-badge.wait { background: rgba(100,116,139,0.2); color: #94a3b8; border: 1px solid #64748b; }
-.signal-row { display: flex; justify-content: space-between; padding: 6px 0; font-size: 12px; }
-.signal-row-label { color: var(--text-gray); font-weight: 700; }
-.signal-row-value { font-weight: 900; }
-.tracker-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin-bottom: 10px; }
-.tracker-item { text-align: center; background: #0a1525; padding: 10px 4px; border-radius: 10px; border: 1px solid var(--border); }
-.tracker-label { font-size: 8px; color: var(--text-gray); font-weight: 800; letter-spacing: 1px; }
-.tracker-value { font-size: 14px; font-weight: 900; margin-top: 4px; }
-.tracker-value.green { color: var(--accent-green); }
-.tracker-value.red { color: var(--accent-red); }
-.tracker-value.yellow { color: var(--accent-yellow); }
-.btn-reset { background: rgba(239, 68, 68, 0.15); color: #fca5a5; border: 1px solid #ef4444; padding: 10px; border-radius: 8px; cursor: pointer; font-weight: 700; font-size: 11px; width: 100%; margin-top: 10px; }
-#bottom-nav { position: fixed; bottom: 0; left: 0; width: 100%; background: #050810; border-top: 1px solid var(--border); display: flex; justify-content: space-around; padding: 12px 0 15px; z-index: 100; }
-.nav-item { display: flex; flex-direction: column; align-items: center; color: #64748b; font-size: 9px; cursor: pointer; background: none; border: none; width: 16%; letter-spacing: 1px; font-weight: 900; }
-.nav-item.active { color: var(--accent-yellow); } 
-.nav-item span { margin-top: 5px; }
-</style>
-</head>
-<body>
-<div class="header">
-  <img src="logo.png" alt="Logo">
-  <h1>BORNEO PRO TRADE V3</h1>
-  <select id="market-selector" onchange="tukarMarket()">
-    <option value="XAU/USD">XAU/USD (Gold)</option>
-    <option value="XAG/USD">XAG/USD (Silver)</option>
-    <option value="EUR/USD">EUR/USD (Euro)</option>
-    <option value="GBP/USD">GBP/USD (Pound)</option>
-    <option value="USD/JPY">USD/JPY (Yen)</option>
-    <option value="AUD/USD">AUD/USD (Aussie)</option>
-  </select>
-</div>
-
-<!-- SCREEN 1: SIGNAL -->
-<div id="screen-signal" class="screen active">
-  <div class="price-display">
-    <h2 class="price-value" id="main-price-signal">Loading...</h2>
-    <span class="live-badge">● LIVE</span>
-  </div>
-  <div id="signal-box" class="signal-box wait">WAIT</div>
-  <div id="grade-display" style="text-align:center; margin-top:-10px; margin-bottom:10px;"></div>
-  <div id="lock-status" style="text-align:center; margin-bottom:10px;"></div>
-  
-  <div class="glass-card">
-    <p class="card-title">💧 LIQUIDITY ZONE</p>
-    <div id="liquidity-display"></div>
-  </div>
-
-  <div class="glass-card">
-    <p class="card-title">📊 9 LAYER CONFIRMATION</p>
-    <div class="layer-grid" id="layers-grid">
-      <div class="layer-item"><span>💧 Liquidity</span><span class="layer-icon">-</span></div>
-      <div class="layer-item"><span>📊 Volume</span><span class="layer-icon">-</span></div>
-      <div class="layer-item"><span>🎯 Vol Bias</span><span class="layer-icon">-</span></div>
-      <div class="layer-item"><span>📈 EMA</span><span class="layer-icon">-</span></div>
-      <div class="layer-item"><span>📉 BB</span><span class="layer-icon">-</span></div>
-      <div class="layer-item"><span>⏱️ TF 4</span><span class="layer-icon">-</span></div>
-      <div class="layer-item"><span>🕯️ Pattern</span><span class="layer-icon">-</span></div>
-      <div class="layer-item"><span>📊 RSI</span><span class="layer-icon">-</span></div>
-      <div class="layer-item"><span>🕯️ Momentum</span><span class="layer-icon">-</span></div>
-      <div class="layer-item"><span>🎯 Candle</span><span class="layer-icon">-</span></div>
-    </div>
-  </div>
-
-  <div class="glass-card">
-    <p class="card-title">📊 VOLUME ANALYSIS</p>
-    <div class="volume-bar">
-      <div class="volume-label">
-        <span id="vol-current">Current: -</span>
-        <span id="vol-ratio">Ratio: -</span>
-      </div>
-      <div class="volume-fill">
-        <div class="volume-progress normal" id="vol-progress" style="width: 0%;"></div>
-      </div>
-      <div class="volume-bias" id="vol-bias"></div>
-    </div>
-  </div>
-
-  <div class="glass-card">
-    <p class="card-title">📊 4 TIMEFRAME CONFIRMATION</p>
-    <div class="tf-status">
-      <div class="tf-item" id="tf-m5-box">
-        <span class="tf-label">M5</span>
-        <span class="tf-value" id="tf-m5-val">-</span>
-        <div class="tf-rsi" id="tf-m5-rsi">-</div>
-      </div>
-      <div class="tf-item" id="tf-m15-box">
-        <span class="tf-label">M15</span>
-        <span class="tf-value" id="tf-m15-val">-</span>
-        <div class="tf-rsi" id="tf-m15-rsi">-</div>
-      </div>
-      <div class="tf-item" id="tf-h1-box">
-        <span class="tf-label">H1</span>
-        <span class="tf-value" id="tf-h1-val">-</span>
-        <div class="tf-rsi" id="tf-h1-rsi">-</div>
-      </div>
-      <div class="tf-item" id="tf-h4-box">
-        <span class="tf-label">H4</span>
-        <span class="tf-value" id="tf-h4-val">-</span>
-        <div class="tf-rsi" id="tf-h4-rsi">-</div>
-      </div>
-    </div>
-  </div>
-  
-  <div id="pattern-display"></div>
-  <div id="filter-status" style="text-align: center; margin: 15px 0;"></div>
-  
-  <div class="glass-card">
-    <p class="card-title">🎯 SL / TP (AUTO)</p>
-    <div class="sltp-grid">
-      <div class="sltp-item"><span class="sltp-label">ENTRY</span><span class="sltp-value entry" id="sltp-entry">-</span></div>
-      <div class="sltp-item"><span class="sltp-label">SL</span><span class="sltp-value sl" id="sltp-sl">-</span></div>
-      <div class="sltp-item"><span class="sltp-label">TP1</span><span class="sltp-value tp" id="sltp-tp1">-</span></div>
-      <div class="sltp-item"><span class="sltp-label">TP2</span><span class="sltp-value tp" id="sltp-tp2">-</span></div>
-    </div>
-    <div class="sltp-grid" style="margin-top:8px;">
-      <div class="sltp-item"><span class="sltp-label">TP3</span><span class="sltp-value tp" id="sltp-tp3">-</span></div>
-      <div class="sltp-item"><span class="sltp-label">SL PIPS</span><span class="sltp-value sl" id="sltp-slpips">-</span></div>
-      <div class="sltp-item"><span class="sltp-label">TP PIPS</span><span class="sltp-value tp" id="sltp-tppips">-</span></div>
-      <div class="sltp-item"><span class="sltp-label">R:R</span><span class="sltp-value" id="sltp-rr">1:2</span></div>
-    </div>
-  </div>
-
-  <div class="glass-card">
-    <p class="card-title">💰 RISK MANAGEMENT</p>
-    <div class="risk-panel">
-      <div class="risk-grid">
-        <div class="risk-item"><div class="risk-label">BALANCE</div><div class="risk-value" id="risk-balance">-</div></div>
-        <div class="risk-item"><div class="risk-label">RISK %</div><div class="risk-value" id="risk-percent">-</div></div>
-        <div class="risk-item"><div class="risk-label">LOT SIZE</div><div class="risk-value" id="risk-lot">-</div></div>
-        <div class="risk-item"><div class="risk-label">POTENSI LOSS</div><div class="risk-value" id="risk-loss">-</div></div>
-      </div>
-    </div>
-  </div>
-
-  <div id="news-countdown-card" class="glass-card news-countdown" style="display:none;">
-    <p class="card-title" style="color:#ef4444;">🚨 NEWS COUNTDOWN</p>
-    <div id="news-countdown-content"></div>
-  </div>
-
-  <div class="glass-card">
-    <p class="card-title">⚡ LIVE INDICATORS</p>
-    <div class="indicator-grid">
-      <div class="indicator-item"><span class="indicator-label">EMA 9</span><span class="indicator-value" id="ema9">-</span></div>
-      <div class="indicator-item"><span class="indicator-label">EMA 21</span><span class="indicator-value" id="ema21">-</span></div>
-      <div class="indicator-item"><span class="indicator-label">EMA 50</span><span class="indicator-value" id="ema50">-</span></div>
-      <div class="indicator-item"><span class="indicator-label">RSI</span><span class="indicator-value yellow" id="rsi">-</span></div>
-      <div class="indicator-item"><span class="indicator-label">ATR %</span><span class="indicator-value yellow" id="atr">-</span></div>
-      <div class="indicator-item"><span class="indicator-label">SESSION</span><span class="indicator-value blue" id="session">-</span></div>
-      <div class="indicator-item"><span class="indicator-label">SPREAD</span><span class="indicator-value" id="spread" style="color:#22c55e;">-</span></div>
-      <div class="indicator-item"><span class="indicator-label">BID</span><span class="indicator-value" id="bid" style="color:#22c55e;">-</span></div>
-    </div>
-    <p id="status" style="font-size:11px; color:gray; margin-top:15px; text-align:center;">Waiting...</p>
-  </div>
-
-  <div id="pre-news-card" class="glass-card" style="border-left:4px solid #fbbf24;">
-    <p class="card-title" style="color:#fbbf24; display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
-      <span>📰 PRE-NEWS PREDICTION</span>
-      <button class="refresh-btn" onclick="loadPreNews(true)">🔄 REFRESH</button>
-    </p>
-    <div id="pre-news-content"><p style="text-align:center; color:#64748b; font-size:12px; padding:10px;">Tekan 🔄 REFRESH untuk analisa berita terkini</p></div>
-  </div>
-
-  <div class="ai-input-container">
-    <input type="text" id="soalan-ai" class="ai-input" placeholder="Ask about this signal...">
-    <button onclick="tanyaAI()" class="ai-send-btn">Ask AI</button>
-  </div>
-  <div id="hasil-ai" class="ai-result-box">
-    <div class="ai-result-header"><span>🤖</span><b>AI Analysis</b></div>
-    <p id="hasil-ai-text" class="ai-result-text"></p>
-  </div>
-</div>
-
-<!-- SCREEN 2: LEVELS -->
-<div id="screen-levels" class="screen">
-  <div class="poc-banner">☆ POC <span id="poc-val">-</span></div>
-  <p class="card-title">AUTO SNR LEVELS</p>
-  <div class="snr-grid">
-    <div class="snr-box red"><div class="label">R3</div><div class="value" id="r3">-</div></div>
-    <div class="snr-box red"><div class="label">R2</div><div class="value" id="r2">-</div></div>
-    <div class="snr-box red"><div class="label">R1</div><div class="value" id="r1">-</div></div>
-    <div class="snr-box yellow"><div class="label">☆ POC</div><div class="value" id="poc-box">-</div></div>
-    <div class="snr-box blue"><div class="label">VAH</div><div class="value" id="vah">-</div></div>
-    <div class="snr-box blue"><div class="label">VAL</div><div class="value" id="val">-</div></div>
-    <div class="snr-box green"><div class="label">S1</div><div class="value" id="s1">-</div></div>
-    <div class="snr-box green"><div class="label">S2</div><div class="value" id="s2">-</div></div>
-    <div class="snr-box green"><div class="label">S3</div><div class="value" id="s3">-</div></div>
-  </div>
-</div>
-
-<!-- SCREEN 3: CHART -->
-<div id="screen-chart" class="screen">
-  <h2 style="text-align:center; letter-spacing:3px; font-size:14px; color:var(--text-gray);">CHART</h2>
-  <div id="chart"></div>
-</div>
-
-<!-- SCREEN 4: NEWS -->
-<div id="screen-news" class="screen">
-  <h2 style="text-align:center; color:var(--accent-yellow); margin-top:0; letter-spacing:3px; font-size:14px;">📰 NEWS</h2>
-  <div id="news-list"><div style="text-align:center; padding:30px; color:#38bdf8;">⏳ Memuatkan...</div></div>
-</div>
-
-<!-- SCREEN 5: AI DESK -->
-<div id="screen-desk" class="screen">
-  <div class="desk-container">
-    <div class="desk-topbar">
-      <div class="desk-topbar-left">
-        <div class="desk-logo">🤖 BORNEO AI DESK</div>
-        <div class="desk-live">LIVE</div>
-      </div>
-      <div class="desk-topbar-right">
-        <div class="desk-stat"><div class="desk-stat-label">SIGNALS</div><div class="desk-stat-value" id="top-signals">-</div></div>
-        <div class="desk-stat"><div class="desk-stat-label">ACCURACY</div><div class="desk-stat-value" id="top-accuracy">-</div></div>
-      </div>
-    </div>
-    <button class="desk-run-btn" onclick="runAIDesk()" id="desk-run-btn">⚡ RUN AI DESK CYCLE</button>
-    <div class="signal-result-card" id="signal-result-card" style="display:none;">
-      <div class="signal-result-header"><span class="signal-result-title">🎯 SIGNAL RESULT</span><span class="signal-badge wait" id="result-badge">WAIT</span></div>
-      <div class="signal-row"><span class="signal-row-label">🎯 Bias AI</span><span class="signal-row-value" id="r-bias">-</span></div>
-      <div class="signal-row"><span class="signal-row-label">💪 Confidence</span><span class="signal-row-value" id="r-conf">-</span></div>
-      <div class="signal-row"><span class="signal-row-label">🎯 Entry</span><span class="signal-row-value" id="r-entry">-</span></div>
-      <div class="signal-row"><span class="signal-row-label">🛑 Stop Loss</span><span class="signal-row-value" style="color:#ef4444;" id="r-sl">-</span></div>
-      <div class="signal-row"><span class="signal-row-label">✅ Take Profit</span><span class="signal-row-value" style="color:#22c55e;" id="r-tp">-</span></div>
-    </div>
-    <div class="glass-card">
-      <p class="card-title">📈 TRADE TRACKER</p>
-      <div class="tracker-grid">
-        <div class="tracker-item"><div class="tracker-label">TOTAL</div><div class="tracker-value" id="t-total">0</div></div>
-        <div class="tracker-item"><div class="tracker-label">WIN</div><div class="tracker-value green" id="t-win">0</div></div>
-        <div class="tracker-item"><div class="tracker-label">LOSS</div><div class="tracker-value red" id="t-loss">0</div></div>
-        <div class="tracker-item"><div class="tracker-label">RATE</div><div class="tracker-value yellow" id="t-rate">0%</div></div>
-      </div>
-      <button class="btn-reset" onclick="resetHistory()">🗑️ RESET HISTORY</button>
-    </div>
-  </div>
-</div>
-
-<!-- SCREEN 6: STRATEGY -->
-<div id="screen-strategy" class="screen">
-  <h2 style="text-align:center; color:var(--accent-yellow); margin-top:0; letter-spacing:3px; font-size:14px;">STRATEGY AI</h2>
-  <div class="glass-card">
-    <p class="card-title">EMA Cross + RSI + ATR</p>
-    <div class="tracker-grid">
-      <div class="tracker-item"><div class="tracker-label">WIN RATE</div><div class="tracker-value green" id="bt-winrate">-</div></div>
-      <div class="tracker-item"><div class="tracker-label">TF</div><div class="tracker-value">15m</div></div>
-      <div class="tracker-item"><div class="tracker-label">R:R</div><div class="tracker-value">1:1</div></div>
-      <div class="tracker-item"><div class="tracker-label">SIGNALS</div><div class="tracker-value" id="bt-signals">-</div></div>
-    </div>
-    <div id="chart-backtest"></div>
-    <div style="margin-top:15px; padding:14px; background:rgba(56,189,248,0.08); border-radius:12px; border-left:3px solid var(--accent-blue);">
-      <p style="margin:0 0 8px 0; font-size:10px; color:var(--accent-blue); font-weight:900; letter-spacing:2px;">🤖 AI COMMENTARY</p>
-      <p style="margin:0; font-size:13px; color:#cbd5e1; line-height:1.7;" id="bt-ai-comment">Press the button below to start the analysis.</p>
-    </div>
-    <button class="desk-run-btn" onclick="jalankanBacktest()" style="margin-top:15px;">⚡ RUN BACKTEST</button>
-  </div>
-</div>
-
-<div class="tp-popup" id="tp-popup">🎯 TP HIT<br><span id="tp-pips">+0 pips</span></div>
-
-<nav id="bottom-nav">
-  <button class="nav-item active" onclick="switchTab('signal', this)">📈<span>SIGNAL</span></button>
-  <button class="nav-item" onclick="switchTab('levels', this)">⭐<span>LEVELS</span></button>
-  <button class="nav-item" onclick="switchTab('chart', this)">📉<span>CHART</span></button>
-  <button class="nav-item" onclick="switchTab('news', this)">📰<span>NEWS</span></button>
-  <button class="nav-item" onclick="switchTab('desk', this)">🤖<span>AI DESK</span></button>
-  <button class="nav-item" onclick="switchTab('strategy', this)">⚡<span>STRATEGY</span></button>
-</nav>
-<script>
-let marketAktif = 'XAU/USD';
-let chart = null, candleSeries = null;
-let backtestChart = null, backtestSeries = null;
-let newsLoaded = false;
-let currentDeskPlan = null;
-let trades = JSON.parse(localStorage.getItem('borneo_trades') || '[]');
-const PIP_VALUE = 0.10;
-
-function switchTab(tabName, element) {
-  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
-  document.getElementById('screen-' + tabName).classList.add('active');
-  document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
-  element.classList.add('active');
-  if(tabName === 'chart' && chart) setTimeout(() => { chart.applyOptions({ width: document.getElementById('chart').clientWidth }); dapatkanCandleData(); }, 100);
-  if(tabName === 'news' && !newsLoaded) loadNews();
-  if(tabName === 'desk') { renderTracker(); loadDeskStats(); }
-}
-
-function tukarMarket() {
-  marketAktif = document.getElementById('market-selector').value;
-  dapatkanSignal(); dapatkanMarketData(); loadNewsPrediction();
-}
-
-async function loadDeskStats() {
-  try {
-    const res = await fetch(`/api/ai-desk-stats?symbol=${marketAktif}`);
-    const data = await res.json();
-    if (data.status === 'success') {
-      document.getElementById('top-signals').innerText = data.liveCycle.signalsToday;
-      document.getElementById('top-accuracy').innerText = data.liveCycle.accuracy + '%';
+const express = require('express');
+const cors = require('cors');
+const axios = require('axios');
+const { GoogleGenAI } = require('@google/genai');
+require('dotenv').config();
+const newsService = require('./news-service');
+const app = express();
+app.use(cors());
+app.use(express.json());
+app.use(express.static(__dirname));
+app.get('/', (req, res) => { res.sendFile(__dirname + '/index.html'); });
+if (!process.env.GEMINI_API_KEY) console.error("⚠️ GEMINI_API_KEY tidak dijumpai!");
+const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || 'MISSING_KEY' });
+const TWELVEDATA_URL = 'https://api.twelvedata.com';
+const BIQUOTE_URL = 'https://biquote.io/api';
+const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN || '';
+const TELEGRAM_CHAT_ID = process.env.TELEGRAM_CHAT_ID || '';
+const ACCOUNT_BALANCE = parseFloat(process.env.ACCOUNT_BALANCE || '1000');
+const RISK_PERCENT = parseFloat(process.env.RISK_PERCENT || '1');
+const TWELVEDATA_KEYS = [
+    process.env.TWELVEDATA_API_KEY || '',
+    process.env.TWELVEDATA_API_KEY_2 || '',
+    process.env.TWELVEDATA_API_KEY_3 || ''
+].filter(k => k.length > 0);
+let currentKeyIndex = 0;
+function getCurrentKey() { return TWELVEDATA_KEYS[currentKeyIndex] || TWELVEDATA_KEYS[0] || ''; }
+function switchKey() {
+    if (TWELVEDATA_KEYS.length > 1) {
+        currentKeyIndex = (currentKeyIndex + 1) % TWELVEDATA_KEYS.length;
+        console.log(`🔄 Switch ke API key #${currentKeyIndex + 1}`);
     }
-  } catch(e) {}
 }
-
-async function dapatkanSignal() {
-  try {
-    const res = await fetch(`/api/signal?symbol=${marketAktif}`);
-    const data = await res.json();
-
-    document.getElementById('main-price-signal').innerText = data.harga;
-    document.getElementById('ema9').innerText = data.ema9;
-    document.getElementById('ema21').innerText = data.ema21;
-    document.getElementById('ema50').innerText = data.ema50;
-    document.getElementById('rsi').innerText = data.rsi;
-    document.getElementById('atr').innerText = data.atrPercent + '%';
-    document.getElementById('session').innerText = data.session;
-    document.getElementById('status').innerText = "Updated: " + data.masa;
-
-    const spreadEl = document.getElementById('spread');
-    spreadEl.innerText = data.spread || '0';
-    const sNum = parseFloat(data.spread) || 0;
-    const th = marketAktif.includes('XAU') ? 0.30 : 0.0003;
-    spreadEl.style.color = sNum < th ? '#22c55e' : sNum < th*2 ? '#fbbf24' : '#ef4444';
-    document.getElementById('bid').innerText = data.bid || '-';
-
-    // ===== LIQUIDITY DISPLAY =====
-    const liquidityDisplay = document.getElementById('liquidity-display');
-    if (data.liquidity) {
-      if (data.liquidity.inZone) {
-        const zones = data.liquidity.touched.map(z => `<span class="zone-badge zone-${z.type.split('-')[0]}">${z.type}</span>`).join('');
-        liquidityDisplay.innerHTML = `
-          <div class="liquidity-status liquidity-in">✅ DALAM LIQUIDITY ZONE</div>
-          <div class="zone-list">${zones}</div>
-        `;
-      } else {
-        const snr = data.snr || {};
-        liquidityDisplay.innerHTML = `
-          <div class="liquidity-status liquidity-out">⏸️ Tunggu sentuh zone</div>
-          <div style="font-size:10px; color:#64748b; text-align:center; margin-top:6px;">
-            Support: ${snr.support || '-'} | Resistance: ${snr.resistance || '-'} | POC: ${snr.poc || '-'}
-          </div>
-        `;
-      }
+console.log(`✅ TwelveData: ${TWELVEDATA_KEYS.length} API key dimuatkan`);
+const AI_MODELS = ['gemini-3.8-flash'];
+let workingModel = null;
+async function callAI(prompt) {
+    if (workingModel) {
+        try { const r = await ai.models.generateContent({ model: workingModel, contents: prompt }); return r.text; } catch (e) { workingModel = null; }
     }
-
-    // ===== 9 LAYER DISPLAY =====
-    if (data.layers || data.reasons) {
-      const layersGrid = document.getElementById('layers-grid');
-      const layerNames = [
-        { key: 'liquidity', label: '💧 Liquidity' },
-        { key: 'volume', label: '📊 Volume' },
-        { key: 'volumeBias', label: '🎯 Vol Bias' },
-        { key: 'ema', label: '📈 EMA' },
-        { key: 'bb', label: '📉 BB' },
-        { key: 'tf', label: '⏱️ TF 4' },
-        { key: 'pattern', label: '🕯️ Pattern' },
-        { key: 'rsi', label: '📊 RSI' },
-        { key: 'candleMomentum', label: '🕯️ Momentum' },
-        { key: 'candleReversal', label: '🎯 Candle' }
-      ];
-      const currentLayers = data.locked_layers || {};
-      layersGrid.innerHTML = layerNames.map(ln => {
-        const ok = currentLayers[ln.key];
-        return `<div class="layer-item ${ok ? 'ok' : 'fail'}"><span>${ln.label}</span><span class="layer-icon">${ok ? '✓' : '✗'}</span></div>`;
-      }).join('');
+    let lastErr = null;
+    for (const model of AI_MODELS) {
+        try { const r = await ai.models.generateContent({ model: model, contents: prompt }); console.log("✅ AI guna model:", model); workingModel = model; return r.text; } catch (e) { console.log("❌ " + model + " gagal:", (e.message || '').substring(0, 120)); lastErr = e; }
     }
-
-    // ===== VOLUME DISPLAY =====
-    if (data.volume) {
-      const v = data.volume;
-      document.getElementById('vol-current').innerText = `Current: ${(v.current / 1000).toFixed(0)}K`;
-      document.getElementById('vol-ratio').innerText = `Ratio: ${v.ratio}x`;
-      const progressEl = document.getElementById('vol-progress');
-      const pct = Math.min((v.ratio / 3) * 100, 100);
-      progressEl.style.width = pct + '%';
-      progressEl.className = 'volume-progress ' + (v.spike ? 'spike' : 'normal');
-      document.getElementById('vol-bias').innerHTML = `
-        <div class="volume-bias-buy" style="${v.bias === 'BULLISH' ? 'opacity:1' : 'opacity:0.4'}">BUY ${v.bias === 'BULLISH' ? '✓' : ''}</div>
-        <div class="volume-bias-sell" style="${v.bias === 'BEARISH' ? 'opacity:1' : 'opacity:0.4'}">SELL ${v.bias === 'BEARISH' ? '✓' : ''}</div>
-      `;
+    throw lastErr || new Error("Semua model gagal");
+}
+async function sendTelegram(message) {
+    if (!TELEGRAM_BOT_TOKEN ||!TELEGRAM_CHAT_ID) return;
+    try { const url = `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`; await axios.post(url, { chat_id: TELEGRAM_CHAT_ID, text: message, parse_mode: 'HTML' }, { timeout: 8000 }); console.log("📱 Telegram sent"); } catch (e) { console.log("❌ Telegram error:", e.message); }
+}
+const symbolMap = { 'XAU/USD': 'XAU/USD', 'XAG/USD': 'XAG/USD', 'EUR/USD': 'EUR/USD', 'GBP/USD': 'GBP/USD', 'USD/JPY': 'USD/JPY', 'AUD/USD': 'AUD/USD', 'USD/CAD': 'USD/CAD', 'USD/CHF': 'USD/CHF', 'NZD/USD': 'NZD/USD', 'EUR/GBP': 'EUR/GBP', 'EUR/JPY': 'EUR/JPY', 'EUR/AUD': 'EUR/AUD', 'GBP/JPY': 'GBP/JPY', 'GBP/AUD': 'GBP/AUD', 'AUD/JPY': 'AUD/JPY', 'SPX500': 'SPX', 'NAS100': 'NDX', 'US30': 'DJI', 'DE30': 'DAX', 'JP225': 'N225', 'WTICO': 'WTI/USD', 'BCO': 'BRENT/USD', 'NATGAS': 'NG' };
+function toTwelveData(s) { return symbolMap[s] || s; }
+function getDecimal(s) {
+    if (s.includes('JPY')) return 3;
+    if (['SPX500', 'NAS100', 'US30', 'DE30', 'JP225'].some(x => s.includes(x))) return 1;
+    if (['WTICO', 'BCO', 'NATGAS'].some(x => s.includes(x))) return 3;
+    if (s.includes('XAU') || s.includes('XAG')) return 2;
+    return 5;
+}
+function safeStr(v) { return v === null || v === undefined? '' : String(v); }
+function safeNum(v) { if (v === null || v === undefined) return 0; if (typeof v === 'number') return v; const n = parseFloat(String(v).replace(/[^0-9.-]/g, '')); return isNaN(n)? 0 : n; }
+function calculateRSI(closes, period = 14) {
+    if (closes.length < period + 1) return 50;
+    let gains = 0, losses = 0;
+    for (let i = closes.length - period; i < closes.length; i++) { const diff = closes[i] - closes[i - 1]; if (diff >= 0) gains += diff; else losses -= diff; }
+    const avgGain = gains / period, avgLoss = losses / period;
+    if (avgLoss === 0) return 100;
+    return 100 - (100 / (1 + (avgGain / avgLoss)));
+}
+function calculateATR(candles, period = 14) {
+    if (candles.length < period + 1) return 0;
+    let trs = [];
+    for (let i = candles.length - period; i < candles.length; i++) { const h = candles[i].high, l = candles[i].low, pc = candles[i - 1].close; trs.push(Math.max(h - l, Math.abs(h - pc), Math.abs(l - pc))); }
+    return trs.reduce((a, b) => a + b, 0) / period;
+}
+function calculateEMA(closes, period) { if (closes.length === 0) return 0; let e = closes[0]; let k = 2 / (period + 1); for (let i = 1; i < closes.length; i++) e = (closes[i] * k) + (e * (1 - k)); return e; }
+function getMarketSession() { const h = new Date().getUTCHours(); if (h >= 7 && h < 16) return "LONDON"; if (h >= 12 && h < 21) return "NEW YORK"; if (h >= 0 && h < 7) return "ASIA"; return "CLOSED"; }
+function detectSNR(candles) {
+    if (candles.length < 20) return { resistance: 0, support: 0, poc: 0 };
+    const recent = candles.slice(-50); const last = recent[recent.length - 1].close;
+    const highs = recent.map(c => c.high); const lows = recent.map(c => c.low);
+    const maxHigh = Math.max(...highs); const minLow = Math.min(...lows);
+    const resistance = highs.filter(h => h > last).sort((a, b) => a - b)[0] || maxHigh;
+    const support = lows.filter(l => l < last).sort((a, b) => b - a)[0] || minLow;
+    const prices = recent.map(c => c.close).sort((a, b) => a - b); const poc = prices[Math.floor(prices.length / 2)];
+    return { resistance, support, poc };
+}
+function calculateSLTP(direction, entry, atr, symbol) {
+    const slDistance = atr * 1.5; const tp1Distance = atr * 1.0; const tp2Distance = atr * 2.0; const tp3Distance = atr * 3.0; const pipSize = 0.01;
+    if (direction === "BUY") { return { sl: (entry - slDistance).toFixed(getDecimal(symbol)), tp1: (entry + tp1Distance).toFixed(getDecimal(symbol)), tp2: (entry + tp2Distance).toFixed(getDecimal(symbol)), tp3: (entry + tp3Distance).toFixed(getDecimal(symbol)), slPips: Math.round(slDistance / pipSize), tp1Pips: Math.round(tp1Distance / pipSize), tp2Pips: Math.round(tp2Distance / pipSize), tp3Pips: Math.round(tp3Distance / pipSize) }; }
+    else { return { sl: (entry + slDistance).toFixed(getDecimal(symbol)), tp1: (entry - tp1Distance).toFixed(getDecimal(symbol)), tp2: (entry - tp2Distance).toFixed(getDecimal(symbol)), tp3: (entry - tp3Distance).toFixed(getDecimal(symbol)), slPips: Math.round(slDistance / pipSize), tp1Pips: Math.round(tp1Distance / pipSize), tp2Pips: Math.round(tp2Distance / pipSize), tp3Pips: Math.round(tp3Distance / pipSize) }; }
+}
+function calculatePositionSize(entry, sl, symbol) {
+    const balance = ACCOUNT_BALANCE; const riskPercent = RISK_PERCENT; const riskAmount = balance * (riskPercent / 100); const slDistance = Math.abs(entry - sl); const pipSize = 0.01; const slPips = slDistance / pipSize; const pipValuePer001Lot = 0.10; const lotSize = riskAmount / (slPips * pipValuePer001Lot);
+    return { balance: balance.toFixed(2), riskPercent: riskPercent, riskAmount: riskAmount.toFixed(2), slPips: Math.round(slPips), lotSize: Math.max(0.01, lotSize).toFixed(2), potentialLoss: riskAmount.toFixed(2) };
+}
+function detectCandlePattern(candle, prevCandle) {
+    const body = Math.abs(candle.close - candle.open); const range = candle.high - candle.low; const upperWick = candle.high - Math.max(candle.open, candle.close); const lowerWick = Math.min(candle.open, candle.close) - candle.low; const isBullish = candle.close > candle.open; const isBearish = candle.close < candle.open;
+    if (range === 0) return { pattern: "NONE", strength: 0, bias: "NEUTRAL", icon: "" };
+    const bodyPct = body / range;
+    if (bodyPct < 0.1) return { pattern: "DOJI", strength: 50, bias: "NEUTRAL", icon: "⚖️" };
+    if (bodyPct > 0.9) return { pattern: isBullish? "BULLISH MARUBOZU" : "BEARISH MARUBOZU", strength: 80, bias: isBullish? "BULLISH" : "BEARISH", icon: isBullish? "🚀" : "💥" };
+    if (lowerWick > body * 2 && upperWick < body * 0.5 && bodyPct > 0.2) return { pattern: "HAMMER", strength: 75, bias: "BULLISH", icon: "🔨" };
+    if (upperWick > body * 2 && lowerWick < body * 0.5 && bodyPct > 0.2) return { pattern: "SHOOTING STAR", strength: 75, bias: "BEARISH", icon: "⭐" };
+    if (bodyPct < 0.3 && upperWick > body && lowerWick > body) return { pattern: "SPINNING TOP", strength: 40, bias: "NEUTRAL", icon: "🌀" };
+    if (prevCandle) {
+        const prevIsBullish = prevCandle.close > prevCandle.open; const prevIsBearish = prevCandle.close < prevCandle.open;
+        if (prevIsBearish && isBullish && candle.close > prevCandle.open && candle.open < prevCandle.close && body > Math.abs(prevCandle.close - prevCandle.open)) return { pattern: "BULLISH ENGULFING", strength: 85, bias: "BULLISH", icon: "🟢" };
+        if (prevIsBullish && isBearish && candle.close < prevCandle.open && candle.open > prevCandle.close && body > Math.abs(prevCandle.close - prevCandle.open)) return { pattern: "BEARISH ENGULFING", strength: 85, bias: "BEARISH", icon: "🔴" };
     }
-
-    // ===== 4 TF DISPLAY =====
-    if (data.tf3) {
-      const tf3 = data.tf3;
-      ['m5', 'm15', 'h1', 'h4'].forEach(k => {
-        const box = document.getElementById(`tf-${k}-box`);
-        const val = document.getElementById(`tf-${k}-val`);
-        const rsiEl = document.getElementById(`tf-${k}-rsi`);
-        if (box && val) {
-          const sig = (tf3[k] || 'WAIT').toLowerCase();
-          box.className = 'tf-item ' + sig;
-          val.className = 'tf-value ' + sig;
-          val.innerText = tf3[k] || '-';
+    return { pattern: "NONE", strength: 20, bias: "NEUTRAL", icon: "" };
+}
+function detectLastCandlePattern(candles) { if (candles.length < 2) return { pattern: "NONE", strength: 0, bias: "NEUTRAL", icon: "" }; return detectCandlePattern(candles[candles.length - 1], candles[candles.length - 2]); }
+async function isNewsTime() {
+    try {
+        const response = await axios.get(`${BIQUOTE_URL}/calendar`, { timeout: 8000 }).catch(() => ({ data: { events: [] } }));
+        const d = response.data; let events = d.events || d.data || d.calendar || (Array.isArray(d)? d : []);
+        if (!Array.isArray(events)) return false; const now = Date.now();
+        const highImpact = events.filter(e => { const cur = safeStr(e.currency || e.country).toUpperCase(); const imp = safeStr(e.impact || '').toLowerCase(); return (cur === 'USD' || cur === 'US') && (imp === 'high' || imp === '3'); });
+        for (const ev of highImpact) { const evTime = new Date(ev.time || ev.date || ev.datetime || 0).getTime(); if (isNaN(evTime)) continue; if (Math.abs(now - evTime) / 60000 <= 15) return true; }
+        return false;
+    } catch (e) { return false; }
+}
+const tickCache = new Map(); const TICK_CACHE_MS = 30000;
+async function getTick(symbol) {
+    const cacheKey = symbol; const cached = tickCache.get(cacheKey);
+    if (cached && Date.now() - cached.time < TICK_CACHE_MS) return cached.data;
+    const tdSymbol = toTwelveData(symbol); const totalKeys = TWELVEDATA_KEYS.length; let attempts = 0; let maxAttempts = totalKeys * 2;
+    while (attempts < maxAttempts) {
+        attempts++; const keyIndex = currentKeyIndex; const key = getCurrentKey(); const url = `${TWELVEDATA_URL}/quote?symbol=${encodeURIComponent(tdSymbol)}&apikey=${key}`;
+        try {
+            const response = await axios.get(url, { timeout: 10000 }); const d = response.data;
+            if (d.status === 'error' || d.code) { if (d.code === 429 || (d.message && d.message.includes('429'))) { console.log(`⏳ Key #${keyIndex + 1} rate limit, cuba seterusnya...`); switchKey(); continue; } throw new Error(d.message || 'TwelveData error'); }
+            const bid = parseFloat(d.bid || 0); const ask = parseFloat(d.ask || 0); const price = parseFloat(d.close || d.price || 0); const mid = price || (bid + ask) / 2 || 0; if (mid === 0) throw new Error('Harga 0.00');
+            const result = { bid: bid || mid, ask: ask || mid, mid, spread: parseFloat(d.spread || (ask - bid) || 0), marketState: 'open', stale: false, change: parseFloat(d.change || 0), percentChange: parseFloat(d.percent_change || 0) };
+            tickCache.set(cacheKey, { data: result, time: Date.now() }); return result;
+        } catch (e) { if (e.message && e.message.includes('429')) { console.log(`⏳ Key #${keyIndex + 1} 429, cuba seterusnya...`); switchKey(); continue; } if (attempts >= maxAttempts) throw e; }
+    }
+    throw new Error(`Semua ${totalKeys} API key gagal`);
+}
+const ohlcCache = new Map(); const OHLC_CACHE_MS = 180000;
+async function getOHLC(symbol, interval = '15m', limit = 100) {
+    const cacheKey = `${symbol}_${interval}_${limit}`; const cached = ohlcCache.get(cacheKey);
+    if (cached && Date.now() - cached.time < OHLC_CACHE_MS) return cached.data;
+    const tdSymbol = toTwelveData(symbol); const intervalMap = { '1min': '1min', '5min': '5min', '15min': '15min', '30min': '30min', '1h': '1h', '4h': '4h', '1day': '1day' }; const tdInterval = intervalMap[interval] || '15min'; const totalKeys = TWELVEDATA_KEYS.length; let attempts = 0; let maxAttempts = totalKeys * 2;
+    while (attempts < maxAttempts) {
+        attempts++; const keyIndex = currentKeyIndex; const key = getCurrentKey(); const url = `${TWELVEDATA_URL}/time_series?symbol=${encodeURIComponent(tdSymbol)}&interval=${tdInterval}&outputsize=${limit}&apikey=${key}`;
+        try {
+            const response = await axios.get(url, { timeout: 10000 }); const d = response.data;
+            if (d.status === 'error' || d.code) { if (d.code === 429 || (d.message && d.message.includes('429'))) { console.log(`⏳ OHLC Key #${keyIndex + 1} rate limit, cuba seterusnya...`); switchKey(); continue; } throw new Error(d.message || 'TwelveData error'); }
+            if (!d.values ||!Array.isArray(d.values)) return [];
+            const result = d.values.slice().reverse().map(c => ({ time: c.datetime, timestamp: Math.floor(new Date(c.datetime).getTime() / 1000), open: parseFloat(c.open || 0), high: parseFloat(c.high || 0), low: parseFloat(c.low || 0), close: parseFloat(c.close || 0) })).filter(c =>!isNaN(c.timestamp) && c.close > 0);
+            ohlcCache.set(cacheKey, { data: result, time: Date.now() }); return result;
+        } catch (e) { if (e.message && e.message.includes('429')) { console.log(`⏳ OHLC Key #${keyIndex + 1} 429, cuba seterusnya...`); switchKey(); continue; } if (attempts >= maxAttempts) throw e; }
+    }
+    throw new Error(`Semua ${totalKeys} API key gagal`);
+}
+async function checkMultiTimeframe(symbol) {
+    const timeframes = [{ tf: '5min', label: 'M5' }, { tf: '15min', label: 'M15' }, { tf: '1h', label: 'H1' }, { tf: '4h', label: 'H4' }];
+    const results = [];
+    for (const item of timeframes) {
+        try {
+            const cacheKey = `${symbol}_${item.tf}_50`;
+            const cached = ohlcCache.get(cacheKey);
+            let candles;
+            if (cached && Date.now() - cached.time < OHLC_CACHE_MS) { candles = cached.data; }
+            else { await new Promise(r => setTimeout(r, 1200)); candles = await getOHLC(symbol, item.tf, 50); }
+            if (candles.length < 20) { results.push({ tf: item.tf, label: item.label, signal: 'WAIT', rsi: '-' }); continue; }
+            const closes = candles.map(c => c.close); const ema9 = calculateEMA(closes, 9); const ema21 = calculateEMA(closes, 21); const rsi = calculateRSI(closes, 14);
+            let sig = ema9 > ema21? 'BUY' : 'SELL'; if ((sig === 'BUY' && rsi > 75) || (sig === 'SELL' && rsi < 25)) sig = 'WAIT';
+            results.push({ tf: item.tf, label: item.label, signal: sig, rsi: rsi.toFixed(1) });
+        } catch (e) { console.log(`MTF ${item.label} fail: ${e.message}`); results.push({ tf: item.tf, label: item.label, signal: 'WAIT', rsi: '-' }); }
+    }
+    const buyCount = results.filter(r => r.signal === 'BUY').length; const sellCount = results.filter(r => r.signal === 'SELL').length; const maxCount = Math.max(buyCount, sellCount);
+    const majoritySignal = buyCount > sellCount? 'BUY' : sellCount > buyCount? 'SELL' : 'WAIT'; let grade = 'SKIP'; let confidence = 'LOW';
+    if (maxCount === 4) { grade = 'A+'; confidence = 'HIGH'; } else if (maxCount === 3) { grade = 'B'; confidence = 'MEDIUM'; }
+    return { timeframes: results, buyCount, sellCount, total: 4, consensus: majoritySignal, agreement: `${maxCount}/4`, grade, confidence };
+}
+const signalLock = new Map(); const signalCooldown = new Map(); const COOLDOWN_MS = 5 * 60 * 1000; const MAX_LOCK_MS = 1 * 60 * 60 * 1000;
+const patternHistory = []; const tradeJournal = []; let lastNotifiedSignal = null;
+function checkMomentumValid(lockData, ema9, ema21, rsi, currentPrice, atrPercent) {
+    if (!lockData) return false; const { direction, entry, lockedAt } = lockData; const percentMove = Math.abs(currentPrice - entry) / entry * 100; const lockAge = Date.now() - lockedAt;
+    if (lockAge > MAX_LOCK_MS) { console.log(`⏰ Lock dah ${Math.round(lockAge / 60000)} minit — reset`); return false; }
+    if (percentMove > 5) return false; if (atrPercent < 0.015) return false;
+    if (direction === "SELL" && ema9 > ema21) return false; if (direction === "BUY" && ema9 < ema21) return false;
+    if (direction === "SELL" && rsi < 15) return false; if (direction === "BUY" && rsi > 85) return false;
+    return true;
+}
+function checkCandleAgainstSignal(candles, signal) {
+    if (!candles || candles.length < 2) return { against: false };
+    const last = candles[candles.length - 1]; const isBullish = last.close > last.open; const isBearish = last.close < last.open;
+    if (signal === "SELL" && isBullish) return { against: true, reason: "Candle bullish lawan SELL" };
+    if (signal === "BUY" && isBearish) return { against: true, reason: "Candle bearish lawan BUY" };
+    return { against: false };
+}
+app.get('/api/test-ai', async (req, res) => { try { const r = await ai.models.generateContent({ model: AI_MODELS[0], contents: 'Reply with only: OK' }); res.json({ status: 'OK', model: AI_MODELS[0], reply: r.text? r.text.substring(0, 30) : '(empty)' }); } catch (e) { res.json({ status: 'FAIL', model: AI_MODELS[0], error: (e.message || '').substring(0, 200) }); } });
+app.get('/api/test-twelvedata', async (req, res) => { try { const tick = await getTick('XAU/USD'); res.json({ status: 'OK', keysLoaded: TWELVEDATA_KEYS.length, data: tick }); } catch (e) { res.json({ status: 'FAIL', error: (e.message || '').substring(0, 200) }); } });
+app.get('/api/test-telegram', async (req, res) => { if (!TELEGRAM_BOT_TOKEN ||!TELEGRAM_CHAT_ID) return res.json({ status: 'FAIL', message: 'Telegram env tak diset' }); await sendTelegram('🧪 <b>Test Notification</b>\n\nBorneo Pro Trade V3\nTelegram berfungsi ✅'); res.json({ status: 'OK', message: 'Telegram test dihantar' }); });
+app.get('/api/news-prediction', async (req, res) => { try { const result = await newsService.getNewsPrediction(); res.json(result); } catch (e) { res.status(500).json({ status: 'error', message: e.message }); } });
+app.get('/api/news-alerts', async (req, res) => { try { const result = await newsService.getNewsWithAlerts(); res.json(result); } catch (e) { res.status(500).json({ status: 'error', message: e.message }); } });
+app.get('/api/multi-tf', async (req, res) => { const symbol = req.query.symbol || 'XAU/USD'; try { const result = await checkMultiTimeframe(symbol); res.json({ status: 'success', symbol,...result }); } catch (e) { res.status(500).json({ status: 'error', message: e.message }); } });
+app.get('/api/signal', async (req, res) => {
+    const symbol = req.query.symbol || 'XAU/USD'; const tf = req.query.tf || '5min'; const decimal = getDecimal(symbol);
+    try {
+        const mtf = await checkMultiTimeframe(symbol);
+        const candles = await getOHLC(symbol, tf, 100);
+        if (candles.length < 50) throw new Error("Data tak cukup");
+        const closes = candles.map(c => c.close); const harga = closes[closes.length - 1]; const ema9 = calculateEMA(closes, 9); const ema21 = calculateEMA(closes, 21); const ema50 = calculateEMA(closes, 50); const rsi = calculateRSI(closes, 14); const atr = calculateATR(candles, 14); const atrPercent = (atr / harga) * 100; const session = getMarketSession(); const snr = detectSNR(candles); const lastPattern = detectLastCandlePattern(candles);
+        let spread = 0, bid = 0, ask = 0; try { const tick = await getTick(symbol); bid = tick.bid || harga; ask = tick.ask || harga; spread = tick.spread || 0; } catch (e) { }
+        const newsBlocking = await isNewsTime();
+        const cooldownData = signalCooldown.get(symbol); const now = Date.now(); const isCooldown = cooldownData && (now - cooldownData.time) < COOLDOWN_MS; const cooldownRemain = isCooldown? Math.ceil((COOLDOWN_MS - (now - cooldownData.time)) / 60000) : 0;
+        const existingLock = signalLock.get(symbol); let signal = "WAIT", warna = "#94a3b8", reasons = [], filtered = false; let lockedEntry = null; let isLocked = false; let resetPattern = null; let lockAgeMin = 0;
+        if (isCooldown) { reasons.push(`Cooldown: ${cooldownRemain} minit lagi`); filtered = true; }
+        else if (existingLock) {
+            const momentumValid = checkMomentumValid(existingLock, ema9, ema21, rsi, harga, atrPercent); const lockAge = Date.now() - existingLock.lockedAt; lockAgeMin = Math.round(lockAge / 60000);
+            if (momentumValid) {
+                const candleCheck = checkCandleAgainstSignal(candles, existingLock.direction); const mtfOverride = mtf.consensus!== existingLock.direction && mtf.grade!== 'SKIP' && mtf.grade === 'A+';
+                if (candleCheck.against) { console.log(`🔓 Reset — ${candleCheck.reason}`); signalLock.delete(symbol); signalCooldown.set(symbol, { time: Date.now() }); resetPattern = candleCheck.reason; }
+                else if (mtfOverride) { console.log(`🔓 Reset — 4TF override (${mtf.consensus} vs ${existingLock.direction})`); signalLock.delete(symbol); signalCooldown.set(symbol, { time: Date.now() }); resetPattern = `4TF override: ${mtf.consensus}`; }
+                else { signal = existingLock.direction; warna = signal === "BUY"? "#22c55e" : "#ef4444"; lockedEntry = existingLock.entry; isLocked = true; reasons.push(`Locked sejak ${new Date(existingLock.lockedAt).toLocaleTimeString()} (${lockAgeMin} minit)`); if (lastPattern.pattern!== "NONE" && lastPattern.pattern!== "DOJI") reasons.push(`Pattern: ${lastPattern.pattern}`); }
+            } else { console.log(`🔓 Reset — momentum hilang / max 1 jam`); signalLock.delete(symbol); signalCooldown.set(symbol, { time: Date.now() }); }
         }
-        if (rsiEl) rsiEl.innerText = 'RSI: ' + (tf3[`${k}rsi`] || '-');
-      });
+        if (!isLocked &&!isCooldown) {
+            const mtfSignal = mtf.consensus; const mtfGrade = mtf.grade;
+            if (mtfGrade === 'SKIP') { filtered = true; reasons.push(`4TF: ${mtf.agreement} (perlu ≥3/4)`); }
+            else { const candleCheck = checkCandleAgainstSignal(candles, mtfSignal); if (candleCheck.against) { filtered = true; reasons.push(`⚠️ ${candleCheck.reason}`); } else { signal = mtfSignal; warna = signal === "BUY"? "#22c55e" : "#ef4444"; signalLock.set(symbol, { direction: signal, entry: harga, lockedAt: Date.now(), timestamp: new Date().toISOString() }); lockedEntry = harga; isLocked = true; lockAgeMin = 0; reasons.push(`4TF: ${mtf.agreement} → ${mtfGrade}`); } }
+        }
+        if (lastPattern.pattern!== "NONE") { patternHistory.unshift({ time: new Date().toLocaleTimeString(), symbol, pattern: lastPattern.pattern, bias: lastPattern.bias, strength: lastPattern.strength, icon: lastPattern.icon }); if (patternHistory.length > 100) patternHistory.pop(); }
+        const displayPrice = lockedEntry!== null? lockedEntry : harga; const sltp = calculateSLTP(signal, displayPrice, atr, symbol); const riskMgmt = calculatePositionSize(displayPrice, parseFloat(sltp.sl), symbol);
+        if (isLocked && signal!== "WAIT") {
+            const lastJournal = tradeJournal[0]; const journalKey = `${symbol}_${signal}_${Math.floor(displayPrice)}`;
+            if (!lastJournal || lastJournal.key!== journalKey) { tradeJournal.unshift({ key: journalKey, time: new Date().toLocaleString(), symbol, signal, entry: displayPrice.toFixed(decimal), sl: sltp.sl, tp1: sltp.tp1, tp2: sltp.tp2, tp3: sltp.tp3, lot: riskMgmt.lotSize, risk: riskMgmt.riskAmount, rsi: rsi.toFixed(1), pattern: lastPattern.pattern, session }); if (tradeJournal.length > 200) tradeJournal.pop(); }
+        }
+        res.json({ symbol, tf, harga: harga.toFixed(decimal), harga_entry: displayPrice.toFixed(decimal), signal, warna, locked: isLocked, news_blocking: newsBlocking, lockAgeMin: lockAgeMin, mtf: { timeframes: mtf.timeframes, buyCount: mtf.buyCount, sellCount: mtf.sellCount, agreement: mtf.agreement, grade: mtf.grade, consensus: mtf.consensus, confidence: mtf.confidence }, cooldown: { active: isCooldown, remainMin: cooldownRemain }, ema9: ema9.toFixed(decimal), ema21: ema21.toFixed(decimal), ema50: ema50.toFixed(decimal), rsi: rsi.toFixed(1), atrPercent: atrPercent.toFixed(3), session, spread: spread.toFixed(decimal), bid: bid.toFixed(decimal), ask: ask.toFixed(decimal), snr: { support: snr.support.toFixed(decimal), resistance: snr.resistance.toFixed(decimal), poc: snr.poc.toFixed(decimal) }, candle_pattern: { pattern: lastPattern.pattern, bias: lastPattern.bias, strength: lastPattern.strength, icon: lastPattern.icon }, sltp: { sl: sltp.sl, tp1: sltp.tp1, tp2: sltp.tp2, tp3: sltp.tp3, slPips: sltp.slPips, tp1Pips: sltp.tp1Pips, tp2Pips: sltp.tp2Pips, tp3Pips: sltp.tp3Pips }, risk_mgmt: riskMgmt, reset_pattern: resetPattern, filtered, reasons, masa: new Date().toLocaleTimeString(), status: "LIVE" });
+    } catch (error) {
+        if (error.message && error.message.includes('429')) { console.log("⏳ /api/signal rate limit — skip"); } else { console.error("/api/signal ERROR:", error.message); }
+        res.json({ symbol, harga: "0.00", harga_entry: "0.00", signal: "WAIT", warna: "#94a3b8", locked: false, mtf: { timeframes: [{ label: 'M5', signal: 'WAIT', rsi: '-' }, { label: 'M15', signal: 'WAIT', rsi: '-' }, { label: 'H1', signal: 'WAIT', rsi: '-' }, { label: 'H4', signal: 'WAIT', rsi: '-' }], agreement: '0/4', grade: 'SKIP', consensus: 'WAIT', buyCount: 0, sellCount: 0, confidence: 'LOW' }, ema9: "0", ema21: "0", ema50: "0", rsi: "50", atrPercent: "0", session: "CLOSED", spread: "0", bid: "0", ask: "0", filtered: true, reasons: ["Data Error"], masa: new Date().toLocaleTimeString(), status: "ERROR" });
     }
-
-    // ===== SIGNAL BOX =====
-    const sb = document.getElementById('signal-box');
-    const gradeDisplay = document.getElementById('grade-display');
-    const lockStatus = document.getElementById('lock-status');
-
-    if (data.cooldown && data.cooldown_remain > 0) {
-      sb.innerHTML = `COOLDOWN<br><span style='font-size:22px;'>⏳ ${data.cooldown_remain} minit</span>`;
-      sb.className = "signal-box cooldown";
-      gradeDisplay.innerHTML = '';
-      lockStatus.innerHTML = `<span class="lock-badge cooldown">⏳ COOLDOWN</span>`;
-    } else if (data.signal === "BUY" || data.signal === "SELL") {
-      const displayPrice = data.harga_entry || data.harga;
-      sb.innerHTML = `${data.signal} <br><span style='font-size:24px;'>@ ${displayPrice}</span>`;
-      sb.className = data.signal === "BUY" ? "signal-box buy" : "signal-box sell";
-      
-      const grade = data.signal_grade || 'B';
-      const gradeClass = grade === 'A+' ? 'grade-A' : grade === 'B' ? 'grade-B' : 'grade-SKIP';
-      const score = data.signal_score || 0;
-      gradeDisplay.innerHTML = `<span class="grade-badge ${gradeClass}">${grade === 'A+' ? '🚀' : '⭐'} ${grade} (${score}/9)</span>`;
-      
-      if (data.locked) lockStatus.innerHTML = `<span class="lock-badge locked">🔒 LOCKED</span><div class="lock-info">Entry kekal di ${displayPrice}</div>`;
-      else lockStatus.innerHTML = `<span class="lock-badge fresh">⚡ FRESH SIGNAL</span>`;
-    } else {
-      sb.innerHTML = "WAIT <br><span style='font-size:14px; font-weight:400;'>Menunggu Setup</span>";
-      sb.className = "signal-box wait";
-      gradeDisplay.innerHTML = '';
-      lockStatus.innerHTML = '';
-    }
-
-    // ===== FILTER BADGES =====
-    let badges = '';
-    if (data.reasons && data.reasons.length > 0) {
-      data.reasons.slice(0, 6).forEach(r => {
-        const isOk = r.includes('✓');
-        badges += `<span class="filter-badge ${isOk ? 'filter-pass' : 'filter-info'}">${r}</span>`;
-      });
-    }
-    document.getElementById('filter-status').innerHTML = badges;
-
-    // ===== PATTERN =====
-    const patternDisplay = document.getElementById('pattern-display');
-    if (data.candle_pattern && data.candle_pattern.pattern !== "NONE" && data.candle_pattern.pattern !== "DOJI") {
-      const biasClass = data.candle_pattern.bias === "BULLISH" ? "bullish" : data.candle_pattern.bias === "BEARISH" ? "bearish" : "neutral";
-      patternDisplay.innerHTML = `<div class="pattern-badge ${biasClass}"><span class="pattern-icon">${data.candle_pattern.icon || '📊'}</span><span class="pattern-text">${data.candle_pattern.pattern}</span><span class="pattern-strength">${data.candle_pattern.strength}%</span></div>`;
-    } else patternDisplay.innerHTML = '';
-
-    // ===== SL/TP =====
-    if (data.sltp) {
-      document.getElementById('sltp-entry').innerText = data.harga_entry || data.harga;
-      document.getElementById('sltp-sl').innerText = data.sltp.sl;
-      document.getElementById('sltp-tp1').innerText = data.sltp.tp1;
-      document.getElementById('sltp-tp2').innerText = data.sltp.tp2;
-      document.getElementById('sltp-tp3').innerText = data.sltp.tp3;
-      document.getElementById('sltp-slpips').innerText = data.sltp.slPips;
-      document.getElementById('sltp-tppips').innerText = data.sltp.tp2Pips;
-      const rr = (data.sltp.tp2Pips / data.sltp.slPips).toFixed(1);
-      document.getElementById('sltp-rr').innerText = '1:' + rr;
-    }
-
-    // ===== RISK =====
-    if (data.risk_mgmt) {
-      document.getElementById('risk-balance').innerText = '$' + data.risk_mgmt.balance;
-      document.getElementById('risk-percent').innerText = data.risk_mgmt.riskPercent + '%';
-      document.getElementById('risk-lot').innerText = data.risk_mgmt.lotSize;
-      document.getElementById('risk-loss').innerText = '$' + data.risk_mgmt.riskAmount;
-    }
-  } catch (e) { console.error('Signal error:', e); }
+});
+app.get('/api/pattern', async (req, res) => { const symbol = req.query.symbol || 'XAU/USD'; try { const candles = await getOHLC(symbol, '5min', 50); if (candles.length < 5) throw new Error("Data tak cukup"); const last5 = candles.slice(-5); const patterns = []; for (let i = 1; i < last5.length; i++) { const p = detectCandlePattern(last5[i], last5[i - 1]); patterns.push({ time: last5[i].time, pattern: p.pattern, bias: p.bias, strength: p.strength, icon: p.icon }); } res.json({ status: "success", symbol, patterns, latest: patterns[patterns.length - 1] }); } catch (error) { res.status(500).json({ status: "error", message: error.message }); } });
+app.get('/api/pattern-history', (req, res) => res.json({ status: 'success', history: patternHistory.slice(0, 50) }));
+app.get('/api/trade-journal', (req, res) => res.json({ status: 'success', journal: tradeJournal.slice(0, 100) }));
+app.get('/api/market', async (req, res) => { const symbol = req.query.symbol || 'XAU/USD'; const decimal = getDecimal(symbol); try { const tick = await getTick(symbol); const harga = tick.mid; const variance = harga * 0.001; res.json({ symbol, harga: harga.toFixed(decimal), bid: tick.bid.toFixed(decimal), ask: tick.ask.toFixed(decimal), spread: tick.spread.toFixed(decimal), poc: (harga + variance * 2).toFixed(decimal), snr: { r3: (harga + variance * 30).toFixed(decimal), r2: (harga + variance * 20).toFixed(decimal), r1: (harga + variance * 10).toFixed(decimal), poc: (harga + variance * 2).toFixed(decimal), vah: (harga + variance * 5).toFixed(decimal), val: (harga - variance * 5).toFixed(decimal), s1: (harga - variance * 10).toFixed(decimal), s2: (harga - variance * 20).toFixed(decimal), s3: (harga - variance * 30).toFixed(decimal) }, footprint: [{ price: (harga + variance * 10).toFixed(decimal), vol: 128, delta: 64 }, { price: (harga + variance * 5).toFixed(decimal), vol: 96, delta: -18 }, { price: (harga + variance * 2).toFixed(decimal), vol: 312, delta: 110, is_poc: true }, { price: harga.toFixed(decimal), vol: 205, delta: -72 }, { price: (harga - variance * 5).toFixed(decimal), vol: 143, delta: 31 }], time: new Date().toLocaleTimeString() }); } catch (error) { if (error.message && error.message.includes('429')) console.log("⏳ /api/market rate limit"); res.status(500).json({ status: "error", message: error.message }); } });
+app.post('/api/ai-analysis', async (req, res) => { try { const { price, ema9, ema21, signal_time, soalan, rsi, atr, session, reasons, spread } = req.body; const prompt = `Analyst XAUUSD. Price: ${price}. EMA9: ${ema9}, EMA21: ${ema21}. RSI: ${rsi}. ATR%: ${atr}. Session: ${session}. Spread: ${spread}. Filtered: ${reasons? reasons.join(', ') : 'None'}. Question: "${soalan}". Answer in 2-3 sentences in Bahasa Melayu.`; const text = await callAI(prompt); res.json({ status: "success", analysis: text }); } catch (error) { res.status(500).json({ status: "error", message: "AI busy." }); } });
+app.get('/api/candles', async (req, res) => { const symbol = req.query.symbol || 'XAU/USD'; const tf = req.query.tf || '15min'; try { const candles = await getOHLC(symbol, tf, 100); const formatted = candles.map(c => ({ time: c.timestamp, open: c.open, high: c.high, low: c.low, close: c.close })); res.json({ status: "success", candles: formatted }); } catch (error) { if (error.message && error.message.includes('429')) console.log("⏳ /api/candles rate limit"); res.status(500).json({ status: "error", message: error.message }); } });
+app.get('/api/backtest', async (req, res) => { const symbol = req.query.symbol || 'XAU/USD'; try { const candles = await getOHLC(symbol, '15min', 500); let win = 0, loss = 0, markers = []; for (let i = 50; i < candles.length - 1; i++) { const current = candles[i]; const closesSlice = candles.slice(0, i + 1).map(c => c.close); const ema9 = calculateEMA(closesSlice.slice(-50), 9); const ema21 = calculateEMA(closesSlice.slice(-50), 21); const rsi = calculateRSI(closesSlice.slice(-30), 14); const atr = calculateATR(candles.slice(Math.max(0, i - 30), i + 1), 14); const atrPercent = (atr / current.close) * 100; if (ema9 > ema21 && rsi < 75 && atrPercent > 0.015) { const tp = current.close * 1.001; const sl = current.close * 0.999; let result = null; for (let j = i + 1; j < candles.length; j++) { if (candles[j].high >= tp) { result = 'WIN'; break; } if (candles[j].low <= sl) { result = 'LOSS'; break; } } if (result === 'WIN') win++; if (result === 'LOSS') loss++; if (result) markers.push({ time: current.timestamp, position: result === 'WIN'? 'belowBar' : 'aboveBar', color: result === 'WIN'? '#22c55e' : '#ef4444', shape: result === 'WIN'? 'arrowUp' : 'arrowDown', text: result }); } } const totalTrades = win + loss; const winRate = totalTrades > 0? ((win / totalTrades) * 100).toFixed(1) : 0; const chartCandles = candles.slice(-100).map(c => ({ time: c.timestamp, open: c.open, high: c.high, low: c.low, close: c.close })); const chartMarkers = markers.filter(m => m.time >= chartCandles[0].time); res.json({ status: "success", winRate, totalTrades, candles: chartCandles, markers: chartMarkers }); } catch (error) { res.status(500).json({ status: "error", message: error.message }); } });
+app.get('/api/next-news', async (req, res) => { const fallback = { time: 'Akan datang', currency: 'USD', impact: 'high', event: 'US Non-Farm Payrolls', actual: '-', forecast: '180K', previous: '175K' }; try { const response = await axios.get(`${BIQUOTE_URL}/calendar`, { timeout: 10000 }).catch(() => ({ data: { events: [] } })); const d = response.data; let events = d.events || d.data || d.calendar || (Array.isArray(d)? d : []); if (!Array.isArray(events)) events = []; const now = Date.now(); const usdHigh = events.filter(e => { const cur = safeStr(e.currency || e.country).toUpperCase(); return cur === 'USD' || cur === 'US'; }).map(e => ({ time: safeStr(e.time || e.date || e.datetime || ''), timestamp: new Date(e.time || e.date || e.datetime || 0).getTime(), currency: safeStr(e.currency || 'USD'), impact: safeStr(e.impact || 'medium').toLowerCase(), event: safeStr(e.event || e.title || e.name || ''), actual: safeStr(e.actual || '-'), forecast: safeStr(e.forecast || e.estimate || '-'), previous: safeStr(e.previous || e.prior || '-') })).sort((a, b) => { if (isNaN(a.timestamp) && isNaN(b.timestamp)) return 0; if (isNaN(a.timestamp)) return 1; if (isNaN(b.timestamp)) return -1; return a.timestamp - b.timestamp; }); const upcoming = usdHigh.filter(e =>!isNaN(e.timestamp) && e.timestamp > now).slice(0, 1); const nextEvent = upcoming.length > 0? upcoming[0] : (usdHigh.length > 0? usdHigh[0] : fallback); const forecastNum = safeNum(nextEvent.forecast); const previousNum = safeNum(nextEvent.previous); const actualNum = safeNum(nextEvent.actual); let dataBias = "NEUTRAL"; if (actualNum > 0 && forecastNum > 0) { if (actualNum > forecastNum) dataBias = "USD KUAT (BEARISH GOLD)"; else if (actualNum < forecastNum) dataBias = "USD LEMAH (BULLISH GOLD)"; } else if (forecastNum > 0 && previousNum > 0) { if (forecastNum > previousNum) dataBias = "FORECAST USD KUAT (BEARISH GOLD)"; else if (forecastNum < previousNum) dataBias = "FORECAST USD LEMAH (BULLISH GOLD)"; } let goldPrice = '4145'; try { const gt = await getTick('XAU/USD'); goldPrice = gt.mid.toFixed(2); } catch (e) { } const prompt = `Pre-News Analyst XAUUSD. Event: ${nextEvent.event}. Forecast: ${nextEvent.forecast}, Previous: ${nextEvent.previous}, Actual: ${nextEvent.actual}. Bias: ${dataBias}. Gold Price: ${goldPrice}. Reply 5 lines: BIAS, CONFIDENCE, SETUP, REASON, ACTION. Bahasa Melayu.`; let prediction = '🎯 BIAS: BEARISH GOLD\n💪 CONFIDENCE: 68%\n📈 SETUP: SELL\n📝 REASON: Forecast lebih tinggi.\n💡 ACTION: SELL LIMIT @ market price'; try { prediction = await callAI(prompt); } catch (e) { } res.json({ status: 'success', event: nextEvent, prediction, dataBias, goldPrice }); } catch (error) { res.json({ status: 'success', event: fallback, prediction: '🎯 BIAS: BEARISH GOLD\n💪 CONFIDENCE: 68%\n📈 SETUP: SELL\n📝 REASON: Forecast lebih tinggi.\n💡 ACTION: SELL LIMIT @ market price', dataBias: 'FORECAST USD KUAT', note: 'Simulasi' }); } });
+app.get('/api/news', async (req, res) => { try { const response = await axios.get(`${BIQUOTE_URL}/calendar`, { timeout: 10000 }).catch(() => ({ data: { events: [] } })); const d = response.data; let events = d.events || d.data || d.calendar || (Array.isArray(d)? d : []); if (!Array.isArray(events)) events = []; const usdEvents = events.filter(e => { const cur = safeStr(e.currency || e.country).toUpperCase(); return cur === 'USD' || cur === 'US'; }).slice(0, 20).map(e => ({ time: safeStr(e.time || e.date || e.datetime || ''), currency: safeStr(e.currency || 'USD'), impact: safeStr(e.impact || 'medium').toLowerCase(), event: safeStr(e.event || e.title || e.name || ''), actual: safeStr(e.actual || '-'), forecast: safeStr(e.forecast || e.estimate || '-'), previous: safeStr(e.previous || e.prior || '-') })); res.json({ status: 'success', events: usdEvents }); } catch (error) { res.json({ status: 'success', events: [{ time: 'Akan datang', currency: 'USD', impact: 'high', event: 'US Non-Farm Payrolls', actual: '-', forecast: '180K', previous: '175K' }], note: 'Simulasi' }); } });
+app.get('/api/ai-desk-stats', async (req, res) => { try { const markets = ['XAU/USD', 'XAG/USD', 'EUR/USD', 'GBP/USD', 'USD/JPY', 'AUD/USD']; let signals = 0, buy = 0, sell = 0, wait = 0; let topMovers = []; for (const m of markets) { try { const candles = await getOHLC(m, '1min', 50); if (candles.length < 20) continue; const closes = candles.map(c => c.close); const price = closes[closes.length - 1]; const ema9 = calculateEMA(closes, 9); const ema21 = calculateEMA(closes, 21); const rsi = calculateRSI(closes, 14); let sig = ema9 > ema21? 'BUY' : 'SELL'; if ((sig === 'BUY' && rsi > 75) || (sig === 'SELL' && rsi < 25)) sig = 'WAIT'; signals++; if (sig === 'BUY') buy++; else if (sig === 'SELL') sell++; else wait++; const change = ((closes[closes.length - 1] - closes[0]) / closes[0]) * 100; topMovers.push({ symbol: m, price: price.toFixed(2), change: change.toFixed(2), signal: sig, rsi: rsi.toFixed(1) }); await new Promise(r => setTimeout(r, 1500)); } catch (e) { } } topMovers.sort((a, b) => Math.abs(parseFloat(b.change)) - Math.abs(parseFloat(a.change))); res.json({ status: 'success', liveCycle: { cycle: Math.floor(Math.random() * 999) + 1000, accuracy: (65 + Math.random() * 20).toFixed(1), signalsToday: signals, buy, sell, wait }, topMovers: topMovers.slice(0, 5) }); } catch (e) { res.status(500).json({ status: 'error', message: e.message }); } });
+app.get('/api/ai-desk', async (req, res) => {
+    const symbol = req.query.symbol || 'XAU/USD'; const result = { timestamp: new Date().toISOString(), steps: {} };
+    try {
+        const candles = await getOHLC(symbol, '1min', 100); const closes = candles.map(c => c.close); const price = closes[closes.length - 1]; const ema9 = calculateEMA(closes, 9); const ema21 = calculateEMA(closes, 21); const ema50 = calculateEMA(closes, 50); const rsi = calculateRSI(closes, 14); const atr = calculateATR(candles, 14); const atrPct = (atr / price) * 100; const session = getMarketSession(); let tick = { mid: price, spread: 0, bid: price, ask: price }; try { tick = await getTick(symbol); } catch (e) { }
+        result.steps.scan = { price: price.toFixed(2), spread: tick.spread.toFixed(2), rsi: rsi.toFixed(1), atr: atrPct.toFixed(3), session, ema9: ema9.toFixed(2), ema21: ema21.toFixed(2), ema50: ema50.toFixed(2) };
+        let signal = "WAIT", reasons = []; const emaCross = ema9 > ema21? "BUY" : "SELL"; if (emaCross === "BUY" && rsi > 85) reasons.push("RSI Overbought"); if (emaCross === "SELL" && rsi < 15) reasons.push("RSI Oversold"); if (reasons.length === 0) signal = emaCross; result.steps.signal = { signal, reasons, emaCross };
+        let aiPredict = { bias: "NEUTRAL", confidence: 50, reason: "Technical only" };
+        try { const prompt = `XAUUSD. Price: ${price.toFixed(2)}. RSI: ${rsi.toFixed(1)}. Reply 3 lines: BIAS, CONFIDENCE, REASON. BM.`; const aiText = await callAI(prompt); const biasM = aiText.match(/BIAS:\s*(\w+)/i); const confM = aiText.match(/CONFIDENCE:\s*(\d+)/i); const reasonM = aiText.match(/REASON:\s*(.+)/i); aiPredict = { bias: biasM? biasM[1].toUpperCase() : "NEUTRAL", confidence: confM? parseInt(confM[1]) : 50, reason: reasonM? reasonM[1].trim().substring(0, 200) : "Done" }; } catch (e) { aiPredict = { bias: ema9 > ema21? "BULLISH" : "BEARISH", confidence: 55, reason: "AI offline" }; }
+        result.steps.predict = aiPredict; const slPips = atrPct < 0.1? 20 : 30; const tpPips = slPips * 2; result.steps.size = { lotSize: "0.01", slPips, tpPips, riskAmount: "10.00" };
+        let action = "WAIT", direction = 0; if (signal === "BUY") { action = "BUY"; direction = 1; } else if (signal === "SELL") { action = "SELL"; direction = -1; }
+        const pipSize = 0.01; const entryPrice = direction === 1? price - slPips * pipSize * 0.3 : direction === -1? price + slPips * pipSize * 0.3 : price; const slPrice = direction === 1? entryPrice - slPips * pipSize : entryPrice + slPips * pipSize; const tpPrice = direction === 1? entryPrice + tpPips * pipSize : entryPrice - tpPips * pipSize;
+        result.steps.plan = { action, direction, entry: entryPrice.toFixed(2), sl: slPrice.toFixed(2), tp: tpPrice.toFixed(2), rr: "1:2", slPips, tpPips, currentPrice: price.toFixed(2) }; res.json({ status: "success",...result });
+    } catch (e) { res.status(500).json({ status: "error", message: e.message }); }
+});
+async function checkSignalAndNotify() {
+    if (!TELEGRAM_BOT_TOKEN ||!TELEGRAM_CHAT_ID) return;
+    try {
+        const symbol = 'XAU/USD'; const mtf = await checkMultiTimeframe(symbol);
+        if (mtf.grade === 'SKIP') return; const candles = await getOHLC(symbol, '5min', 100); if (candles.length < 50) return;
+        const closes = candles.map(c => c.close); const harga = closes[closes.length - 1]; const atr = calculateATR(candles, 14); const session = getMarketSession(); const rsi = calculateRSI(closes, 14);
+        if (session === 'CLOSED') return; const candleCheck = checkCandleAgainstSignal(candles, mtf.consensus); if (candleCheck.against) return;
+        const lastCandleTime = candles[candles.length - 1].timestamp; const signalKey = `${symbol}_${mtf.consensus}_${mtf.grade}_${lastCandleTime}`; const now = Date.now();
+        const telegramCooldownData = signalCooldown.get('TELEGRAM_' + symbol); if (telegramCooldownData && (now - telegramCooldownData.time) < 30 * 60 * 1000) return; if (lastNotifiedSignal === signalKey) return;
+        const sltp = calculateSLTP(mtf.consensus, harga, atr, symbol); const risk = calculatePositionSize(harga, parseFloat(sltp.sl), symbol); lastNotifiedSignal = signalKey; signalCooldown.set('TELEGRAM_' + symbol, { time: now });
+        const tfLines = mtf.timeframes.map(t => ` ${t.label}: ${t.signal} (RSI ${t.rsi})`).join('\n'); const msg = `🚀 <b>SIGNAL ${mtf.grade} (${mtf.agreement})</b>\n━━━━━━━━━━━━━━━━\n📊 ${symbol} — <b>${mtf.consensus}</b>\n🎯 Entry: ${harga.toFixed(2)}\n\n🛑 SL: ${sltp.sl}\n✅ TP1: ${sltp.tp1}\n✅ TP2: ${sltp.tp2}\n\n📊 4TF:\n${tfLines}\n\n📈 RSI: ${rsi.toFixed(1)} | ⏰ ${session}\n💰 Lot: ${risk.lotSize} | Risk: $${risk.riskAmount}`;
+        await sendTelegram(msg); console.log(`📱 Telegram sent: ${mtf.grade} signal`);
+    } catch (e) { if (e.message && e.message.includes('429')) { console.log("⏳ Rate limit — skip this cycle"); } else { console.log("checkSignalAndNotify error:", e.message); } }
 }
-
-async function dapatkanMarketData() {
-  try {
-    const res = await fetch(`/api/market?symbol=${marketAktif}`);
-    const data = await res.json();
-    document.getElementById('poc-val').innerText = data.poc;
-    document.getElementById('poc-box').innerText = data.poc;
-    ['r3','r2','r1','vah','val','s1','s2','s3'].forEach(k => { const el = document.getElementById(k); if(el) el.innerText = data.snr[k]; });
-  } catch (e) {}
-}
-
-async function loadNewsPrediction() {
-  try {
-    const res = await fetch('/api/news-prediction');
-    const data = await res.json();
-    const card = document.getElementById('news-countdown-card');
-    const content = document.getElementById('news-countdown-content');
-    if (!data.hasNews || !data.event) { card.style.display = 'none'; return; }
-    const e = data.event;
-    const p = data.prediction;
-    let urgencyColor = '#94a3b8';
-    if (e.minutesUntil <= 5) urgencyColor = '#ef4444';
-    else if (e.minutesUntil <= 15) urgencyColor = '#fbbf24';
-    else if (e.minutesUntil <= 30) urgencyColor = '#22c55e';
-    let biasColor = p.bias.includes('BEARISH') ? '#ef4444' : p.bias.includes('BULLISH') ? '#22c55e' : '#94a3b8';
-    content.innerHTML = `
-      <div class="countdown-timer" style="color:${urgencyColor};">⏰ ${e.countdown}</div>
-      <div class="countdown-label">${e.time}</div>
-      <div class="news-info-box">
-        <div class="news-info-title">${e.name}</div>
-        <div class="news-info-stats">
-          <div style="text-align:center;"><div class="news-info-stat-label">ACTUAL</div><div class="news-info-stat-value">${e.actual}</div></div>
-          <div style="text-align:center;"><div class="news-info-stat-label">FORECAST</div><div class="news-info-stat-value" style="color:#f1f5f9;">${e.forecast}</div></div>
-          <div style="text-align:center;"><div class="news-info-stat-label">PREVIOUS</div><div class="news-info-stat-value" style="color:#f1f5f9;">${e.previous}</div></div>
-        </div>
-      </div>
-      <div class="bias-box" style="background:linear-gradient(135deg, #0d1a33, #101c33); border-left:3px solid ${biasColor};">
-        <div class="bias-header"><span class="bias-label">BIAS PREDICTION</span><span class="bias-confidence" style="color:${urgencyColor};">${p.confidence}%</span></div>
-        <div class="bias-value" style="color:${biasColor};">${p.bias}</div>
-        <div class="bias-reason">${p.reason}</div>
-        <div class="bias-action">💡 ${p.action}</div>
-      </div>
-    `;
-    card.style.display = 'block';
-  } catch (err) { console.error('News prediction error:', err); }
-}
-
-async function tanyaAI() {
-  const harga = document.getElementById('main-price-signal').innerText;
-  const soalan = document.getElementById('soalan-ai').value;
-  if (harga === "Loading..." || !soalan) return;
-  const data = { price: harga, ema9: document.getElementById('ema9').innerText, ema21: document.getElementById('ema21').innerText, rsi: document.getElementById('rsi').innerText, atr: document.getElementById('atr').innerText, session: document.getElementById('session').innerText, spread: document.getElementById('spread').innerText, signal_time: Date.now()/1000, soalan };
-  const box = document.getElementById('hasil-ai'); const text = document.getElementById('hasil-ai-text');
-  box.style.display = 'block'; text.innerText = "AI is analyzing..."; text.style.color = "#fbbf24";
-  try {
-    const res = await fetch('/api/ai-analysis', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
-    const result = await res.json();
-    if (result.status === "success") { text.innerText = result.analysis; text.style.color = "#cbd5e1"; }
-    else { text.innerText = "AI busy."; text.style.color = "#f87171"; }
-  } catch (e) { text.innerText = "Connection error."; }
-}
-
-async function dapatkanCandleData() {
-  if (!chart) {
-    const c = document.getElementById('chart');
-    chart = LightweightCharts.createChart(c, { width: c.clientWidth, height: 420, layout: { background: { color: '#0a1525' }, textColor: '#94a3b8' }, grid: { vertLines: { color: 'rgba(56,189,248,0.05)' }, horzLines: { color: 'rgba(56,189,248,0.05)' } }, rightPriceScale: { borderColor: 'rgba(56,189,248,0.2)' }, timeScale: { borderColor: 'rgba(56,189,248,0.2)', timeVisible: true } });
-    candleSeries = chart.addCandlestickSeries({ upColor: '#22c55e', downColor: '#ef4444', borderDownColor: '#ef4444', borderUpColor: '#22c55e', wickDownColor: '#ef4444', wickUpColor: '#22c55e' });
-    chart.applyOptions({ watermark: { visible: true, fontSize: 26, horzAlign: 'center', vertAlign: 'center', color: 'rgba(56,189,248,0.08)', text: 'BORNEO PRO TRADE' } });
-    window.addEventListener('resize', () => chart.applyOptions({ width: c.clientWidth }));
-  }
-  try {
-    const res = await fetch(`/api/candles?symbol=${marketAktif}&tf=5min`);
-    const data = await res.json();
-    if (data.status === "success") candleSeries.setData(data.candles);
-  } catch (e) {}
-}
-
-async function loadPreNews(isManual = false) {
-  const content = document.getElementById('pre-news-content');
-  if (isManual) content.innerHTML = '<p style="text-align:center; color:#fbbf24; font-size:12px; padding:10px;">⏳ AI tengah analisa...</p>';
-  try {
-    const res = await fetch('/api/next-news');
-    const data = await res.json();
-    if (data.status === 'success' && data.event) {
-      const e = data.event;
-      content.innerHTML = `<div class="pre-news-event"><span class="pre-news-name">${e.event}</span><span class="pre-news-time">${e.time||'Akan datang'}</span></div><div class="pre-news-data"><div class="pre-news-data-item"><div class="pre-news-data-label">ACTUAL</div><div class="pre-news-data-value actual">${e.actual}</div></div><div class="pre-news-data-item"><div class="pre-news-data-label">FORECAST</div><div class="pre-news-data-value">${e.forecast}</div></div><div class="pre-news-data-item"><div class="pre-news-data-label">PREVIOUS</div><div class="pre-news-data-value">${e.previous}</div></div></div><p class="pre-news-prediction">${data.prediction}</p>`;
-    } else content.innerHTML = '<p style="text-align:center; color:#64748b; font-size:12px; padding:10px;">Tiada berita</p>';
-  } catch (err) { content.innerHTML = '<p style="text-align:center; color:#ef4444; font-size:12px;">❌ Gagal.</p>'; }
-}
-
-async function loadNews() {
-  newsLoaded = true;
-  const list = document.getElementById('news-list');
-  list.innerHTML = '<div style="text-align:center; padding:30px; color:#38bdf8;">⏳ Memuatkan...</div>';
-  try {
-    const res = await fetch('/api/news');
-    const data = await res.json();
-    if (data.status === 'success' && data.events.length > 0) {
-      list.innerHTML = '';
-      data.events.forEach(e => {
-        const div = document.createElement('div');
-        div.className = 'news-item';
-        div.innerHTML = `<div class="news-header"><span class="news-time">${e.time||'Akan datang'}</span><span class="news-currency">${e.currency}</span></div><div class="news-event">${e.event}</div>`;
-        list.appendChild(div);
-      });
-    } else list.innerHTML = '<div style="text-align:center; padding:30px; color:#94a3b8;">Tiada berita</div>';
-  } catch (err) { list.innerHTML = '<div style="text-align:center; padding:30px; color:#ef4444;">❌ Gagal</div>'; }
-}
-
-async function jalankanBacktest() {
-  document.getElementById('bt-ai-comment').innerText = "Analyzing historical data...";
-  try {
-    const res = await fetch('/api/backtest?symbol=' + marketAktif);
-    const data = await res.json();
-    if (data.status === "success") {
-      document.getElementById('bt-winrate').innerText = data.winRate + "%";
-      document.getElementById('bt-signals').innerText = data.totalTrades;
-      const c = document.getElementById('chart-backtest'); c.innerHTML = "";
-      backtestChart = LightweightCharts.createChart(c, { width: c.clientWidth, height: 260, layout: { background: { color: '#0a1525' }, textColor: '#94a3b8' } });
-      backtestSeries = backtestChart.addCandlestickSeries({ upColor: '#22c55e', downColor: '#ef4444', borderVisible: false });
-      backtestSeries.setData(data.candles);
-      backtestSeries.setMarkers(data.markers);
-      document.getElementById('bt-ai-comment').innerText = `📊 Backtest: ${data.winRate}% win rate dari ${data.totalTrades} signal.`;
-    }
-  } catch (e) { document.getElementById('bt-ai-comment').innerText = "❌ Connection error."; }
-}
-
-async function runAIDesk() {
-  const btn = document.getElementById('desk-run-btn');
-  btn.disabled = true; btn.innerText = '⚙️ RUNNING...';
-  try {
-    const res = await fetch(`/api/ai-desk?symbol=${marketAktif}`);
-    const data = await res.json();
-    if (data.status === 'success') {
-      document.getElementById('signal-result-card').style.display = 'block';
-      const s = data.steps;
-      document.getElementById('result-badge').innerText = s.plan.action;
-      document.getElementById('r-bias').innerText = s.predict.bias;
-      document.getElementById('r-conf').innerText = s.predict.confidence + '%';
-      document.getElementById('r-entry').innerText = s.plan.entry;
-      document.getElementById('r-sl').innerText = s.plan.sl;
-      document.getElementById('r-tp').innerText = s.plan.tp;
-      currentDeskPlan = { symbol: marketAktif, direction: s.plan.action, entry: parseFloat(s.plan.entry), sl: parseFloat(s.plan.sl), tp: parseFloat(s.plan.tp) };
-    }
-  } catch(e) {}
-  btn.disabled = false; btn.innerText = '⚡ RUN AI DESK CYCLE';
-}
-
-function renderTracker() {
-  const closed = trades.filter(t => t.status !== 'OPEN');
-  const wins = closed.filter(t => t.status === 'WIN').length;
-  const losses = closed.filter(t => t.status === 'LOSS').length;
-  const winRate = closed.length > 0 ? ((wins/closed.length)*100).toFixed(1) : 0;
-  document.getElementById('t-total').innerText = closed.length;
-  document.getElementById('t-win').innerText = wins;
-  document.getElementById('t-loss').innerText = losses;
-  document.getElementById('t-rate').innerText = winRate + '%';
-}
-
-function resetHistory() {
-  if (!confirm('Padam semua history?')) return;
-  trades = [];
-  localStorage.setItem('borneo_trades', JSON.stringify(trades));
-  renderTracker();
-}
-
-setInterval(dapatkanSignal, 180000);
-setInterval(dapatkanMarketData, 180000);
-setInterval(loadNewsPrediction, 120000);
-
-dapatkanSignal();
-dapatkanMarketData();
-loadNewsPrediction();
-renderTracker();
-</script>
-</body>
-</html>
+setInterval(() => { newsService.checkAndAlert(); }, 60000);
+setInterval(() => { checkSignalAndNotify(); }, 300000);
+console.log('✅ News alert service berjalan (1 minit)'); console.log('✅ Signal alert service berjalan (5 minit)');
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => console.log('🚀 Server berjalan di port ' + PORT + ' | LOCK 1 JAM + TF LIVE ANTI-429'));
