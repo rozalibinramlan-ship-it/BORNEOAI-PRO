@@ -296,7 +296,7 @@ function isCandleConfirm(candles, signal) {
     return { confirm: false, reason: "Signal tak jelas" };
 }
 
-// ===== ANALYZE CANDLES — 3 EMA (9, 21, 50) =====
+// ===== ANALYZE CANDLES — 3 EMA =====
 function analyzeCandles(candles) {
     if (!candles || candles.length < 50) return null;
     const closes = candles.map(c => c.close);
@@ -308,11 +308,37 @@ function analyzeCandles(candles) {
     if (ema9 > ema21 && ema21 > ema50) sig = 'BUY';
     else if (ema9 < ema21 && ema21 < ema50) sig = 'SELL';
     
+    return { signal: sig };
+}
+
+// ===== MULTI-TIMEFRAME (INFO sahaja) =====
+async function checkMultiTimeframe(symbol) {
+    const timeframes = [
+        { tf: '5min', label: 'M5' },
+        { tf: '15min', label: 'M15' },
+        { tf: '30min', label: 'M30' },
+        { tf: '1h', label: 'H1' }
+    ];
+    const results = [];
+    for (const item of timeframes) {
+        let tfResult = null;
+        try {
+            const candles = await getOHLC(symbol, item.tf, 100);
+            tfResult = analyzeCandles(candles);
+        } catch (e) { console.log(`TF ${item.label} fail: ${e.message}`); }
+        if (tfResult) results.push({ tf: item.tf, label: item.label, signal: tfResult.signal });
+        else results.push({ tf: item.tf, label: item.label, signal: 'WAIT' });
+    }
+    const buyCount = results.filter(r => r.signal === 'BUY').length;
+    const sellCount = results.filter(r => r.signal === 'SELL').length;
+    const maxCount = Math.max(buyCount, sellCount);
+    const majoritySignal = buyCount > sellCount ? 'BUY' : sellCount > buyCount ? 'SELL' : 'WAIT';
     return { 
-        signal: sig,
-        ema9: ema9.toFixed(5),
-        ema21: ema21.toFixed(5),
-        ema50: ema50.toFixed(5)
+        timeframes: results, 
+        buyCount, 
+        sellCount, 
+        agreement: `${maxCount}/4`, 
+        consensus: majoritySignal 
     };
 }
 
@@ -506,13 +532,14 @@ app.get('/api/signal', async (req, res) => {
     const symbol = req.query.symbol || 'XAU/USD';
     const decimal = getDecimal(symbol);
     try {
+        // Get M5 candles (entry TF)
         const candles = await getOHLC(symbol, '5min', 300);
         if (candles.length < 50) throw new Error("Data tak cukup");
         
         const closes = candles.map(c => c.close);
         const harga = closes[closes.length - 1];
         
-        // === 3 EMA ===
+        // === 3 EMA (M5) ===
         const ema9 = calculateEMA(closes, 9);
         const ema21 = calculateEMA(closes, 21);
         const ema50 = calculateEMA(closes, 50);
@@ -530,6 +557,9 @@ app.get('/api/signal', async (req, res) => {
         
         // === CANDLE CONFIRM ===
         const confirmCheck = isCandleConfirm(candles, emaSignal);
+        
+        // === MULTI-TF (INFO sahaja) ===
+        const mtf = await checkMultiTimeframe(symbol);
         
         // === ATR / SESSION / SPREAD ===
         const atr = calculateATR(candles, 14);
@@ -576,7 +606,7 @@ app.get('/api/signal', async (req, res) => {
         } else {
             if (emaSignal === 'WAIT') {
                 filtered = true;
-                reasons.push('EMA tak selari — tunggu trend');
+                reasons.push('EMA tak selari');
             } else if (!levelCheck.touched) {
                 filtered = true;
                 reasons.push('Tunggu sentuh level');
@@ -591,12 +621,12 @@ app.get('/api/signal', async (req, res) => {
                 isLocked = true;
                 lockAgeMin = 0;
                 const levelNames = levelCheck.levels.map(l => l.type).join(', ');
-                reasons.push(`EMA ${signal} | Sentuh: ${levelNames}`);
+                reasons.push(`EMA ${signal} | ${levelNames}`);
                 
                 try {
                     const sltpTg = calculateSLTP(signal, harga, atr, symbol);
                     const riskTg = calculatePositionSize(harga, parseFloat(sltpTg.sl), symbol);
-                    const msgTg = `🚀 <b>SIGNAL ${signal}</b>\n━━━━━━━━━━━━━━━━\n📊 ${symbol}\n🎯 Entry: ${harga.toFixed(decimal)}\n\n🛑 SL: ${sltpTg.sl}\n✅ TP1: ${sltpTg.tp1}\n✅ TP2: ${sltpTg.tp2}\n\n📊 EMA:\n EMA9: ${ema9.toFixed(decimal)}\n EMA21: ${ema21.toFixed(decimal)}\n EMA50: ${ema50.toFixed(decimal)}\n\n📍 Sentuh: ${levelNames}\n✅ Candle: ${confirmCheck.reason}\n\n⏰ ${sessionData.name} (${sessionData.status})\n💰 Lot: ${riskTg.lotSize}`;
+                    const msgTg = `🚀 <b>SIGNAL ${signal}</b>\n━━━━━━━━━━━━━━━━\n📊 ${symbol}\n🎯 Entry: ${harga.toFixed(decimal)}\n\n🛑 SL: ${sltpTg.sl}\n✅ TP1: ${sltpTg.tp1}\n✅ TP2: ${sltpTg.tp2}\n\n📊 EMA (M5):\n EMA9: ${ema9.toFixed(decimal)}\n EMA21: ${ema21.toFixed(decimal)}\n EMA50: ${ema50.toFixed(decimal)}\n\n📍 Sentuh: ${levelNames}\n✅ ${confirmCheck.reason}\n\n⏰ ${sessionData.name}\n💰 Lot: ${riskTg.lotSize}`;
                     await sendTelegram(msgTg);
                 } catch (e) { console.log('Telegram error:', e.message); }
             }
@@ -613,10 +643,10 @@ app.get('/api/signal', async (req, res) => {
             displayMessage = `${signal} @ ${displayPrice.toFixed(decimal)}`;
         } else if (emaSignal !== 'WAIT') {
             displayStatus = 'SETUP';
-            displayMessage = `${emaSignal} bias — tunggu level`;
+            displayMessage = `${emaSignal} bias`;
         } else if (isCooldown) {
             displayStatus = 'COOLDOWN';
-            displayMessage = `Cooldown ${cooldownRemain} minit`;
+            displayMessage = `Cooldown ${cooldownRemain}m`;
         }
         
         res.json({
@@ -633,17 +663,11 @@ app.get('/api/signal', async (req, res) => {
             lockAgeText: formatLockAge(lockAgeMin),
             
             mtf: {
-                timeframes: [
-                    { label: 'M5', signal: emaSignal, rsi: '0' },
-                    { label: 'M15', signal: 'WAIT', rsi: '0' },
-                    { label: 'M30', signal: 'WAIT', rsi: '0' },
-                    { label: 'H1', signal: 'WAIT', rsi: '0' }
-                ],
-                agreement: emaSignal === 'WAIT' ? '0/1' : '1/1',
-                grade: emaSignal === 'WAIT' ? 'SKIP' : 'A',
-                consensus: emaSignal,
-                buyCount: emaSignal === 'BUY' ? 1 : 0,
-                sellCount: emaSignal === 'SELL' ? 1 : 0
+                timeframes: mtf.timeframes,
+                agreement: mtf.agreement,
+                consensus: mtf.consensus,
+                buyCount: mtf.buyCount,
+                sellCount: mtf.sellCount
             },
             
             level_check: levelCheck,
@@ -653,19 +677,15 @@ app.get('/api/signal', async (req, res) => {
             ema9: ema9.toFixed(decimal), 
             ema21: ema21.toFixed(decimal), 
             ema50: ema50.toFixed(decimal),
-            ema200: '0',
-            rsi: '0',
-            atrPercent: atrPercent.toFixed(3), 
             session: sessionData.name,
             session_status: sessionData.status,
+            atrPercent: atrPercent.toFixed(3),
             spread: spread.toFixed(decimal), 
             bid: bid.toFixed(decimal), 
             ask: ask.toFixed(decimal),
             spread_info: getSpreadInfo(symbol, spread),
             lot_fixed: FIXED_LOT, 
             lot_type: USE_FIXED_LOT ? 'FIXED' : 'DYNAMIC',
-            
-            macd: { macd: 0, signal: 0, histogram: 0, cross: 'NEUTRAL' },
             
             snr: { support: snr.support.toFixed(decimal), resistance: snr.resistance.toFixed(decimal), poc: snr.poc.toFixed(decimal) },
             fvg_zones: fvgData.zones.map(z => ({ type: z.type, top: z.top.toFixed(decimal), bottom: z.bottom.toFixed(decimal) })),
@@ -675,35 +695,25 @@ app.get('/api/signal', async (req, res) => {
                 bearish: obData.bearish.map(ob => ({ top: ob.top.toFixed(decimal), bottom: ob.bottom.toFixed(decimal) })) 
             },
             
-            candle_pattern: { pattern: 'NONE', bias: 'NEUTRAL', strength: 0, icon: '' },
-            
             sltp: { 
                 sl: sltp.sl, tp1: sltp.tp1, tp2: sltp.tp2, tp3: sltp.tp3, 
                 slPips: sltp.slPips, tp1Pips: sltp.tp1Pips, tp2Pips: sltp.tp2Pips, tp3Pips: sltp.tp3Pips 
             },
             risk_mgmt: riskMgmt, 
-            reset_pattern: null, 
             filtered, 
             reasons, 
             masa: new Date().toLocaleTimeString(), 
             status: "LIVE",
             confidence: signal !== 'WAIT' ? 70 : 50,
-            risk_level: { level: 'LOW', label: 'LOW', color: '#22c55e' },
-            volatility: { level: 'NORMAL', text: 'NORMAL', color: '#22c55e' },
+            
             entry_zone: { 
                 from: (displayPrice - atr * 0.3).toFixed(decimal), 
                 to: (displayPrice + atr * 0.3).toFixed(decimal), 
                 mid: displayPrice.toFixed(decimal) 
             },
-            signal_id: `BPT-${symbol.replace('/', '')}-${Date.now().toString().slice(-8)}`,
             strategy: signal === 'WAIT' ? 'Wait & See' : `EMA ${signal}`,
             rr_tp1: sltp.slPips > 0 ? (sltp.tp1Pips / sltp.slPips).toFixed(2) : '1.00',
-            rr_tp2: sltp.slPips > 0 ? (sltp.tp2Pips / sltp.slPips).toFixed(2) : '2.00',
-            upcoming_events: [],
-            tf_reasons: {
-                M5: emaSignal === 'BUY' ? 'EMA selari naik' : emaSignal === 'SELL' ? 'EMA selari turun' : 'EMA tak selari',
-                M15: '-', M30: '-', H1: '-'
-            }
+            rr_tp2: sltp.slPips > 0 ? (sltp.tp2Pips / sltp.slPips).toFixed(2) : '2.00'
         });
         
     } catch (error) {
@@ -711,7 +721,7 @@ app.get('/api/signal', async (req, res) => {
         res.json({ 
             symbol, signal: "WAIT", warna: "#94a3b8", locked: false, 
             display_status: 'WAIT', display_message: 'Data error', confidence: 0,
-            mtf: { timeframes: [], agreement: '0/1', grade: 'SKIP', consensus: 'WAIT' }, 
+            mtf: { timeframes: [], agreement: '0/4', consensus: 'WAIT' }, 
             filtered: true, reasons: ["Data Error"], status: "ERROR" 
         });
     }
@@ -759,7 +769,8 @@ app.get('/api/spread-check', async (req, res) => {
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
     console.log(`🚀 BPT — Borneo Pro Trade berjalan di port ${PORT}`);
-    console.log(`📊 Signal: 3 EMA (9, 21, 50) + Level (SNR/FVG/POC/OB) + Candle`);
+    console.log(`📊 Signal: 3 EMA (M5) + Level + Candle`);
+    console.log(`📈 Multi-TF: M5, M15, M30, H1 (info)`);
     console.log(`✅ Telegram: ${TELEGRAM_BOT_TOKEN ? 'OK' : 'Belum set'}`);
     console.log(`✅ TwelveData: ${TWELVEDATA_KEYS.length} keys`);
 });

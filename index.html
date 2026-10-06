@@ -34,7 +34,6 @@ body {
   min-height: 100vh;
 }
 
-/* HEADER */
 .header {
   padding: 15px;
   background: linear-gradient(180deg, #0a1525 0%, #050a15 100%);
@@ -65,7 +64,6 @@ body {
 }
 .utc-clock { color: var(--neon-blue); font-weight: 600; }
 
-/* STATUS BAR */
 .status-bar {
   text-align: center; padding: 8px;
   background: linear-gradient(90deg, transparent, rgba(56,189,248,0.08), transparent);
@@ -77,7 +75,6 @@ body {
 .status-bar.setup { color: var(--neon-gold); }
 .status-bar.awaiting { color: var(--neon-blue); }
 
-/* SELECT */
 select {
   margin-top: 10px; padding: 9px 12px; border-radius: 8px;
   background: rgba(13,26,51,0.8); color: white;
@@ -85,11 +82,9 @@ select {
   width: 100%; font-size: 13px; font-family: 'Rajdhani', sans-serif;
 }
 
-/* SCREEN */
 .screen { display: none; padding: 12px; }
 .screen.active { display: block; }
 
-/* GLASS CARD */
 .glass-card {
   background: linear-gradient(135deg, rgba(13,21,38,0.95), rgba(10,21,37,0.95));
   border: 1px solid rgba(56,189,248,0.3); border-radius: 14px;
@@ -114,7 +109,6 @@ select {
   display: flex; align-items: center; gap: 6px;
 }
 
-/* SIGNAL BOX */
 .signal-box {
   padding: 20px 15px; border-radius: 16px;
   font-size: 26px; font-weight: 700;
@@ -127,7 +121,6 @@ select {
 .signal-box.sell { background: linear-gradient(135deg, #7f1d1d, #991b1b); color: #fca5a5; border: 2px solid #ef4444; }
 .signal-box.cooldown { background: linear-gradient(135deg, #1e3a5f, #0c4a6e); color: #38bdf8; border: 2px solid #38bdf8; }
 
-/* GRID */
 .data-grid-5 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 10px; }
 .data-box {
   background: rgba(13,26,51,0.6); border: 1px solid var(--border);
@@ -140,7 +133,6 @@ select {
 .data-value.tp { color: var(--neon-green); }
 .data-value.current { color: var(--neon-blue); }
 
-/* INDICATOR GRID */
 .indicator-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
 .indicator-item {
   text-align: center; padding: 10px 6px;
@@ -150,19 +142,6 @@ select {
 .indicator-label { display: block; color: var(--text-gray); font-size: 10px; font-weight: 600; margin-bottom: 5px; }
 .indicator-value { font-size: 14px; font-weight: 700; }
 
-/* RSI GAUGE */
-.rsi-gauge { display: flex; align-items: center; justify-content: center; gap: 10px; padding: 10px; }
-.rsi-circle {
-  width: 70px; height: 70px; border-radius: 50%;
-  background: conic-gradient(var(--neon-gold) 0deg, var(--neon-gold) var(--rsi-deg, 180deg), rgba(30,41,59,0.6) var(--rsi-deg, 180deg));
-  display: flex; align-items: center; justify-content: center; position: relative;
-}
-.rsi-circle::before { content: ''; position: absolute; inset: 6px; background: var(--bg-card); border-radius: 50%; }
-.rsi-inner { position: relative; z-index: 1; text-align: center; }
-.rsi-value { font-size: 16px; font-weight: 700; color: var(--neon-gold); }
-.rsi-label { font-size: 9px; color: var(--text-gray); font-weight: 600; }
-
-/* SNR GRID */
 .snr-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-bottom: 10px; }
 .snr-box { background: rgba(13,26,51,0.6); padding: 12px 6px; border-radius: 10px; text-align: center; border: 1px solid var(--border); }
 .snr-label { font-size: 10px; margin-bottom: 5px; font-weight: 600; }
@@ -173,28 +152,22 @@ select {
 .snr-box.yellow { background: linear-gradient(135deg, #fbbf24, #d97706); border: none; }
 .snr-box.yellow .snr-label, .snr-box.yellow .snr-value { color: #050a15; }
 
-/* POC */
 .poc-banner { background: linear-gradient(135deg, #fbbf24, #d97706); color: #050a15; font-weight: 700; text-align: center; padding: 14px; border-radius: 12px; margin-bottom: 12px; font-size: 16px; }
 
-/* CHART */
 #chart, #chart-backtest { width: 100%; background: rgba(10,21,37,0.8); border-radius: 12px; border: 1px solid rgba(56,189,248,0.3); overflow: hidden; }
 #chart { height: 380px; }
 #chart-backtest { height: 240px; }
 
-/* AI INPUT */
 .ai-input-container { display: flex; gap: 8px; margin-top: 12px; }
 .ai-input { flex: 1; padding: 12px 16px; border-radius: 22px; border: 1px solid rgba(56,189,248,0.4); background: rgba(10,21,37,0.8); color: white; font-size: 14px; outline: none; font-family: 'Rajdhani', sans-serif; }
 .ai-send-btn { background: linear-gradient(135deg, #38bdf8, #0284c7); color: white; padding: 12px 20px; border-radius: 22px; border: none; cursor: pointer; font-weight: 700; font-size: 13px; }
 .ai-result-box { margin-top: 12px; padding: 15px; background: rgba(10,21,37,0.9); border-radius: 12px; border-left: 3px solid var(--neon-blue); display: none; }
 
-/* NEWS */
 .news-item { background: rgba(13,21,38,0.95); border: 1px solid rgba(56,189,248,0.3); border-radius: 12px; padding: 14px; margin-bottom: 10px; border-left: 3px solid var(--neon-gold); }
 
-/* AI DESK */
 .desk-topbar { display: flex; justify-content: space-between; align-items: center; padding: 12px; background: rgba(13,26,51,0.95); border: 1px solid rgba(56,189,248,0.3); border-radius: 12px; margin-bottom: 12px; }
 .desk-run-btn { background: linear-gradient(135deg, #a78bfa, #7c3aed); color: white; padding: 14px; border-radius: 12px; border: none; cursor: pointer; width: 100%; font-weight: 700; letter-spacing: 1px; font-size: 14px; margin-bottom: 12px; }
 
-/* BOTTOM NAV */
 #bottom-nav {
   position: fixed; bottom: 0; left: 0; width: 100%;
   background: linear-gradient(180deg, #0a1525, #050a15);
@@ -215,12 +188,19 @@ select {
 .nav-item span { margin-top: 3px; }
 .nav-item .nav-icon { font-size: 18px; line-height: 1; }
 
-/* FOOTER */
 .footer-info {
   text-align: center; padding: 12px; font-size: 11px;
   color: var(--text-gray);
   border-top: 1px solid var(--border); margin-top: 10px;
 }
+
+.tf-item {
+  text-align: center; padding: 10px 4px;
+  border-radius: 10px; border: 1px solid var(--border);
+  background: #0a1525;
+}
+.tf-label { font-size: 10px; font-weight: 600; color: #94a3b8; display: block; margin-bottom: 4px; }
+.tf-value { font-size: 13px; font-weight: 700; }
 </style>
 </head><body>
 
@@ -251,7 +231,7 @@ select {
 
 <div class="status-bar awaiting" id="status-bar">● AWAITING SIGNAL · TEMPLATE MODE</div>
 
-<!-- SCREEN: SIGNAL -->
+<!-- ===== SCREEN: SIGNAL ===== -->
 <div id="screen-signal" class="screen active">
   <div id="signal-box" class="signal-box wait">
     <div>WAIT</div>
@@ -291,28 +271,27 @@ select {
 
   <div class="glass-card">
     <p class="card-title">📈 Timeframe Analysis</p>
-    <div class="tf-status" style="display:grid; grid-template-columns:repeat(4,1fr); gap:6px;">
-      <div class="tf-item" id="tf-m5-box" style="text-align:center; padding:10px 4px; border-radius:10px; border:1px solid #1f2d42; background:#0a1525;">
-        <span style="font-size:10px; font-weight:600; color:#94a3b8; display:block; margin-bottom:4px;">M5</span>
-        <span class="tf-value" id="tf-m5-val" style="font-size:13px; font-weight:700;">-</span>
+    <div style="display:grid; grid-template-columns:repeat(4,1fr); gap:6px;">
+      <div class="tf-item" id="tf-m5-box">
+        <span class="tf-label">M5</span>
+        <span class="tf-value" id="tf-m5-val">-</span>
       </div>
-      <div class="tf-item" id="tf-m15-box" style="text-align:center; padding:10px 4px; border-radius:10px; border:1px solid #1f2d42; background:#0a1525;">
-        <span style="font-size:10px; font-weight:600; color:#94a3b8; display:block; margin-bottom:4px;">M15</span>
-        <span class="tf-value" id="tf-m15-val" style="font-size:13px; font-weight:700;">-</span>
+      <div class="tf-item" id="tf-m15-box">
+        <span class="tf-label">M15</span>
+        <span class="tf-value" id="tf-m15-val">-</span>
       </div>
-      <div class="tf-item" id="tf-h1-box" style="text-align:center; padding:10px 4px; border-radius:10px; border:1px solid #1f2d42; background:#0a1525;">
-        <span style="font-size:10px; font-weight:600; color:#94a3b8; display:block; margin-bottom:4px;">H1</span>
-        <span class="tf-value" id="tf-h1-val" style="font-size:13px; font-weight:700;">-</span>
+      <div class="tf-item" id="tf-m30-box">
+        <span class="tf-label">M30</span>
+        <span class="tf-value" id="tf-m30-val">-</span>
       </div>
-      <div class="tf-item" id="tf-h4-box" style="text-align:center; padding:10px 4px; border-radius:10px; border:1px solid #1f2d42; background:#0a1525;">
-        <span style="font-size:10px; font-weight:600; color:#94a3b8; display:block; margin-bottom:4px;">H4</span>
-        <span class="tf-value" id="tf-h4-val" style="font-size:13px; font-weight:700;">-</span>
+      <div class="tf-item" id="tf-h1-box">
+        <span class="tf-label">H1</span>
+        <span class="tf-value" id="tf-h1-val">-</span>
       </div>
     </div>
     <div style="text-align:center; font-size:11px; color:#64748b; margin-top:8px;" id="tf-agreement">Agreement: -</div>
   </div>
 
-  <div id="pattern-display"></div>
   <div id="filter-status" style="text-align:center; margin:10px 0;"></div>
 
   <div class="glass-card">
@@ -344,22 +323,22 @@ select {
 
   <div class="glass-card">
     <p class="card-title">🎯 SL / TP</p>
-    <div class="sltp-grid" style="display:grid; grid-template-columns:repeat(4,1fr); gap:6px;">
-      <div class="sltp-item" style="text-align:center; background:rgba(10,21,37,0.8); padding:8px 5px; border-radius:8px; border:1px solid #1f2d42;">
-        <span style="font-size:9px; color:#94a3b8; display:block; margin-bottom:3px;">ENTRY</span>
-        <span class="sltp-value entry" id="sltp-entry" style="font-size:12px; font-weight:700; color:#fbbf24;">-</span>
+    <div style="display:grid; grid-template-columns:repeat(4,1fr); gap:6px;">
+      <div class="data-box">
+        <div class="data-label">ENTRY</div>
+        <div class="data-value entry" id="sltp-entry">-</div>
       </div>
-      <div class="sltp-item" style="text-align:center; background:rgba(10,21,37,0.8); padding:8px 5px; border-radius:8px; border:1px solid #1f2d42;">
-        <span style="font-size:9px; color:#94a3b8; display:block; margin-bottom:3px;">SL</span>
-        <span class="sltp-value sl" id="sltp-sl" style="font-size:12px; font-weight:700; color:#ef4444;">-</span>
+      <div class="data-box">
+        <div class="data-label">SL</div>
+        <div class="data-value sl" id="sltp-sl">-</div>
       </div>
-      <div class="sltp-item" style="text-align:center; background:rgba(10,21,37,0.8); padding:8px 5px; border-radius:8px; border:1px solid #1f2d42;">
-        <span style="font-size:9px; color:#94a3b8; display:block; margin-bottom:3px;">TP1</span>
-        <span class="sltp-value tp" id="sltp-tp1" style="font-size:12px; font-weight:700; color:#22c55e;">-</span>
+      <div class="data-box">
+        <div class="data-label">TP1</div>
+        <div class="data-value tp" id="sltp-tp1">-</div>
       </div>
-      <div class="sltp-item" style="text-align:center; background:rgba(10,21,37,0.8); padding:8px 5px; border-radius:8px; border:1px solid #1f2d42;">
-        <span style="font-size:9px; color:#94a3b8; display:block; margin-bottom:3px;">TP2</span>
-        <span class="sltp-value tp" id="sltp-tp2" style="font-size:12px; font-weight:700; color:#22c55e;">-</span>
+      <div class="data-box">
+        <div class="data-label">TP2</div>
+        <div class="data-value tp" id="sltp-tp2">-</div>
       </div>
     </div>
   </div>
@@ -407,7 +386,7 @@ select {
   </div>
 </div>
 
-<!-- SCREEN: LEVELS -->
+<!-- ===== SCREEN: LEVELS ===== -->
 <div id="screen-levels" class="screen">
   <div class="poc-banner">POC <span id="poc-val">-</span></div>
   <div class="glass-card">
@@ -426,7 +405,7 @@ select {
   </div>
 </div>
 
-<!-- SCREEN: CHART -->
+<!-- ===== SCREEN: CHART ===== -->
 <div id="screen-chart" class="screen">
   <div class="glass-card">
     <p class="card-title">📉 Chart</p>
@@ -434,7 +413,7 @@ select {
   </div>
 </div>
 
-<!-- SCREEN: NEWS -->
+<!-- ===== SCREEN: NEWS ===== -->
 <div id="screen-news" class="screen">
   <div class="glass-card">
     <p class="card-title" style="color:#fbbf24;">📰 Economic News</p>
@@ -442,7 +421,7 @@ select {
   </div>
 </div>
 
-<!-- SCREEN: AI DESK -->
+<!-- ===== SCREEN: AI DESK ===== -->
 <div id="screen-desk" class="screen">
   <div class="desk-topbar">
     <div>
@@ -454,7 +433,7 @@ select {
   <div id="signal-result-card" style="display:none; background:rgba(13,26,51,0.95); border:2px solid #a78bfa; border-radius:12px; padding:14px; margin-bottom:12px;"></div>
 </div>
 
-<!-- SCREEN: STRATEGY -->
+<!-- ===== SCREEN: STRATEGY ===== -->
 <div id="screen-strategy" class="screen">
   <div class="glass-card">
     <p class="card-title">⚡ Strategy · Backtest</p>
@@ -463,7 +442,7 @@ select {
   </div>
 </div>
 
-<!-- BOTTOM NAV -->
+<!-- ===== BOTTOM NAV ===== -->
 <nav id="bottom-nav">
   <button class="nav-item active" onclick="switchTab('signal', this)"><span class="nav-icon">📈</span><span>Signal</span></button>
   <button class="nav-item" onclick="switchTab('levels', this)"><span class="nav-icon">⭐</span><span>Levels</span></button>
@@ -479,7 +458,7 @@ let chart = null, candleSeries = null;
 let backtestChart = null, backtestSeries = null;
 let newsLoaded = false;
 
-// UTC CLOCK
+// ===== UTC CLOCK =====
 function updateUTCClock() {
   const now = new Date();
   const h = String(now.getUTCHours()).padStart(2, '0');
@@ -528,7 +507,7 @@ async function dapatkanSignal() {
       statusBar.innerHTML = `● Awaiting Signal · Template Mode · ${marketAktif}`;
     }
 
-    // PRICE
+    // PRICE + EMA
     document.getElementById('main-price-signal').innerText = data.harga;
     document.getElementById('ema9').innerText = data.ema9;
     document.getElementById('ema21').innerText = data.ema21;
@@ -608,7 +587,7 @@ async function dapatkanSignal() {
 
     // TF DISPLAY
     if (data.mtf && data.mtf.timeframes) {
-      const tfMap = { 'M5': 'm5', 'M15': 'm15', 'H1': 'h1', 'H4': 'h4' };
+      const tfMap = { 'M5': 'm5', 'M15': 'm15', 'M30': 'm30', 'H1': 'h1' };
       data.mtf.timeframes.forEach(tf => {
         const key = tfMap[tf.label];
         if (!key) return;
