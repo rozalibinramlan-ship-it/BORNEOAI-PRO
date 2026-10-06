@@ -25,7 +25,33 @@ const TELEGRAM_CHAT_ID = process.env.TELEGRAM_CHAT_ID || '';
 const ACCOUNT_BALANCE = parseFloat(process.env.ACCOUNT_BALANCE || '1000');
 const RISK_PERCENT = parseFloat(process.env.RISK_PERCENT || '1');
 
-// ===== MULTI API KEY =====
+const FIXED_LOT = 0.01;
+const USE_FIXED_LOT = true;
+
+const SPREAD_INFO = {
+    'XAU/USD': { ideal: 0.50, warn: 0.80, high: 1.20, extreme: 2.00 },
+    'XAG/USD': { ideal: 0.02, warn: 0.03, high: 0.05, extreme: 0.10 },
+    'EUR/USD': { ideal: 0.00015, warn: 0.00025, high: 0.00040, extreme: 0.00080 },
+    'GBP/USD': { ideal: 0.00020, warn: 0.00035, high: 0.00050, extreme: 0.00100 },
+    'USD/JPY': { ideal: 0.015, warn: 0.025, high: 0.040, extreme: 0.080 },
+    'GBP/JPY': { ideal: 0.020, warn: 0.030, high: 0.050, extreme: 0.100 },
+    'AUD/USD': { ideal: 0.00020, warn: 0.00030, high: 0.00050, extreme: 0.00100 },
+    'USD/CAD': { ideal: 0.00020, warn: 0.00030, high: 0.00050, extreme: 0.00100 },
+    'USD/CHF': { ideal: 0.00020, warn: 0.00030, high: 0.00050, extreme: 0.00100 },
+    'NZD/USD': { ideal: 0.00025, warn: 0.00035, high: 0.00060, extreme: 0.00120 },
+    'EUR/GBP': { ideal: 0.00020, warn: 0.00030, high: 0.00050, extreme: 0.00100 },
+    'EUR/JPY': { ideal: 0.00020, warn: 0.00030, high: 0.00050, extreme: 0.00100 },
+    'SPX500':  { ideal: 0.5, warn: 1.0, high: 1.5, extreme: 3.0 },
+    'NAS100':  { ideal: 2.0, warn: 3.0, high: 5.0, extreme: 10.0 },
+    'US30':    { ideal: 2.0, warn: 3.0, high: 5.0, extreme: 10.0 },
+    'DE30':    { ideal: 2.0, warn: 3.0, high: 5.0, extreme: 10.0 },
+    'JP225':   { ideal: 3.0, warn: 5.0, high: 8.0, extreme: 15.0 },
+    'WTICO':   { ideal: 0.04, warn: 0.06, high: 0.10, extreme: 0.20 },
+    'BCO':     { ideal: 0.05, warn: 0.08, high: 0.12, extreme: 0.25 },
+    'NATGAS':  { ideal: 0.005, warn: 0.008, high: 0.015, extreme: 0.030 },
+    'DEFAULT': { ideal: 0.0003, warn: 0.0005, high: 0.0010, extreme: 0.0020 }
+};
+
 const TWELVEDATA_KEYS = [
     process.env.TWELVEDATA_API_KEY || '',
     process.env.TWELVEDATA_API_KEY_2 || '',
@@ -83,9 +109,10 @@ async function sendTelegram(message) {
 const symbolMap = {
     'XAU/USD': 'XAU/USD', 'XAG/USD': 'XAG/USD',
     'EUR/USD': 'EUR/USD', 'GBP/USD': 'GBP/USD', 'USD/JPY': 'USD/JPY',
+    'GBP/JPY': 'GBP/JPY',
     'AUD/USD': 'AUD/USD', 'USD/CAD': 'USD/CAD', 'USD/CHF': 'USD/CHF', 'NZD/USD': 'NZD/USD',
     'EUR/GBP': 'EUR/GBP', 'EUR/JPY': 'EUR/JPY', 'EUR/AUD': 'EUR/AUD',
-    'GBP/JPY': 'GBP/JPY', 'GBP/AUD': 'GBP/AUD', 'AUD/JPY': 'AUD/JPY',
+    'GBP/AUD': 'GBP/AUD', 'AUD/JPY': 'AUD/JPY',
     'SPX500': 'SPX', 'NAS100': 'NDX', 'US30': 'DJI',
     'DE30': 'DAX', 'JP225': 'N225',
     'WTICO': 'WTI/USD', 'BCO': 'BRENT/USD', 'NATGAS': 'NG'
@@ -99,6 +126,180 @@ function getDecimal(s) {
     if (['WTICO', 'BCO', 'NATGAS'].some(x => s.includes(x))) return 3;
     if (s.includes('XAU') || s.includes('XAG')) return 2;
     return 5;
+}
+
+function getSpreadInfo(symbol, spread) {
+    const limit = SPREAD_INFO[symbol] || SPREAD_INFO['DEFAULT'];
+    if (!spread || spread <= 0) return { level: 'UNKNOWN', icon: '❓', text: 'Takde data', color: '#94a3b8', advice: 'Berhati' };
+    if (spread <= limit.ideal) return { level: 'IDEAL', icon: '✅', text: 'Spread bagus', color: '#22c55e', advice: 'Selamat untuk entry' };
+    if (spread <= limit.warn) return { level: 'NORMAL', icon: '👍', text: 'Spread normal', color: '#22c55e', advice: 'OK untuk entry' };
+    if (spread <= limit.high) return { level: 'WARN', icon: '⚠️', text: 'Spread tinggi sikit', color: '#f59e0b', advice: 'Boleh entry, profit kurang' };
+    if (spread <= limit.extreme) return { level: 'HIGH', icon: '🔴', text: 'Spread tinggi', color: '#ef4444', advice: 'Fikir dulu' };
+    return { level: 'EXTREME', icon: '🚨', text: 'Spread melampau', color: '#dc2626', advice: 'Elak jika boleh' };
+}
+
+function calculateMACD(closes) {
+    if (!closes || closes.length < 26) return { macd: 0, signal: 0, histogram: 0, cross: 'NEUTRAL' };
+    const ema12 = calculateEMA(closes, 12);
+    const ema26 = calculateEMA(closes, 26);
+    const macdLine = ema12 - ema26;
+    const signalLine = macdLine * 0.85;
+    const histogram = macdLine - signalLine;
+    let cross = 'NEUTRAL';
+    if (macdLine > signalLine && macdLine > 0) cross = 'BULLISH CROSS';
+    else if (macdLine > signalLine && macdLine < 0) cross = 'BULLISH WEAK';
+    else if (macdLine < signalLine && macdLine < 0) cross = 'BEARISH CROSS';
+    else if (macdLine < signalLine && macdLine > 0) cross = 'BEARISH WEAK';
+    return {
+        macd: parseFloat(macdLine.toFixed(3)),
+        signal: parseFloat(signalLine.toFixed(3)),
+        histogram: parseFloat(histogram.toFixed(3)),
+        cross: cross
+    };
+}
+
+function calculateEMA200(closes) {
+    if (!closes || closes.length < 20) return 0;
+    const period = Math.min(200, closes.length);
+    return calculateEMA(closes, period);
+}
+
+function calculateConfidence(mtf, rsi, atrPercent, session, spread, signal, symbol) {
+    let score = 50;
+    if (mtf.grade === 'A+') score += 30;
+    else if (mtf.grade === 'B') score += 20;
+    else if (mtf.grade === 'SKIP') score -= 20;
+    if (signal === 'SELL' && rsi > 50 && rsi < 75) score += 10;
+    else if (signal === 'BUY' && rsi > 25 && rsi < 50) score += 10;
+    else if (signal === 'SELL' && rsi < 25) score -= 5;
+    else if (signal === 'BUY' && rsi > 75) score -= 5;
+    if (session === 'LONDON' || session === 'NEW YORK') score += 5;
+    else if (session === 'ASIA') score -= 5;
+    if (atrPercent >= 0.15 && atrPercent <= 0.8) score += 5;
+    else if (atrPercent < 0.05) score -= 10;
+    if (spread > 0 && symbol) {
+        const limit = SPREAD_INFO[symbol] || SPREAD_INFO['DEFAULT'];
+        if (spread > limit.high) score -= 5;
+        if (spread > limit.extreme) score -= 10;
+    }
+    return Math.min(99, Math.max(50, score));
+}
+
+function getRiskLevel(atrPercent, spread, session) {
+    let riskScore = 0;
+    if (atrPercent > 0.8) riskScore += 3;
+    else if (atrPercent > 0.4) riskScore += 2;
+    else if (atrPercent > 0.15) riskScore += 1;
+    if (spread > 1.0) riskScore += 2;
+    else if (spread > 0.5) riskScore += 1;
+    if (session === 'ASIA') riskScore += 1;
+    else if (session === 'ROLLOVER' || session === 'CLOSED') riskScore += 2;
+    if (riskScore >= 4) return { level: 'HIGH', label: 'MEDIUM — HIGH VOLATILITY', color: '#ef4444' };
+    if (riskScore >= 2) return { level: 'MEDIUM', label: 'MEDIUM', color: '#fbbf24' };
+    return { level: 'LOW', label: 'LOW', color: '#22c55e' };
+}
+
+function getVolatilityLevel(atrPercent) {
+    if (atrPercent > 0.8) return { level: 'HIGH', text: 'HIGH VOLATILITY', color: '#ef4444' };
+    if (atrPercent > 0.4) return { level: 'MEDIUM', text: 'MEDIUM VOLATILITY', color: '#fbbf24' };
+    if (atrPercent > 0.15) return { level: 'NORMAL', text: 'NORMAL VOLATILITY', color: '#22c55e' };
+    return { level: 'LOW', text: 'LOW VOLATILITY', color: '#94a3b8' };
+}
+
+function calculateEntryZone(price, atr, direction, decimal) {
+    const buffer = atr * 0.3;
+    const from = direction === 'SELL' ? price + buffer * 0.5 : price - buffer * 1.5;
+    const to = direction === 'SELL' ? price + buffer * 1.5 : price - buffer * 0.5;
+    return {
+        from: parseFloat(from.toFixed(decimal)),
+        to: parseFloat(to.toFixed(decimal)),
+        mid: parseFloat(price.toFixed(decimal)),
+        buffer: parseFloat(buffer.toFixed(decimal))
+    };
+}
+
+function generateSignalID(symbol, signal) {
+    const now = new Date();
+    const year = now.getUTCFullYear();
+    const month = String(now.getUTCMonth() + 1).padStart(2, '0');
+    const day = String(now.getUTCDate()).padStart(2, '0');
+    const hour = String(now.getUTCHours()).padStart(2, '0');
+    const minute = String(now.getUTCMinutes()).padStart(2, '0');
+    const symbolClean = symbol.replace('/', '');
+    return `BPT-${symbolClean}-${year}${month}${day}-${hour}${minute}`;
+}
+
+function getStrategyName(mtf, signal, session) {
+    if (signal === 'WAIT') return 'Wait & See';
+    if (signal === 'SELL') {
+        if (mtf.grade === 'A+') return 'High Conviction Sell';
+        if (session === 'LONDON' || session === 'NEW YORK') return 'Pullback Sell';
+        return 'Reversal Sell';
+    }
+    if (signal === 'BUY') {
+        if (mtf.grade === 'A+') return 'High Conviction Buy';
+        if (session === 'LONDON' || session === 'NEW YORK') return 'Pullback Buy';
+        return 'Reversal Buy';
+    }
+    return 'Trend Following';
+}
+
+function getTimeframeReason(tfSignal, tfRsi, currentSignal, candles) {
+    if (!candles || candles.length < 20) return 'Data tidak cukup';
+    const closes = candles.map(c => c.close);
+    const ema50 = calculateEMA(closes, 50);
+    const price = closes[closes.length - 1];
+    const rsi = parseFloat(tfRsi) || 50;
+    const reasons = [];
+    if (price < ema50 && tfSignal === 'SELL') reasons.push('Below EMA-50');
+    if (price > ema50 && tfSignal === 'BUY') reasons.push('Above EMA-50');
+    if (rsi < 30) reasons.push('RSI oversold');
+    else if (rsi > 70) reasons.push('RSI overbought');
+    else if (tfSignal === 'SELL' && rsi > 50) reasons.push('RSI declining');
+    else if (tfSignal === 'BUY' && rsi < 50) reasons.push('RSI rising');
+    const recent5 = closes.slice(-5);
+    if (recent5.length >= 2) {
+        const momentum = recent5[recent5.length - 1] - recent5[0];
+        if (tfSignal === 'SELL' && momentum < 0) reasons.push('Momentum ↓');
+        if (tfSignal === 'BUY' && momentum > 0) reasons.push('Momentum ↑');
+    }
+    return reasons.slice(0, 2).join(', ') || 'Neutral setup';
+}
+
+function calculateRRRatio(entry, sl, tp) {
+    const risk = Math.abs(entry - sl);
+    const reward = Math.abs(tp - entry);
+    if (risk === 0) return '0.00';
+    return (reward / risk).toFixed(2);
+}
+
+async function getUpcomingEvents(minutesAhead = 180) {
+    try {
+        const response = await axios.get(`${BIQUOTE_URL}/calendar`, { timeout: 8000 }).catch(() => ({ data: { events: [] } }));
+        const d = response.data;
+        let events = d.events || d.data || d.calendar || (Array.isArray(d) ? d : []);
+        if (!Array.isArray(events)) return [];
+        const now = Date.now();
+        const upcoming = events
+            .filter(e => {
+                const cur = safeStr(e.currency || e.country).toUpperCase();
+                const imp = safeStr(e.impact || '').toLowerCase();
+                const evTime = new Date(e.time || e.date || e.datetime || 0).getTime();
+                if (isNaN(evTime)) return false;
+                const minutesUntil = (evTime - now) / 60000;
+                return minutesUntil > 0 && minutesUntil <= minutesAhead &&
+                       ['USD', 'GBP', 'EUR', 'JPY'].includes(cur) &&
+                       (imp === 'high' || imp === '3');
+            })
+            .map(e => ({
+                event: safeStr(e.event || e.title || e.name || ''),
+                currency: safeStr(e.currency || 'USD'),
+                time: safeStr(e.time || e.date || e.datetime || ''),
+                minutesUntil: Math.round((new Date(e.time || e.date || e.datetime || 0).getTime() - now) / 60000)
+            }))
+            .sort((a, b) => a.minutesUntil - b.minutesUntil);
+        return upcoming.slice(0, 3);
+    } catch (e) { return []; }
 }
 
 function safeStr(v) { return v === null || v === undefined ? '' : String(v); }
@@ -146,7 +347,6 @@ function getMarketSession() {
     return "CLOSED";
 }
 
-// ===== SNR =====
 function detectSNR(candles) {
     if (candles.length < 20) return { resistance: 0, support: 0, poc: 0 };
     const recent = candles.slice(-50);
@@ -162,7 +362,6 @@ function detectSNR(candles) {
     return { resistance, support, poc };
 }
 
-// ===== FVG =====
 function detectFVG(candles) {
     if (!candles || candles.length < 3) return { zones: [] };
     const zones = [];
@@ -178,7 +377,6 @@ function detectFVG(candles) {
     return { zones: zones.slice(0, 3) };
 }
 
-// ===== POC =====
 function detectPOC(candles, bins = 20) {
     if (!candles || candles.length < 20) return null;
     const recent = candles.slice(-50);
@@ -200,7 +398,6 @@ function detectPOC(candles, bins = 20) {
     return { poc: minPrice + (pocBin * binSize) + (binSize / 2) };
 }
 
-// ===== ORDER BLOCK =====
 function detectOrderBlock(candles) {
     if (!candles || candles.length < 5) return { bullish: [], bearish: [] };
     const recent = candles.slice(-20);
@@ -227,7 +424,6 @@ function detectOrderBlock(candles) {
     return { bullish: bullishOBs.slice(-3), bearish: bearishOBs.slice(-3) };
 }
 
-// ===== CEK SENTUH LEVEL =====
 function checkLevelTouch(price, snr, fvgZones, pocData, obData, threshold = 0.0005) {
     const touched = [];
     const nearSupport = Math.abs(price - snr.support) / price < threshold;
@@ -253,7 +449,6 @@ function checkLevelTouch(price, snr, fvgZones, pocData, obData, threshold = 0.00
     return { touched: touched.length > 0, levels: touched };
 }
 
-// ===== CEK CANDLE CONFIRM =====
 function isCandleConfirm(candles, signal) {
     if (!candles || candles.length < 2) return { confirm: false, reason: "Data tak cukup" };
     const c = candles[candles.length - 2];
@@ -270,7 +465,6 @@ function isCandleConfirm(candles, signal) {
     const isSpinningTop = bodyPct < 0.3 && upperWick > body && lowerWick > body;
     const hasBody = bodyPct > 0.4;
     const isSolid = !isWickDominant && !isDoji && !isSpinningTop;
-    
     if (signal === "SELL") {
         if (!isBearish) return { confirm: false, reason: "Candle closed BUKAN merah" };
         if (!hasBody) return { confirm: false, reason: "Body candle kecil" };
@@ -333,14 +527,17 @@ function calculatePositionSize(entry, sl, symbol) {
     const pipSize = 0.01;
     const slPips = slDistance / pipSize;
     const pipValuePer001Lot = 0.10;
-    const lotSize = riskAmount / (slPips * pipValuePer001Lot);
+    const lotDynamic = riskAmount / (slPips * pipValuePer001Lot);
+    const lotSize = USE_FIXED_LOT ? FIXED_LOT : Math.max(0.01, lotDynamic);
     return {
         balance: balance.toFixed(2),
         riskPercent: riskPercent,
         riskAmount: riskAmount.toFixed(2),
         slPips: Math.round(slPips),
-        lotSize: Math.max(0.01, lotSize).toFixed(2),
-        potentialLoss: riskAmount.toFixed(2)
+        lotSize: lotSize.toFixed(2),
+        lotDynamic: lotDynamic.toFixed(2),
+        lotType: USE_FIXED_LOT ? 'FIXED' : 'DYNAMIC',
+        potentialLoss: (lotSize * slPips * pipValuePer001Lot).toFixed(2)
     };
 }
 
@@ -393,7 +590,6 @@ async function isNewsTime() {
     } catch (e) { return false; }
 }
 
-// ===== CACHE =====
 const tickCache = new Map();
 const TICK_CACHE_MS = 30000;
 
@@ -573,7 +769,6 @@ function checkCandleAgainstSignal(candles, signal) {
     return { against: false };
 }
 
-// ===== API: TEST =====
 app.get('/api/test-ai', async (req, res) => {
     try {
         const r = await ai.models.generateContent({ model: AI_MODELS[0], contents: 'Reply with only: OK' });
@@ -590,7 +785,7 @@ app.get('/api/test-twelvedata', async (req, res) => {
 
 app.get('/api/test-telegram', async (req, res) => {
     if (!TELEGRAM_BOT_TOKEN || !TELEGRAM_CHAT_ID) return res.json({ status: 'FAIL', message: 'Telegram env tak diset' });
-    await sendTelegram('🧪 <b>Test Notification</b>\n\nBorneo Pro Trade V3\nTelegram berfungsi ✅');
+    await sendTelegram('🧪 <b>Test Notification</b>\n\nBorneo Pro Trade V4\nTelegram berfungsi ✅');
     res.json({ status: 'OK', message: 'Telegram test dihantar' });
 });
 
@@ -614,10 +809,7 @@ app.get('/api/multi-tf', async (req, res) => {
         const result = await checkMultiTimeframe(symbol);
         res.json({ status: 'success', symbol, ...result });
     } catch (e) { res.status(500).json({ status: 'error', message: e.message }); }
-});
-
-// ===== API: SIGNAL =====
-app.get('/api/signal', async (req, res) => {
+});app.get('/api/signal', async (req, res) => {
     const symbol = req.query.symbol || 'XAU/USD';
     const tf = req.query.tf || '5min';
     const decimal = getDecimal(symbol);
@@ -630,6 +822,7 @@ app.get('/api/signal', async (req, res) => {
         const ema9 = calculateEMA(closes, 9);
         const ema21 = calculateEMA(closes, 21);
         const ema50 = calculateEMA(closes, 50);
+        const ema200 = calculateEMA200(closes);
         const rsi = calculateRSI(closes, 14);
         const atr = calculateATR(candles, 14);
         const atrPercent = (atr / harga) * 100;
@@ -639,6 +832,7 @@ app.get('/api/signal', async (req, res) => {
         const pocData = detectPOC(candles);
         const obData = detectOrderBlock(candles);
         const lastPattern = detectLastCandlePattern(candles);
+        const macd = calculateMACD(closes);
         
         let spread = 0, bid = 0, ask = 0;
         try {
@@ -750,6 +944,24 @@ app.get('/api/signal', async (req, res) => {
                 if (tradeJournal.length > 200) tradeJournal.pop();
             }
         }
+        
+        const confidence = calculateConfidence(mtf, rsi, atrPercent, session, spread, signal, symbol);
+        const riskLevel = getRiskLevel(atrPercent, spread, session);
+        const volatility = getVolatilityLevel(atrPercent);
+        const entryZone = calculateEntryZone(displayPrice, atr, signal, decimal);
+        const signalID = generateSignalID(symbol, signal);
+        const strategy = getStrategyName(mtf, signal, session);
+        const rrTP1 = calculateRRRatio(displayPrice, parseFloat(sltp.sl), parseFloat(sltp.tp1));
+        const rrTP2 = calculateRRRatio(displayPrice, parseFloat(sltp.sl), parseFloat(sltp.tp2));
+        const upcomingEvents = await getUpcomingEvents(180);
+        
+        const tfReasons = {};
+        if (mtf.timeframes && mtf.timeframes.length > 0) {
+            for (const t of mtf.timeframes) {
+                const tfCandles = await getOHLC(symbol, t.tf, 50).catch(() => candles);
+                tfReasons[t.label] = getTimeframeReason(t.signal, t.rsi, signal, tfCandles);
+            }
+        }
 
         res.json({
             symbol, tf, harga: harga.toFixed(decimal), harga_entry: displayPrice.toFixed(decimal), signal, warna, locked: isLocked, news_blocking: newsBlocking,
@@ -768,8 +980,13 @@ app.get('/api/signal', async (req, res) => {
             candle_confirm: confirmCheck,
             cooldown: { active: isCooldown, remainMin: cooldownRemain },
             ema9: ema9.toFixed(decimal), ema21: ema21.toFixed(decimal), ema50: ema50.toFixed(decimal),
+            ema200: ema200.toFixed(decimal),
             rsi: rsi.toFixed(1), atrPercent: atrPercent.toFixed(3), session,
             spread: spread.toFixed(decimal), bid: bid.toFixed(decimal), ask: ask.toFixed(decimal),
+            spread_info: getSpreadInfo(symbol, spread),
+            lot_fixed: FIXED_LOT,
+            lot_type: USE_FIXED_LOT ? 'FIXED' : 'DYNAMIC',
+            macd: macd,
             snr: { support: snr.support.toFixed(decimal), resistance: snr.resistance.toFixed(decimal), poc: snr.poc.toFixed(decimal) },
             fvg_zones: fvgData.zones.map(z => ({ type: z.type, top: z.top.toFixed(decimal), bottom: z.bottom.toFixed(decimal) })),
             poc_price: pocData ? pocData.poc.toFixed(decimal) : '-',
@@ -779,7 +996,17 @@ app.get('/api/signal', async (req, res) => {
             },
             candle_pattern: { pattern: lastPattern.pattern, bias: lastPattern.bias, strength: lastPattern.strength, icon: lastPattern.icon },
             sltp: { sl: sltp.sl, tp1: sltp.tp1, tp2: sltp.tp2, tp3: sltp.tp3, slPips: sltp.slPips, tp1Pips: sltp.tp1Pips, tp2Pips: sltp.tp2Pips, tp3Pips: sltp.tp3Pips },
-            risk_mgmt: riskMgmt, reset_pattern: resetPattern, filtered, reasons, masa: new Date().toLocaleTimeString(), status: "LIVE"
+            risk_mgmt: riskMgmt, reset_pattern: resetPattern, filtered, reasons, masa: new Date().toLocaleTimeString(), status: "LIVE",
+            confidence: confidence,
+            risk_level: riskLevel,
+            volatility: volatility,
+            entry_zone: entryZone,
+            signal_id: signalID,
+            strategy: strategy,
+            rr_tp1: rrTP1,
+            rr_tp2: rrTP2,
+            upcoming_events: upcomingEvents,
+            tf_reasons: tfReasons
         });
     } catch (error) {
         if (error.message && error.message.includes('429')) {
@@ -787,7 +1014,7 @@ app.get('/api/signal', async (req, res) => {
         } else {
             console.error("/api/signal ERROR:", error.message);
         }
-        res.json({ symbol, harga: "0.00", harga_entry: "0.00", signal: "WAIT", warna: "#94a3b8", locked: false, mtf: { timeframes: [{ label: 'M5', signal: 'WAIT', rsi: '-' }, { label: 'M15', signal: 'WAIT', rsi: '-' }, { label: 'H1', signal: 'WAIT', rsi: '-' }, { label: 'H4', signal: 'WAIT', rsi: '-' }], agreement: '0/4', grade: 'SKIP', consensus: 'WAIT', buyCount: 0, sellCount: 0, confidence: 'LOW' }, level_check: { touched: false, levels: [] }, candle_confirm: { confirm: false, reason: 'N/A' }, ema9: "0", ema21: "0", ema50: "0", rsi: "50", atrPercent: "0", session: "CLOSED", spread: "0", bid: "0", ask: "0", filtered: true, reasons: ["Data Error"], masa: new Date().toLocaleTimeString(), status: "ERROR" });
+        res.json({ symbol, harga: "0.00", harga_entry: "0.00", signal: "WAIT", warna: "#94a3b8", locked: false, mtf: { timeframes: [{ label: 'M5', signal: 'WAIT', rsi: '-' }, { label: 'M15', signal: 'WAIT', rsi: '-' }, { label: 'H1', signal: 'WAIT', rsi: '-' }, { label: 'H4', signal: 'WAIT', rsi: '-' }], agreement: '0/4', grade: 'SKIP', consensus: 'WAIT', buyCount: 0, sellCount: 0, confidence: 'LOW' }, level_check: { touched: false, levels: [] }, candle_confirm: { confirm: false, reason: 'N/A' }, ema9: "0", ema21: "0", ema50: "0", ema200: "0", rsi: "50", atrPercent: "0", session: "CLOSED", spread: "0", bid: "0", ask: "0", filtered: true, reasons: ["Data Error"], masa: new Date().toLocaleTimeString(), status: "ERROR", confidence: 0, risk_level: { level: 'UNKNOWN', label: 'UNKNOWN', color: '#94a3b8' }, volatility: { level: 'UNKNOWN', text: 'UNKNOWN', color: '#94a3b8' }, entry_zone: { from: '0', to: '0', mid: '0' }, signal_id: '-', strategy: 'Wait & See', rr_tp1: '0', rr_tp2: '0', upcoming_events: [], tf_reasons: {} });
     }
 });
 
@@ -1032,6 +1259,33 @@ app.get('/api/ai-desk', async (req, res) => {
     } catch (e) { res.status(500).json({ status: "error", message: e.message }); }
 });
 
+app.get('/api/spread-check', async (req, res) => {
+    const symbol = req.query.symbol || 'XAU/USD';
+    try {
+        const tick = await getTick(symbol);
+        const info = getSpreadInfo(symbol, tick.spread);
+        res.json({
+            status: 'success',
+            symbol,
+            spread: tick.spread,
+            bid: tick.bid,
+            ask: tick.ask,
+            ...info
+        });
+    } catch (e) {
+        res.status(500).json({ status: 'error', message: e.message });
+    }
+});
+
+app.get('/api/upcoming-events', async (req, res) => {
+    try {
+        const events = await getUpcomingEvents(180);
+        res.json({ status: 'success', events });
+    } catch (e) {
+        res.status(500).json({ status: 'error', message: e.message });
+    }
+});
+
 async function checkSignalAndNotify() {
     if (!TELEGRAM_BOT_TOKEN || !TELEGRAM_CHAT_ID) return;
     try {
@@ -1068,7 +1322,7 @@ async function checkSignalAndNotify() {
         signalCooldown.set('TELEGRAM_' + symbol, { time: now });
         const tfLines = mtf.timeframes.map(t => ` ${t.label}: ${t.signal} (RSI ${t.rsi})`).join('\n');
         const levelNames = levelCheck.levels.map(l => l.type).join(', ');
-        const msg = `🚀 <b>SIGNAL ${mtf.grade} (${mtf.agreement})</b>\n━━━━━━━━━━━━━━━━\n📊 ${symbol} — <b>${mtf.consensus}</b>\n🎯 Entry: ${harga.toFixed(2)}\n\n🛑 SL: ${sltp.sl}\n✅ TP1: ${sltp.tp1}\n✅ TP2: ${sltp.tp2}\n\n📊 4TF:\n${tfLines}\n\n📍 Sentuh: ${levelNames}\n✅ Candle: ${confirmCheck.reason}\n\n📈 RSI: ${rsi.toFixed(1)} | ⏰ ${session}\n💰 Lot: ${risk.lotSize} | Risk: $${risk.riskAmount}`;
+        const msg = `🚀 <b>SIGNAL ${mtf.grade} (${mtf.agreement})</b>\n━━━━━━━━━━━━━━━━\n📊 ${symbol} — <b>${mtf.consensus}</b>\n🎯 Entry: ${harga.toFixed(2)}\n\n🛑 SL: ${sltp.sl}\n✅ TP1: ${sltp.tp1}\n✅ TP2: ${sltp.tp2}\n\n📊 4TF:\n${tfLines}\n\n📍 Sentuh: ${levelNames}\n✅ Candle: ${confirmCheck.reason}\n\n📈 RSI: ${rsi.toFixed(1)} | ⏰ ${session}\n💰 Lot: ${risk.lotSize} (${risk.lotType}) | Risk: $${risk.potentialLoss}`;
         await sendTelegram(msg);
         console.log(`📱 Telegram sent: ${mtf.grade} | ${levelNames}`);
     } catch (e) {
@@ -1090,6 +1344,9 @@ setInterval(() => {
 
 console.log('✅ News alert service berjalan (1 minit)');
 console.log('✅ Signal alert service berjalan (5 minit)');
+console.log('✅ FIXED_LOT:', FIXED_LOT, '| USE_FIXED_LOT:', USE_FIXED_LOT);
+console.log('✅ Spread info aktif untuk', Object.keys(SPREAD_INFO).length, 'simbol');
+console.log('✅ V4 Design aktif — MACD, EMA200, Confidence, Risk Level, Signal ID, Strategy');
 
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log('🚀 Server berjalan di port ' + PORT + ' | SNR + FVG + POC + OB + CANDLE CONFIRM'));
+app.listen(PORT, () => console.log('🚀 Server berjalan di port ' + PORT + ' | BPT V4 PRO SIGNAL SYSTEM'));
