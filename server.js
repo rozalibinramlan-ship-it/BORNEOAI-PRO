@@ -15,7 +15,6 @@ app.get('/', (req, res) => {
     res.sendFile(__dirname + '/index.html');
 });
 
-// ===== HEALTH CHECK (untuk UptimeRobot) =====
 app.get('/health', (req, res) => {
     res.status(200).json({ status: 'OK', timestamp: new Date().toISOString() });
 });
@@ -33,12 +32,11 @@ const RISK_PERCENT = parseFloat(process.env.RISK_PERCENT || '1');
 const FIXED_LOT = 0.01;
 const USE_FIXED_LOT = true;
 
-// ===== FILTER SETTINGS (LONGGAR SIKIT) =====
-const TOUCH_THRESHOLD = 0.0015;      // 0.15% (dari 0.05%)
-const CANDLE_BODY_MIN = 0.35;        // 35% (dari 40%)
-const WICK_DOMINANCE = 2.5;          // 2.5x (dari 2x)
-const ATR_MIN = 0.010;               // 0.010% (dari 0.015%)
-const CANDLE_MATURITY_MIN = 0.5;     // 50% candle mature (BARU!)
+const TOUCH_THRESHOLD = 0.0015;
+const CANDLE_BODY_MIN = 0.35;
+const WICK_DOMINANCE = 2.5;
+const ATR_MIN = 0.010;
+const CANDLE_MATURITY_MIN = 0.3;
 
 const SPREAD_INFO = {
     'XAU/USD': { ideal: 0.50, warn: 0.80, high: 1.20, extreme: 2.00 },
@@ -78,7 +76,7 @@ function getCurrentKey() {
 function switchKey() {
     if (TWELVEDATA_KEYS.length > 1) {
         currentKeyIndex = (currentKeyIndex + 1) % TWELVEDATA_KEYS.length;
-        console.log(`🔄 Switch ke API key #${currentKeyIndex + 1} (dari ${TWELVEDATA_KEYS.length} key)`);
+        console.log(`🔄 Switch ke API key #${currentKeyIndex + 1}`);
     }
 }
 
@@ -461,10 +459,9 @@ function checkLevelTouch(price, snr, fvgZones, pocData, obData, threshold = TOUC
     return { touched: touched.length > 0, levels: touched };
 }
 
-// ===== FIX #1: CANDLE CONFIRM GUNA CANDLE LIVE =====
 function isCandleConfirm(candles, signal) {
     if (!candles || candles.length < 2) return { confirm: false, reason: "Data tak cukup" };
-    const c = candles[candles.length - 1];  // ✅ FIX: Candle LIVE (bukan -2)
+    const c = candles[candles.length - 1];
     const body = Math.abs(c.close - c.open);
     const range = c.high - c.low;
     const upperWick = c.high - Math.max(c.open, c.close);
@@ -473,12 +470,11 @@ function isCandleConfirm(candles, signal) {
     const isBearish = c.close < c.open;
     const bodyPct = range > 0 ? body / range : 0;
     const wickTotal = upperWick + lowerWick;
-    const isWickDominant = wickTotal > body * WICK_DOMINANCE;  // 2.5x
+    const isWickDominant = wickTotal > body * WICK_DOMINANCE;
     const isDoji = bodyPct < 0.12;
     const isSpinningTop = bodyPct < 0.25 && upperWick > body && lowerWick > body;
-    const hasBody = bodyPct > CANDLE_BODY_MIN;  // 0.35
+    const hasBody = bodyPct > CANDLE_BODY_MIN;
     const isSolid = !isWickDominant && !isDoji && !isSpinningTop;
-    
     if (signal === "SELL") {
         if (!isBearish) return { confirm: false, reason: "Candle live BUKAN merah" };
         if (!hasBody) return { confirm: false, reason: "Body candle kecil" };
@@ -494,7 +490,6 @@ function isCandleConfirm(candles, signal) {
     return { confirm: false, reason: "Signal tidak jelas" };
 }
 
-// ===== FIX #2: CANDLE MATURITY CHECK (BARU) =====
 function isCandleMature(candles, timeframeMinutes = 5) {
     if (!candles || candles.length < 1) return { mature: false, reason: "No candle data", progress: 0 };
     const last = candles[candles.length - 1];
@@ -502,13 +497,8 @@ function isCandleMature(candles, timeframeMinutes = 5) {
     const now = Date.now();
     const age = (now - candleTime) / 1000 / 60;
     const progress = age / timeframeMinutes;
-    
     if (progress < CANDLE_MATURITY_MIN) {
-        return {
-            mature: false,
-            reason: `Candle terlalu baru (${(progress * 100).toFixed(0)}% — perlu ≥${(CANDLE_MATURITY_MIN * 100).toFixed(0)}%)`,
-            progress: progress
-        };
+        return { mature: false, reason: `Candle terlalu baru (${(progress * 100).toFixed(0)}%)`, progress: progress };
     }
     return { mature: true, progress: progress, reason: `Candle mature (${(progress * 100).toFixed(0)}%)` };
 }
@@ -583,7 +573,6 @@ function detectCandlePattern(candle, prevCandle) {
     const isBearish = candle.close < candle.open;
     if (range === 0) return { pattern: "NONE", strength: 0, bias: "NEUTRAL", icon: "" };
     const bodyPct = body / range;
-    // Susunan betul: Marubozu → Hammer → Engulfing → Spinning Top → Doji
     if (bodyPct > 0.9) return { pattern: isBullish ? "BULLISH MARUBOZU" : "BEARISH MARUBOZU", strength: 80, bias: isBullish ? "BULLISH" : "BEARISH", icon: isBullish ? "🚀" : "💥" };
     if (lowerWick > body * 2 && upperWick < body * 0.5 && bodyPct > 0.15) return { pattern: "HAMMER", strength: 75, bias: "BULLISH", icon: "🔨" };
     if (upperWick > body * 2 && lowerWick < body * 0.5 && bodyPct > 0.15) return { pattern: "SHOOTING STAR", strength: 75, bias: "BEARISH", icon: "⭐" };
@@ -716,12 +705,13 @@ function analyzeCandles(candles) {
     return { signal: sig, rsi: rsi.toFixed(1) };
 }
 
+// ✅ M30 GANTI H4
 async function checkMultiTimeframe(symbol) {
     const timeframes = [
         { tf: '5min', label: 'M5' },
         { tf: '15min', label: 'M15' },
-        { tf: '1h', label: 'H1' },
-        { tf: '4h', label: 'H4' }
+        { tf: '30min', label: 'M30' },
+        { tf: '1h', label: 'H1' }
     ];
     const results = [];
     for (const item of timeframes) {
@@ -771,7 +761,7 @@ async function checkMultiTimeframe(symbol) {
 const signalLock = new Map();
 const signalCooldown = new Map();
 const COOLDOWN_MS = 5 * 60 * 1000;
-const MAX_LOCK_MS = 15 * 60 * 1000;  // ✅ FIX: 15 minit (dari 1 jam)
+const MAX_LOCK_MS = 15 * 60 * 1000;
 const patternHistory = [];
 const tradeJournal = [];
 let lastNotifiedSignal = null;
@@ -801,7 +791,6 @@ function checkCandleAgainstSignal(candles, signal) {
     return { against: false };
 }
 
-// ===== API: TEST =====
 app.get('/api/test-ai', async (req, res) => {
     try {
         const r = await ai.models.generateContent({ model: AI_MODELS[0], contents: 'Reply with only: OK' });
@@ -844,7 +833,6 @@ app.get('/api/multi-tf', async (req, res) => {
     } catch (e) { res.status(500).json({ status: 'error', message: e.message }); }
 });
 
-// ===== API: SIGNAL =====
 app.get('/api/signal', async (req, res) => {
     const symbol = req.query.symbol || 'XAU/USD';
     const tf = req.query.tf || '5min';
@@ -900,12 +888,10 @@ app.get('/api/signal', async (req, res) => {
                 const candleCheck = checkCandleAgainstSignal(candles, existingLock.direction);
                 const mtfOverride = mtf.consensus !== existingLock.direction && mtf.grade !== 'SKIP' && mtf.grade === 'A+';
                 if (candleCheck.against) {
-                    console.log(`🔓 Reset — ${candleCheck.reason}`);
                     signalLock.delete(symbol);
                     signalCooldown.set(symbol, { time: Date.now() });
                     resetPattern = candleCheck.reason;
                 } else if (mtfOverride) {
-                    console.log(`🔓 Reset — 4TF override`);
                     signalLock.delete(symbol);
                     signalCooldown.set(symbol, { time: Date.now() });
                     resetPattern = `4TF override: ${mtf.consensus}`;
@@ -915,10 +901,8 @@ app.get('/api/signal', async (req, res) => {
                     lockedEntry = existingLock.entry;
                     isLocked = true;
                     reasons.push(`Locked ${formatLockAge(lockAgeMin)}`);
-                    if (lastPattern.pattern !== "NONE" && lastPattern.pattern !== "DOJI") reasons.push(`Pattern: ${lastPattern.pattern}`);
                 }
             } else {
-                console.log(`🔓 Reset — momentum hilang / max 15 minit`);
                 signalLock.delete(symbol);
                 signalCooldown.set(symbol, { time: Date.now() });
             }
@@ -958,6 +942,15 @@ app.get('/api/signal', async (req, res) => {
                             lockAgeMin = 0;
                             const levelNames = levelCheck.levels.map(l => l.type).join(', ');
                             reasons.push(`4TF: ${mtf.agreement} → ${mtfGrade} | Sentuh: ${levelNames} | ${confirmCheck.reason}`);
+                            
+                            try {
+                                const sltpTg = calculateSLTP(signal, harga, atr, symbol);
+                                const riskTg = calculatePositionSize(harga, parseFloat(sltpTg.sl), symbol);
+                                const tfLines = mtf.timeframes.map(t => ` ${t.label}: ${t.signal} (RSI ${t.rsi})`).join('\n');
+                                const msgTg = `🚀 <b>SIGNAL ${mtf.grade} (${mtf.agreement})</b>\n━━━━━━━━━━━━━━━━\n📊 ${symbol} — <b>${signal}</b>\n🎯 Entry: ${harga.toFixed(decimal)}\n\n🛑 SL: ${sltpTg.sl}\n✅ TP1: ${sltpTg.tp1}\n✅ TP2: ${sltpTg.tp2}\n\n📊 4TF:\n${tfLines}\n\n📍 Sentuh: ${levelNames}\n✅ Candle: ${confirmCheck.reason}\n\n📈 RSI: ${rsi.toFixed(1)} | ⏰ ${session}\n💰 Lot: ${riskTg.lotSize} (${riskTg.lotType})`;
+                                await sendTelegram(msgTg);
+                                console.log(`📱 Telegram sent (direct): ${mtf.grade}`);
+                            } catch (e) { console.log('❌ Telegram error:', e.message); }
                         }
                     }
                 }
@@ -972,14 +965,6 @@ app.get('/api/signal', async (req, res) => {
         const displayPrice = lockedEntry !== null ? lockedEntry : harga;
         const sltp = calculateSLTP(signal, displayPrice, atr, symbol);
         const riskMgmt = calculatePositionSize(displayPrice, parseFloat(sltp.sl), symbol);
-        if (isLocked && signal !== "WAIT") {
-            const lastJournal = tradeJournal[0];
-            const journalKey = `${symbol}_${signal}_${Math.floor(displayPrice)}`;
-            if (!lastJournal || lastJournal.key !== journalKey) {
-                tradeJournal.unshift({ key: journalKey, time: new Date().toLocaleString(), symbol, signal, entry: displayPrice.toFixed(decimal), sl: sltp.sl, tp1: sltp.tp1, tp2: sltp.tp2, tp3: sltp.tp3, lot: riskMgmt.lotSize, risk: riskMgmt.riskAmount, rsi: rsi.toFixed(1), pattern: lastPattern.pattern, session });
-                if (tradeJournal.length > 200) tradeJournal.pop();
-            }
-        }
         
         const confidence = calculateConfidence(mtf, rsi, atrPercent, session, spread, signal, symbol);
         const riskLevel = getRiskLevel(atrPercent, spread, session);
@@ -991,10 +976,8 @@ app.get('/api/signal', async (req, res) => {
         const rrTP2 = calculateRRRatio(displayPrice, parseFloat(sltp.sl), parseFloat(sltp.tp2));
         const upcomingEvents = await getUpcomingEvents(180);
         
-        // ===== DISPLAY STATUS =====
         let displayStatus = 'WAIT';
         let displayMessage = 'Menunggu setup 3/4 TF';
-        
         if (signal === 'BUY' || signal === 'SELL') {
             displayStatus = 'SIGNAL';
             displayMessage = `${signal} @ ${displayPrice.toFixed(decimal)}`;
@@ -1020,15 +1003,7 @@ app.get('/api/signal', async (req, res) => {
             display_message: displayMessage,
             lockAgeMin: lockAgeMin,
             lockAgeText: formatLockAge(lockAgeMin),
-            mtf: {
-                timeframes: mtf.timeframes,
-                buyCount: mtf.buyCount,
-                sellCount: mtf.sellCount,
-                agreement: mtf.agreement,
-                grade: mtf.grade,
-                consensus: mtf.consensus,
-                confidence: mtf.confidence
-            },
+            mtf: { timeframes: mtf.timeframes, buyCount: mtf.buyCount, sellCount: mtf.sellCount, agreement: mtf.agreement, grade: mtf.grade, consensus: mtf.consensus, confidence: mtf.confidence },
             level_check: levelCheck,
             candle_confirm: confirmCheck,
             cooldown: { active: isCooldown, remainMin: cooldownRemain },
@@ -1043,10 +1018,7 @@ app.get('/api/signal', async (req, res) => {
             snr: { support: snr.support.toFixed(decimal), resistance: snr.resistance.toFixed(decimal), poc: snr.poc.toFixed(decimal) },
             fvg_zones: fvgData.zones.map(z => ({ type: z.type, top: z.top.toFixed(decimal), bottom: z.bottom.toFixed(decimal) })),
             poc_price: pocData ? pocData.poc.toFixed(decimal) : '-',
-            order_blocks: {
-                bullish: obData.bullish.map(ob => ({ top: ob.top.toFixed(decimal), bottom: ob.bottom.toFixed(decimal) })),
-                bearish: obData.bearish.map(ob => ({ top: ob.top.toFixed(decimal), bottom: ob.bottom.toFixed(decimal) }))
-            },
+            order_blocks: { bullish: obData.bullish.map(ob => ({ top: ob.top.toFixed(decimal), bottom: ob.bottom.toFixed(decimal) })), bearish: obData.bearish.map(ob => ({ top: ob.top.toFixed(decimal), bottom: ob.bottom.toFixed(decimal) })) },
             candle_pattern: { pattern: lastPattern.pattern, bias: lastPattern.bias, strength: lastPattern.strength, icon: lastPattern.icon },
             sltp: { sl: sltp.sl, tp1: sltp.tp1, tp2: sltp.tp2, tp3: sltp.tp3, slPips: sltp.slPips, tp1Pips: sltp.tp1Pips, tp2Pips: sltp.tp2Pips, tp3Pips: sltp.tp3Pips },
             risk_mgmt: riskMgmt, reset_pattern: resetPattern, filtered, reasons, masa: new Date().toLocaleTimeString(), status: "LIVE",
@@ -1062,12 +1034,8 @@ app.get('/api/signal', async (req, res) => {
             tf_reasons: tfReasons
         });
     } catch (error) {
-        if (error.message && error.message.includes('429')) {
-            console.log("⏳ /api/signal rate limit — skip");
-        } else {
-            console.error("/api/signal ERROR:", error.message);
-        }
-        res.json({ symbol, harga: "0.00", harga_entry: "0.00", signal: "WAIT", warna: "#94a3b8", locked: false, display_status: 'WAIT', display_message: 'Data error', mtf: { timeframes: [{ label: 'M5', signal: 'WAIT', rsi: '-' }, { label: 'M15', signal: 'WAIT', rsi: '-' }, { label: 'H1', signal: 'WAIT', rsi: '-' }, { label: 'H4', signal: 'WAIT', rsi: '-' }], agreement: '0/4', grade: 'SKIP', consensus: 'WAIT', buyCount: 0, sellCount: 0, confidence: 'LOW' }, level_check: { touched: false, levels: [] }, candle_confirm: { confirm: false, reason: 'N/A' }, ema9: "0", ema21: "0", ema50: "0", ema200: "0", rsi: "50", atrPercent: "0", session: "CLOSED", spread: "0", bid: "0", ask: "0", filtered: true, reasons: ["Data Error"], masa: new Date().toLocaleTimeString(), status: "ERROR", confidence: 0, risk_level: { level: 'UNKNOWN', label: 'UNKNOWN', color: '#94a3b8' }, volatility: { level: 'UNKNOWN', text: 'UNKNOWN', color: '#94a3b8' }, entry_zone: { from: '0', to: '0', mid: '0' }, signal_id: '-', strategy: 'Wait & See', rr_tp1: '0', rr_tp2: '0', upcoming_events: [], tf_reasons: {} });
+        console.error("/api/signal ERROR:", error.message);
+        res.json({ symbol, signal: "WAIT", warna: "#94a3b8", locked: false, display_status: 'WAIT', display_message: 'Data error', mtf: { timeframes: [], agreement: '0/4', grade: 'SKIP', consensus: 'WAIT' }, filtered: true, reasons: ["Data Error"], status: "ERROR" });
     }
 });
 
@@ -1107,25 +1075,15 @@ app.get('/api/market', async (req, res) => {
                 s1: (harga - variance * 10).toFixed(decimal), s2: (harga - variance * 20).toFixed(decimal),
                 s3: (harga - variance * 30).toFixed(decimal)
             },
-            footprint: [
-                { price: (harga + variance * 10).toFixed(decimal), vol: 128, delta: 64 },
-                { price: (harga + variance * 5).toFixed(decimal), vol: 96, delta: -18 },
-                { price: (harga + variance * 2).toFixed(decimal), vol: 312, delta: 110, is_poc: true },
-                { price: harga.toFixed(decimal), vol: 205, delta: -72 },
-                { price: (harga - variance * 5).toFixed(decimal), vol: 143, delta: 31 }
-            ],
             time: new Date().toLocaleTimeString()
         });
-    } catch (error) {
-        if (error.message && error.message.includes('429')) console.log("⏳ /api/market rate limit");
-        res.status(500).json({ status: "error", message: error.message });
-    }
+    } catch (error) { res.status(500).json({ status: "error", message: error.message }); }
 });
 
 app.post('/api/ai-analysis', async (req, res) => {
     try {
         const { price, ema9, ema21, signal_time, soalan, rsi, atr, session, reasons, spread } = req.body;
-        const prompt = `Analyst XAUUSD. Price: ${price}. EMA9: ${ema9}, EMA21: ${ema21}. RSI: ${rsi}. ATR%: ${atr}. Session: ${session}. Spread: ${spread}. Filtered: ${reasons ? reasons.join(', ') : 'None'}. Question: "${soalan}". Answer in 2-3 sentences in Bahasa Melayu.`;
+        const prompt = `Analyst XAUUSD. Price: ${price}. EMA9: ${ema9}, EMA21: ${ema21}. RSI: ${rsi}. ATR%: ${atr}. Session: ${session}. Spread: ${spread}. Question: "${soalan}". Answer in 2-3 sentences in Bahasa Melayu.`;
         const text = await callAI(prompt);
         res.json({ status: "success", analysis: text });
     } catch (error) { res.status(500).json({ status: "error", message: "AI busy." }); }
@@ -1138,10 +1096,7 @@ app.get('/api/candles', async (req, res) => {
         const candles = await getOHLC(symbol, tf, 100);
         const formatted = candles.map(c => ({ time: c.timestamp, open: c.open, high: c.high, low: c.low, close: c.close }));
         res.json({ status: "success", candles: formatted });
-    } catch (error) {
-        if (error.message && error.message.includes('429')) console.log("⏳ /api/candles rate limit");
-        res.status(500).json({ status: "error", message: error.message });
-    }
+    } catch (error) { res.status(500).json({ status: "error", message: error.message }); }
 });
 
 app.get('/api/backtest', async (req, res) => {
@@ -1178,42 +1133,6 @@ app.get('/api/backtest', async (req, res) => {
     } catch (error) { res.status(500).json({ status: "error", message: error.message }); }
 });
 
-app.get('/api/next-news', async (req, res) => {
-    const fallback = { time: 'Akan datang', currency: 'USD', impact: 'high', event: 'US Non-Farm Payrolls', actual: '-', forecast: '180K', previous: '175K' };
-    try {
-        const response = await axios.get(`${BIQUOTE_URL}/calendar`, { timeout: 10000 }).catch(() => ({ data: { events: [] } }));
-        const d = response.data;
-        let events = d.events || d.data || d.calendar || (Array.isArray(d) ? d : []);
-        if (!Array.isArray(events)) events = [];
-        const now = Date.now();
-        const usdHigh = events
-            .filter(e => { const cur = safeStr(e.currency || e.country).toUpperCase(); return cur === 'USD' || cur === 'US'; })
-            .map(e => ({ time: safeStr(e.time || e.date || e.datetime || ''), timestamp: new Date(e.time || e.date || e.datetime || 0).getTime(), currency: safeStr(e.currency || 'USD'), impact: safeStr(e.impact || 'medium').toLowerCase(), event: safeStr(e.event || e.title || e.name || ''), actual: safeStr(e.actual || '-'), forecast: safeStr(e.forecast || e.estimate || '-'), previous: safeStr(e.previous || e.prior || '-') }))
-            .sort((a, b) => { if (isNaN(a.timestamp) && isNaN(b.timestamp)) return 0; if (isNaN(a.timestamp)) return 1; if (isNaN(b.timestamp)) return -1; return a.timestamp - b.timestamp; });
-        const upcoming = usdHigh.filter(e => !isNaN(e.timestamp) && e.timestamp > now).slice(0, 1);
-        const nextEvent = upcoming.length > 0 ? upcoming[0] : (usdHigh.length > 0 ? usdHigh[0] : fallback);
-        const forecastNum = safeNum(nextEvent.forecast);
-        const previousNum = safeNum(nextEvent.previous);
-        const actualNum = safeNum(nextEvent.actual);
-        let dataBias = "NEUTRAL";
-        if (actualNum > 0 && forecastNum > 0) {
-            if (actualNum > forecastNum) dataBias = "USD KUAT (BEARISH GOLD)";
-            else if (actualNum < forecastNum) dataBias = "USD LEMAH (BULLISH GOLD)";
-        } else if (forecastNum > 0 && previousNum > 0) {
-            if (forecastNum > previousNum) dataBias = "FORECAST USD KUAT (BEARISH GOLD)";
-            else if (forecastNum < previousNum) dataBias = "FORECAST USD LEMAH (BULLISH GOLD)";
-        }
-        let goldPrice = '4145';
-        try { const gt = await getTick('XAU/USD'); goldPrice = gt.mid.toFixed(2); } catch (e) { }
-        const prompt = `Pre-News Analyst XAUUSD. Event: ${nextEvent.event}. Forecast: ${nextEvent.forecast}, Previous: ${nextEvent.previous}, Actual: ${nextEvent.actual}. Bias: ${dataBias}. Gold Price: ${goldPrice}. Reply 5 lines: BIAS, CONFIDENCE, SETUP, REASON, ACTION. Bahasa Melayu.`;
-        let prediction = '🎯 BIAS: BEARISH GOLD\n💪 CONFIDENCE: 68%\n📈 SETUP: SELL\n📝 REASON: Forecast lebih tinggi.\n💡 ACTION: SELL LIMIT @ market price';
-        try { prediction = await callAI(prompt); } catch (e) { }
-        res.json({ status: 'success', event: nextEvent, prediction, dataBias, goldPrice });
-    } catch (error) {
-        res.json({ status: 'success', event: fallback, prediction: '🎯 BIAS: BEARISH GOLD\n💪 CONFIDENCE: 68%\n📈 SETUP: SELL\n📝 REASON: Forecast lebih tinggi.\n💡 ACTION: SELL LIMIT @ market price', dataBias: 'FORECAST USD KUAT', note: 'Simulasi' });
-    }
-});
-
 app.get('/api/news', async (req, res) => {
     try {
         const response = await axios.get(`${BIQUOTE_URL}/calendar`, { timeout: 10000 }).catch(() => ({ data: { events: [] } }));
@@ -1226,7 +1145,7 @@ app.get('/api/news', async (req, res) => {
             .map(e => ({ time: safeStr(e.time || e.date || e.datetime || ''), currency: safeStr(e.currency || 'USD'), impact: safeStr(e.impact || 'medium').toLowerCase(), event: safeStr(e.event || e.title || e.name || ''), actual: safeStr(e.actual || '-'), forecast: safeStr(e.forecast || e.estimate || '-'), previous: safeStr(e.previous || e.prior || '-') }));
         res.json({ status: 'success', events: usdEvents });
     } catch (error) {
-        res.json({ status: 'success', events: [{ time: 'Akan datang', currency: 'USD', impact: 'high', event: 'US Non-Farm Payrolls', actual: '-', forecast: '180K', previous: '175K' }], note: 'Simulasi' });
+        res.json({ status: 'success', events: [], note: 'Simulasi' });
     }
 });
 
@@ -1276,7 +1195,7 @@ app.get('/api/ai-desk', async (req, res) => {
         const session = getMarketSession();
         let tick = { mid: price, spread: 0, bid: price, ask: price };
         try { tick = await getTick(symbol); } catch (e) { }
-        result.steps.scan = { price: price.toFixed(2), spread: tick.spread.toFixed(2), rsi: rsi.toFixed(1), atr: atrPct.toFixed(3), session, ema9: ema9.toFixed(2), ema21: ema21.toFixed(2), ema50: ema50.toFixed(2) };
+        result.steps.scan = { price: price.toFixed(2), spread: tick.spread.toFixed(2), rsi: rsi.toFixed(1), atr: atrPct.toFixed(3), session };
         let signal = "WAIT", reasons = [];
         const emaCross = ema9 > ema21 ? "BUY" : "SELL";
         if (emaCross === "BUY" && rsi > 85) reasons.push("RSI Overbought");
@@ -1318,21 +1237,9 @@ app.get('/api/spread-check', async (req, res) => {
         const tick = await getTick(symbol);
         const info = getSpreadInfo(symbol, tick.spread);
         res.json({ status: 'success', symbol, spread: tick.spread, bid: tick.bid, ask: tick.ask, ...info });
-    } catch (e) {
-        res.status(500).json({ status: 'error', message: e.message });
-    }
+    } catch (e) { res.status(500).json({ status: 'error', message: e.message }); }
 });
 
-app.get('/api/upcoming-events', async (req, res) => {
-    try {
-        const events = await getUpcomingEvents(180);
-        res.json({ status: 'success', events });
-    } catch (e) {
-        res.status(500).json({ status: 'error', message: e.message });
-    }
-});
-
-// ===== FIX #3: SIGNAL AND NOTIFY (dengan candle live + maturity check) =====
 async function checkSignalAndNotify() {
     if (!TELEGRAM_BOT_TOKEN || !TELEGRAM_CHAT_ID) return;
     try {
@@ -1352,47 +1259,17 @@ async function checkSignalAndNotify() {
         const obData = detectOrderBlock(candles);
         if (session === 'CLOSED') return;
         
-        // ===== FIX: Check 1 — Candle LIVE =====
         const candleCheck = checkCandleAgainstSignal(candles, mtf.consensus);
-        if (candleCheck.against) {
-            console.log(`⚠️ Telegram SKIP — ${candleCheck.reason}`);
-            return;
-        }
+        if (candleCheck.against) return;
         
-        // ===== FIX: Check 2 — Candle Maturity (elak candle baru) =====
         const candleMaturity = isCandleMature(candles, 5);
-        if (!candleMaturity.mature) {
-            console.log(`⚠️ Telegram SKIP — ${candleMaturity.reason}`);
-            return;
-        }
+        if (!candleMaturity.mature) return;
         
-        // ===== FIX: Check 3 — Level touch =====
         const levelCheck = checkLevelTouch(harga, snr, fvgData.zones, pocData, obData, TOUCH_THRESHOLD);
-        if (!levelCheck.touched) {
-            console.log(`⚠️ Telegram SKIP — Level belum sentuh`);
-            return;
-        }
+        if (!levelCheck.touched) return;
         
-        // ===== FIX: Check 4 — Candle confirm (guna candle LIVE) =====
         const confirmCheck = isCandleConfirm(candles, mtf.consensus);
-        if (!confirmCheck.confirm) {
-            console.log(`⚠️ Telegram SKIP — ${confirmCheck.reason}`);
-            return;
-        }
-        
-        // ===== FIX: Check 5 — EXTRA — Double-check candle live tak berlawanan =====
-        const lastCandle = candles[candles.length - 1];
-        const lastIsBullish = lastCandle.close > lastCandle.open;
-        const lastIsBearish = lastCandle.close < lastCandle.open;
-        
-        if (mtf.consensus === 'SELL' && lastIsBullish) {
-            console.log(`🚨 Telegram SKIP — Signal SELL tapi candle LIVE HIJAU!`);
-            return;
-        }
-        if (mtf.consensus === 'BUY' && lastIsBearish) {
-            console.log(`🚨 Telegram SKIP — Signal BUY tapi candle LIVE MERAH!`);
-            return;
-        }
+        if (!confirmCheck.confirm) return;
         
         const lastCandleTime = candles[candles.length - 1].timestamp;
         const signalKey = `${symbol}_${mtf.consensus}_${mtf.grade}_${lastCandleTime}`;
@@ -1407,15 +1284,11 @@ async function checkSignalAndNotify() {
         signalCooldown.set('TELEGRAM_' + symbol, { time: now });
         const tfLines = mtf.timeframes.map(t => ` ${t.label}: ${t.signal} (RSI ${t.rsi})`).join('\n');
         const levelNames = levelCheck.levels.map(l => l.type).join(', ');
-        const msg = `🚀 <b>SIGNAL ${mtf.grade} (${mtf.agreement})</b>\n━━━━━━━━━━━━━━━━\n📊 ${symbol} — <b>${mtf.consensus}</b>\n🎯 Entry: ${harga.toFixed(2)}\n\n🛑 SL: ${sltp.sl}\n✅ TP1: ${sltp.tp1}\n✅ TP2: ${sltp.tp2}\n\n📊 4TF:\n${tfLines}\n\n📍 Sentuh: ${levelNames}\n✅ Candle: ${confirmCheck.reason}\n📊 Candle Age: ${(candleMaturity.progress * 100).toFixed(0)}%\n\n📈 RSI: ${rsi.toFixed(1)} | ⏰ ${session}\n💰 Lot: ${risk.lotSize} (${risk.lotType}) | Risk: $${risk.potentialLoss}`;
+        const msg = `🚀 <b>SIGNAL ${mtf.grade} (${mtf.agreement})</b>\n━━━━━━━━━━━━━━━━\n📊 ${symbol} — <b>${mtf.consensus}</b>\n🎯 Entry: ${harga.toFixed(2)}\n\n🛑 SL: ${sltp.sl}\n✅ TP1: ${sltp.tp1}\n✅ TP2: ${sltp.tp2}\n\n📊 4TF:\n${tfLines}\n\n📍 Sentuh: ${levelNames}\n✅ Candle: ${confirmCheck.reason}\n\n📈 RSI: ${rsi.toFixed(1)} | ⏰ ${session}\n💰 Lot: ${risk.lotSize} (${risk.lotType})`;
         await sendTelegram(msg);
-        console.log(`📱 Telegram sent: ${mtf.grade} | ${levelNames} | Candle ${(candleMaturity.progress * 100).toFixed(0)}%`);
+        console.log(`📱 Telegram sent (interval): ${mtf.grade}`);
     } catch (e) {
-        if (e.message && e.message.includes('429')) {
-            console.log("⏳ Rate limit — skip this cycle");
-        } else {
-            console.log("checkSignalAndNotify error:", e.message);
-        }
+        console.log("checkSignalAndNotify error:", e.message);
     }
 }
 
@@ -1429,10 +1302,7 @@ setInterval(() => {
 
 console.log('✅ News alert service berjalan (1 minit)');
 console.log('✅ Signal alert service berjalan (5 minit)');
-console.log('✅ FIXED_LOT:', FIXED_LOT, '| USE_FIXED_LOT:', USE_FIXED_LOT);
-console.log('✅ Touch threshold:', TOUCH_THRESHOLD, '| Candle body min:', CANDLE_BODY_MIN);
-console.log('✅ Candle maturity min:', CANDLE_MATURITY_MIN, '| Max lock:', MAX_LOCK_MS / 60000, 'minit');
-console.log('✅ Spread info aktif untuk', Object.keys(SPREAD_INFO).length, 'simbol');
+console.log('✅ FIXED_LOT:', FIXED_LOT, '| M30 ganti H4 | Candle maturity:', CANDLE_MATURITY_MIN);
 
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log('🚀 Server berjalan di port ' + PORT + ' | BPT V4 PRO SIGNAL SYSTEM (FIXED)'));
+app.listen(PORT, () => console.log('🚀 Server BPT V4 + M30 berjalan di port ' + PORT));
