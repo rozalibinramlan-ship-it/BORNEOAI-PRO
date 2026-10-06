@@ -46,486 +46,235 @@ body {
 @keyframes pulseGlowGold { 0%,100% { box-shadow: 0 0 20px rgba(251,191,36,0.4); } 50% { box-shadow: 0 0 40px rgba(251,191,36,0.8); } }
 @keyframes pulseGlowBlue { 0%,100% { box-shadow: 0 0 20px rgba(56,189,248,0.4); } 50% { box-shadow: 0 0 40px rgba(56,189,248,0.8); } }
 
-/* ===== HEADER ===== */
+/* HEADER */
 .header {
   padding: 15px 15px 12px;
   background: linear-gradient(180deg, #0a1525 0%, #050a15 100%);
   border-bottom: 1px solid var(--border);
   position: relative;
 }
-.header-top {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 10px;
-}
-.header-left {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
+.header-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+.header-left { display: flex; align-items: center; gap: 12px; }
 .logo-hex {
-  width: 45px;
-  height: 45px;
+  width: 45px; height: 45px;
   background: linear-gradient(135deg, #fbbf24, #d97706);
   clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-family: 'Orbitron', sans-serif;
-  font-weight: 900;
-  color: #050a15;
-  font-size: 16px;
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Orbitron', sans-serif; font-weight: 900;
+  color: #050a15; font-size: 16px;
   box-shadow: 0 0 20px rgba(251,191,36,0.6);
   position: relative;
 }
 .logo-hex::before {
-  content: '';
-  position: absolute;
-  inset: 3px;
+  content: ''; position: absolute; inset: 3px;
   border: 1px solid #050a15;
   clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
 }
 .header-text h1 {
-  font-family: 'Orbitron', sans-serif;
-  font-size: 16px;
-  font-weight: 900;
-  color: var(--neon-gold);
-  letter-spacing: 3px;
+  font-family: 'Orbitron', sans-serif; font-size: 16px; font-weight: 900;
+  color: var(--neon-gold); letter-spacing: 3px;
   text-shadow: 0 0 15px rgba(251,191,36,0.5);
 }
-.header-text p {
-  font-size: 9px;
-  color: var(--neon-blue);
-  letter-spacing: 3px;
-  font-weight: 700;
-  margin-top: 2px;
-}
-.header-right {
-  font-size: 9px;
-  color: var(--text-gray);
-  text-align: right;
-  line-height: 1.6;
-}
+.header-text p { font-size: 9px; color: var(--neon-blue); letter-spacing: 3px; font-weight: 700; margin-top: 2px; }
+.header-right { font-size: 9px; color: var(--text-gray); text-align: right; line-height: 1.6; }
 .header-right .pro-badge {
   background: linear-gradient(135deg, rgba(251,191,36,0.2), rgba(217,119,6,0.2));
-  border: 1px solid rgba(251,191,36,0.5);
-  padding: 3px 8px;
-  border-radius: 6px;
-  color: var(--neon-gold);
-  font-weight: 900;
-  letter-spacing: 1px;
-  display: inline-block;
-  margin-bottom: 3px;
+  border: 1px solid rgba(251,191,36,0.5); padding: 3px 8px; border-radius: 6px;
+  color: var(--neon-gold); font-weight: 900; letter-spacing: 1px;
+  display: inline-block; margin-bottom: 3px;
 }
 .utc-clock { color: var(--neon-blue); font-weight: 700; }
 
-/* ===== STATUS BAR ===== */
+/* STATUS BAR */
 .status-bar {
-  text-align: center;
-  padding: 8px;
+  text-align: center; padding: 8px;
   background: linear-gradient(90deg, transparent, rgba(56,189,248,0.08), transparent);
-  border-top: 1px solid var(--border);
-  border-bottom: 1px solid var(--border);
-  font-size: 10px;
-  letter-spacing: 2px;
-  font-weight: 700;
+  border-top: 1px solid var(--border); border-bottom: 1px solid var(--border);
+  font-size: 10px; letter-spacing: 2px; font-weight: 700;
   color: var(--text-gray);
+  transition: all 0.3s ease;
 }
 .status-bar.active { color: var(--neon-green); text-shadow: 0 0 10px rgba(34,197,94,0.5); }
+.status-bar.setup { color: var(--neon-gold); text-shadow: 0 0 10px rgba(251,191,36,0.5); }
 .status-bar.awaiting { color: var(--neon-blue); text-shadow: 0 0 10px rgba(56,189,248,0.5); }
 
-/* ===== MARKET SELECTOR ===== */
+/* SELECT */
 select {
-  margin-top: 10px;
-  padding: 9px 12px;
-  border-radius: 8px;
-  background: rgba(13,26,51,0.8);
-  color: white;
-  border: 1px solid var(--border-glow);
-  font-weight: 700;
-  width: 100%;
-  font-size: 12px;
-  font-family: 'Rajdhani', sans-serif;
-  letter-spacing: 1px;
-  cursor: pointer;
-  outline: none;
+  margin-top: 10px; padding: 9px 12px; border-radius: 8px;
+  background: rgba(13,26,51,0.8); color: white;
+  border: 1px solid var(--border-glow); font-weight: 700;
+  width: 100%; font-size: 12px;
+  font-family: 'Rajdhani', sans-serif; letter-spacing: 1px;
+  cursor: pointer; outline: none;
 }
 select:focus { border-color: var(--neon-blue); box-shadow: 0 0 15px rgba(56,189,248,0.3); }
 
-/* ===== SCREEN ===== */
+/* SCREEN */
 .screen { display: none; padding: 12px; }
 .screen.active { display: block; animation: fadeIn 0.4s ease-out; }
 
-/* ===== GLASS CARD (dengan corner decoration) ===== */
+/* GLASS CARD */
 .glass-card {
   background: linear-gradient(135deg, rgba(13,21,38,0.95), rgba(10,21,37,0.95));
-  border: 1px solid var(--border-glow);
-  border-radius: 14px;
-  padding: 14px;
-  margin-bottom: 12px;
-  position: relative;
+  border: 1px solid var(--border-glow); border-radius: 14px;
+  padding: 14px; margin-bottom: 12px; position: relative;
   box-shadow: 0 0 20px rgba(56,189,248,0.08), inset 0 0 30px rgba(56,189,248,0.02);
 }
 .glass-card::before {
-  content: '';
-  position: absolute;
-  top: -1px; left: -1px;
+  content: ''; position: absolute; top: -1px; left: -1px;
   width: 18px; height: 18px;
-  border-top: 2px solid var(--neon-gold);
-  border-left: 2px solid var(--neon-gold);
+  border-top: 2px solid var(--neon-gold); border-left: 2px solid var(--neon-gold);
   border-radius: 14px 0 0 0;
 }
 .glass-card::after {
-  content: '';
-  position: absolute;
-  bottom: -1px; right: -1px;
+  content: ''; position: absolute; bottom: -1px; right: -1px;
   width: 18px; height: 18px;
-  border-bottom: 2px solid var(--neon-gold);
-  border-right: 2px solid var(--neon-gold);
+  border-bottom: 2px solid var(--neon-gold); border-right: 2px solid var(--neon-gold);
   border-radius: 0 0 14px 0;
 }
 .card-title {
-  font-family: 'Orbitron', sans-serif;
-  font-size: 10px;
-  font-weight: 700;
-  color: var(--neon-blue);
-  margin-bottom: 10px;
-  letter-spacing: 2.5px;
-  text-transform: uppercase;
-  display: flex;
-  align-items: center;
-  gap: 6px;
+  font-family: 'Orbitron', sans-serif; font-size: 10px; font-weight: 700;
+  color: var(--neon-blue); margin-bottom: 10px; letter-spacing: 2.5px;
+  text-transform: uppercase; display: flex; align-items: center; gap: 6px;
 }
 
-/* ===== PRICE DISPLAY ===== */
-.price-display { text-align: center; margin: 15px 0; }
-.price-value {
-  font-family: 'Orbitron', sans-serif;
-  font-size: 38px;
-  font-weight: 900;
-  color: var(--text-white);
-  letter-spacing: -1px;
-  text-shadow: 0 0 25px rgba(56,189,248,0.4);
-}
-.price-change { font-size: 12px; margin-top: 5px; font-weight: 700; }
-.price-change.up { color: var(--neon-green); }
-.price-change.down { color: var(--neon-red); }
-.live-badge {
-  background: rgba(34,197,94,0.15);
-  color: #4ade80;
-  padding: 4px 12px;
-  border-radius: 20px;
-  font-size: 9px;
-  font-weight: 900;
-  letter-spacing: 2px;
-  border: 1px solid rgba(34,197,94,0.4);
-  display: inline-block;
-  margin-top: 8px;
-}
-
-/* ===== SIGNAL BOX ===== */
+/* SIGNAL BOX */
 .signal-box {
-  padding: 20px 15px;
-  border-radius: 16px;
-  font-family: 'Orbitron', sans-serif;
-  font-size: 28px;
-  font-weight: 900;
-  text-align: center;
-  margin: 15px auto;
-  letter-spacing: 3px;
-  transition: all 0.4s ease;
-  position: relative;
+  padding: 20px 15px; border-radius: 16px;
+  font-family: 'Orbitron', sans-serif; font-size: 28px; font-weight: 900;
+  text-align: center; margin: 15px auto; letter-spacing: 3px;
+  transition: all 0.4s ease; position: relative;
 }
-.signal-box.wait {
-  background: linear-gradient(135deg, #1e293b, #0f172a);
-  color: #64748b;
-  border: 2px solid #475569;
-}
-.signal-box.buy {
-  background: linear-gradient(135deg, #064e3b, #065f46);
-  color: #4ade80;
-  border: 2px solid #22c55e;
-  animation: pulseGlowGreen 2s infinite;
-}
-.signal-box.sell {
-  background: linear-gradient(135deg, #7f1d1d, #991b1b);
-  color: #fca5a5;
-  border: 2px solid #ef4444;
-  animation: pulseGlowRed 2s infinite;
-}
-.signal-box.cooldown {
-  background: linear-gradient(135deg, #1e3a5f, #0c4a6e);
-  color: #38bdf8;
-  border: 2px solid #38bdf8;
-  animation: pulseGlowBlue 2s infinite;
-}
+.signal-box.wait { background: linear-gradient(135deg, #1e293b, #0f172a); color: #64748b; border: 2px solid #475569; }
+.signal-box.setup { background: linear-gradient(135deg, #78350f, #451a03); color: #fbbf24; border: 2px solid #fbbf24; animation: pulseGlowGold 2.5s infinite; }
+.signal-box.buy { background: linear-gradient(135deg, #064e3b, #065f46); color: #4ade80; border: 2px solid #22c55e; animation: pulseGlowGreen 2s infinite; }
+.signal-box.sell { background: linear-gradient(135deg, #7f1d1d, #991b1b); color: #fca5a5; border: 2px solid #ef4444; animation: pulseGlowRed 2s infinite; }
+.signal-box.cooldown { background: linear-gradient(135deg, #1e3a5f, #0c4a6e); color: #38bdf8; border: 2px solid #38bdf8; animation: pulseGlowBlue 2s infinite; }
 
-/* ===== CONFIDENCE HEXAGON ===== */
+/* CONFIDENCE HEXAGON */
 .confidence-hex {
-  width: 110px;
-  height: 110px;
-  margin: 0 auto 15px;
+  width: 110px; height: 110px; margin: 0 auto 15px;
   background: linear-gradient(135deg, #fbbf24, #d97706);
   clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  position: relative;
-  box-shadow: 0 0 40px rgba(251,191,36,0.6);
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  position: relative; box-shadow: 0 0 40px rgba(251,191,36,0.6);
 }
 .confidence-hex::before {
-  content: '';
-  position: absolute;
-  inset: 5px;
+  content: ''; position: absolute; inset: 5px;
   background: linear-gradient(135deg, #0a1525, #050a15);
   clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
 }
 .confidence-hex-content { position: relative; z-index: 1; text-align: center; }
 .confidence-label { font-size: 8px; color: var(--text-gray); letter-spacing: 2px; font-weight: 700; }
-.confidence-value {
-  font-family: 'Orbitron', sans-serif;
-  font-size: 26px;
-  font-weight: 900;
-  color: var(--neon-gold);
-  text-shadow: 0 0 15px rgba(251,191,36,0.8);
-}
+.confidence-value { font-family: 'Orbitron', sans-serif; font-size: 26px; font-weight: 900; color: var(--neon-gold); text-shadow: 0 0 15px rgba(251,191,36,0.8); }
 .confidence-sub { font-size: 7px; color: var(--neon-gold); letter-spacing: 1px; font-weight: 700; margin-top: 2px; }
 
-/* ===== GRADE BADGE ===== */
+/* GRADE BADGE */
 .grade-badge {
-  display: inline-block;
-  padding: 5px 14px;
-  border-radius: 20px;
-  font-family: 'Orbitron', sans-serif;
-  font-size: 10px;
-  font-weight: 900;
-  letter-spacing: 2px;
-  margin: 3px;
+  display: inline-block; padding: 5px 14px; border-radius: 20px;
+  font-family: 'Orbitron', sans-serif; font-size: 10px; font-weight: 900;
+  letter-spacing: 2px; margin: 3px;
 }
 .grade-A { background: linear-gradient(135deg, #fbbf24, #f59e0b); color: #050a15; box-shadow: 0 0 20px rgba(251,191,36,0.6); }
 .grade-B { background: rgba(56,189,248,0.2); color: #38bdf8; border: 1px solid #38bdf8; }
 .grade-SKIP { background: rgba(148,163,184,0.1); color: #94a3b8; border: 1px solid #475569; }
+.grade-SETUP { background: rgba(251,191,36,0.15); color: #fbbf24; border: 1px solid rgba(251,191,36,0.6); animation: pulseGlowGold 3s infinite; }
 
-/* ===== LOCK BADGE ===== */
-.lock-badge {
-  display: inline-block;
-  padding: 5px 12px;
-  border-radius: 20px;
-  font-size: 10px;
-  font-weight: 900;
-  letter-spacing: 1.5px;
-}
+/* LOCK BADGE */
+.lock-badge { display: inline-block; padding: 5px 12px; border-radius: 20px; font-size: 10px; font-weight: 900; letter-spacing: 1.5px; }
 .lock-badge.locked { background: rgba(251,191,36,0.15); color: #fbbf24; border: 1px solid rgba(251,191,36,0.5); animation: pulseGlowGold 3s infinite; }
 .lock-badge.fresh { background: rgba(56,189,248,0.15); color: #38bdf8; border: 1px solid rgba(56,189,248,0.5); }
 .lock-badge.cooldown { background: rgba(56,189,248,0.15); color: #38bdf8; border: 1px solid rgba(56,189,248,0.5); }
+.lock-badge.setup { background: rgba(251,191,36,0.15); color: #fbbf24; border: 1px solid rgba(251,191,36,0.5); animation: pulseGlowGold 3s infinite; }
 .lock-info { text-align: center; font-size: 10px; color: var(--text-gray); margin-top: 6px; }
 
-/* ===== SPREAD INFO BOX ===== */
+/* SPREAD INFO */
 .spread-info-box {
-  padding: 10px 14px;
-  border-radius: 10px;
-  margin: 10px 0;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  font-size: 11px;
-  font-weight: 700;
-  border: 1px solid;
+  padding: 10px 14px; border-radius: 10px; margin: 10px 0;
+  display: flex; align-items: center; gap: 10px;
+  font-size: 11px; font-weight: 700; border: 1px solid;
 }
 .spread-info-box .spread-icon { font-size: 18px; }
 .spread-info-box .spread-text { flex: 1; }
 .spread-info-box .spread-advice { font-size: 9px; opacity: 0.85; font-weight: 500; margin-top: 2px; }
 
-/* ===== 5 BOX GRID (Price/Entry/SL/TP1/TP2) ===== */
-.data-grid-5 {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 8px;
-  margin-bottom: 10px;
-}
-.data-grid-5 .data-box:nth-child(4),
-.data-grid-5 .data-box:nth-child(5) {
-  grid-column: span 1;
-}
-.data-grid-5 .data-box:nth-child(1),
-.data-grid-5 .data-box:nth-child(2) {
-  grid-column: span 1;
-}
+/* 5 BOX GRID */
+.data-grid-5 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 10px; }
 .data-box {
   background: linear-gradient(135deg, rgba(13,26,51,0.9), rgba(10,21,37,0.9));
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  padding: 10px 8px;
-  text-align: center;
-  position: relative;
+  border: 1px solid var(--border); border-radius: 10px;
+  padding: 10px 8px; text-align: center; position: relative;
 }
 .data-box::before {
-  content: '';
-  position: absolute;
-  top: -1px; left: -1px;
+  content: ''; position: absolute; top: -1px; left: -1px;
   width: 10px; height: 10px;
-  border-top: 1.5px solid var(--neon-blue);
-  border-left: 1.5px solid var(--neon-blue);
+  border-top: 1.5px solid var(--neon-blue); border-left: 1.5px solid var(--neon-blue);
   border-radius: 10px 0 0 0;
 }
-.data-label {
-  font-size: 8px;
-  color: var(--text-gray);
-  letter-spacing: 1.5px;
-  font-weight: 700;
-  text-transform: uppercase;
-  margin-bottom: 4px;
-}
-.data-value {
-  font-family: 'Orbitron', sans-serif;
-  font-size: 13px;
-  font-weight: 900;
-  color: var(--text-white);
-}
+.data-label { font-size: 8px; color: var(--text-gray); letter-spacing: 1.5px; font-weight: 700; text-transform: uppercase; margin-bottom: 4px; }
+.data-value { font-family: 'Orbitron', sans-serif; font-size: 13px; font-weight: 900; color: var(--text-white); }
 .data-value.entry { color: var(--neon-gold); }
 .data-value.sl { color: var(--neon-red); }
 .data-value.tp { color: var(--neon-green); }
 .data-value.current { color: var(--neon-blue); }
 
-/* ===== 4 TF ANALYSIS ===== */
-.tf-status { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin: 12px 0; }
-.tf-item {
-  text-align: center;
-  padding: 10px 4px;
-  border-radius: 10px;
-  border: 1.5px solid var(--border);
-  background: rgba(10,21,37,0.8);
-  position: relative;
-}
-.tf-item.buy { background: rgba(34,197,94,0.12); border-color: var(--neon-green); box-shadow: 0 0 12px rgba(34,197,94,0.3); }
-.tf-item.sell { background: rgba(239,68,68,0.12); border-color: var(--neon-red); box-shadow: 0 0 12px rgba(239,68,68,0.3); }
-.tf-item.wait { background: rgba(148,163,184,0.08); border-color: #475569; }
-.tf-label { font-size: 9px; font-weight: 900; color: var(--text-gray); letter-spacing: 1px; display: block; margin-bottom: 4px; font-family: 'Orbitron', sans-serif; }
-.tf-value { font-size: 12px; font-weight: 900; font-family: 'Orbitron', sans-serif; }
-.tf-value.buy { color: #4ade80; }
-.tf-value.sell { color: #fca5a5; }
-.tf-value.wait { color: #94a3b8; }
-.tf-rsi { font-size: 8px; color: #64748b; margin-top: 2px; }
-.tf-reason { font-size: 8px; color: var(--text-gray); margin-top: 4px; font-style: italic; }
-
-/* ===== TF ANALYSIS LIST (macam gambar) ===== */
+/* TF LIST */
 .tf-list-item {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 8px 10px;
-  background: rgba(10,21,37,0.6);
-  border-radius: 8px;
-  margin-bottom: 6px;
+  display: flex; align-items: center; gap: 10px;
+  padding: 8px 10px; background: rgba(10,21,37,0.6);
+  border-radius: 8px; margin-bottom: 6px;
   border-left: 3px solid var(--border);
 }
 .tf-list-item.bearish { border-left-color: var(--neon-red); }
 .tf-list-item.bullish { border-left-color: var(--neon-green); }
 .tf-list-item.neutral { border-left-color: #475569; }
-.tf-num {
-  font-family: 'Orbitron', sans-serif;
-  font-size: 12px;
-  font-weight: 900;
-  color: var(--neon-gold);
-  min-width: 20px;
-}
+.tf-num { font-family: 'Orbitron', sans-serif; font-size: 12px; font-weight: 900; color: var(--neon-gold); min-width: 20px; }
 .tf-name { font-size: 10px; font-weight: 700; color: var(--text-white); min-width: 70px; letter-spacing: 1px; }
-.tf-tag {
-  font-size: 9px;
-  font-weight: 900;
-  padding: 3px 8px;
-  border-radius: 6px;
-  letter-spacing: 1px;
-}
+.tf-tag { font-size: 9px; font-weight: 900; padding: 3px 8px; border-radius: 6px; letter-spacing: 1px; }
 .tf-tag.bearish { background: rgba(239,68,68,0.2); color: #fca5a5; border: 1px solid rgba(239,68,68,0.4); }
 .tf-tag.bullish { background: rgba(34,197,94,0.2); color: #4ade80; border: 1px solid rgba(34,197,94,0.4); }
 .tf-tag.neutral { background: rgba(148,163,184,0.15); color: #94a3b8; border: 1px solid rgba(148,163,184,0.3); }
 .tf-desc { font-size: 9px; color: var(--text-gray); flex: 1; text-align: right; }
 
-/* ===== RISK ASSESSMENT ===== */
+/* RISK */
 .risk-panel {
   background: linear-gradient(135deg, rgba(13,26,51,0.9), rgba(10,21,37,0.9));
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  padding: 12px;
+  border: 1px solid var(--border); border-radius: 12px; padding: 12px;
 }
-.risk-level-label {
-  font-family: 'Orbitron', sans-serif;
-  font-size: 11px;
-  font-weight: 900;
-  letter-spacing: 2px;
-  margin-bottom: 8px;
-}
+.risk-level-label { font-family: 'Orbitron', sans-serif; font-size: 11px; font-weight: 900; letter-spacing: 2px; margin-bottom: 8px; }
 .risk-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-.risk-item {
-  text-align: center;
-  background: rgba(0,0,0,0.3);
-  padding: 8px;
-  border-radius: 8px;
-  border: 1px solid var(--border);
-}
+.risk-item { text-align: center; background: rgba(0,0,0,0.3); padding: 8px; border-radius: 8px; border: 1px solid var(--border); }
 .risk-label { font-size: 8px; color: var(--text-gray); font-weight: 700; letter-spacing: 1px; }
 .risk-value { font-family: 'Orbitron', sans-serif; font-size: 13px; font-weight: 900; margin-top: 3px; color: var(--neon-gold); }
 
-/* ===== INDICATOR GRID ===== */
+/* INDICATORS */
 .indicator-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
 .indicator-item {
-  text-align: center;
-  padding: 10px 6px;
-  background: rgba(10,21,37,0.8);
-  border-radius: 10px;
-  border: 1px solid var(--border);
-  position: relative;
+  text-align: center; padding: 10px 6px;
+  background: rgba(10,21,37,0.8); border-radius: 10px;
+  border: 1px solid var(--border); position: relative;
 }
 .indicator-item::before {
-  content: '';
-  position: absolute;
-  top: -1px; left: -1px;
+  content: ''; position: absolute; top: -1px; left: -1px;
   width: 8px; height: 8px;
-  border-top: 1.5px solid var(--neon-gold);
-  border-left: 1.5px solid var(--neon-gold);
+  border-top: 1.5px solid var(--neon-gold); border-left: 1.5px solid var(--neon-gold);
 }
-.indicator-label {
-  display: block;
-  color: var(--text-gray);
-  font-size: 8px;
-  font-weight: 700;
-  letter-spacing: 1.5px;
-  margin-bottom: 5px;
-  text-transform: uppercase;
-}
-.indicator-value {
-  font-family: 'Orbitron', sans-serif;
-  font-size: 13px;
-  font-weight: 900;
-  color: var(--text-white);
-}
+.indicator-label { display: block; color: var(--text-gray); font-size: 8px; font-weight: 700; letter-spacing: 1.5px; margin-bottom: 5px; text-transform: uppercase; }
+.indicator-value { font-family: 'Orbitron', sans-serif; font-size: 13px; font-weight: 900; color: var(--text-white); }
 
-/* ===== RSI GAUGE ===== */
+/* RSI GAUGE */
 .rsi-gauge { display: flex; align-items: center; justify-content: center; gap: 10px; padding: 10px; }
 .rsi-circle {
-  width: 70px; height: 70px;
-  border-radius: 50%;
+  width: 70px; height: 70px; border-radius: 50%;
   background: conic-gradient(var(--neon-gold) 0deg, var(--neon-gold) var(--rsi-deg, 180deg), rgba(30,41,59,0.6) var(--rsi-deg, 180deg));
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  position: relative;
+  display: flex; align-items: center; justify-content: center; position: relative;
 }
-.rsi-circle::before {
-  content: '';
-  position: absolute;
-  inset: 6px;
-  background: var(--bg-card);
-  border-radius: 50%;
-}
+.rsi-circle::before { content: ''; position: absolute; inset: 6px; background: var(--bg-card); border-radius: 50%; }
 .rsi-inner { position: relative; z-index: 1; text-align: center; }
 .rsi-value { font-family: 'Orbitron', sans-serif; font-size: 16px; font-weight: 900; color: var(--neon-gold); }
 .rsi-label { font-size: 8px; color: var(--text-gray); letter-spacing: 1px; font-weight: 700; }
 
-/* ===== SLTP GRID ===== */
+/* SLTP */
 .sltp-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
 .sltp-item { text-align: center; background: rgba(10,21,37,0.8); padding: 8px 5px; border-radius: 8px; border: 1px solid var(--border); }
 .sltp-label { font-size: 7px; color: var(--text-gray); font-weight: 800; letter-spacing: 1px; display: block; margin-bottom: 3px; }
@@ -534,28 +283,25 @@ select:focus { border-color: var(--neon-blue); box-shadow: 0 0 15px rgba(56,189,
 .sltp-value.tp { color: var(--neon-green); }
 .sltp-value.entry { color: var(--neon-gold); }
 
-/* ===== PATTERN BADGE ===== */
+/* PATTERN */
 .pattern-badge { display: flex; align-items: center; justify-content: center; gap: 8px; padding: 10px 16px; border-radius: 12px; margin: 10px auto; max-width: 90%; }
 .pattern-badge.bullish { background: rgba(34,197,94,0.15); border: 1px solid var(--neon-green); }
 .pattern-badge.bearish { background: rgba(239,68,68,0.15); border: 1px solid var(--neon-red); }
 .pattern-badge.neutral { background: rgba(148,163,184,0.15); border: 1px solid #94a3b8; }
 
-/* ===== FILTER BADGES ===== */
+/* FILTER */
 .filter-badge { display: inline-block; padding: 5px 10px; border-radius: 6px; font-size: 9px; font-weight: 900; letter-spacing: 1px; margin: 3px; text-transform: uppercase; }
 .filter-pass { background: rgba(34,197,94,0.15); color: #4ade80; border: 1px solid rgba(34,197,94,0.5); }
 .filter-fail { background: rgba(239,68,68,0.15); color: #fca5a5; border: 1px solid rgba(239,68,68,0.5); }
 .filter-info { background: rgba(251,191,36,0.15); color: #fbbf24; border: 1px solid rgba(251,191,36,0.5); }
 
-/* ===== SNR GRID ===== */
+/* SNR */
 .snr-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-bottom: 10px; }
 .snr-box { background: rgba(13,26,51,0.8); padding: 12px 6px; border-radius: 10px; text-align: center; border: 1px solid var(--border); position: relative; }
 .snr-box::before {
-  content: '';
-  position: absolute;
-  top: -1px; left: -1px;
+  content: ''; position: absolute; top: -1px; left: -1px;
   width: 8px; height: 8px;
-  border-top: 1.5px solid var(--neon-gold);
-  border-left: 1.5px solid var(--neon-gold);
+  border-top: 1.5px solid var(--neon-gold); border-left: 1.5px solid var(--neon-gold);
 }
 .snr-label { font-size: 9px; margin-bottom: 5px; font-weight: 900; font-family: 'Orbitron', sans-serif; }
 .snr-value { font-family: 'Orbitron', sans-serif; font-size: 12px; font-weight: 900; color: var(--text-white); }
@@ -565,82 +311,62 @@ select:focus { border-color: var(--neon-blue); box-shadow: 0 0 15px rgba(56,189,
 .snr-box.yellow { background: linear-gradient(135deg, #fbbf24, #d97706); border: none; }
 .snr-box.yellow .snr-label, .snr-box.yellow .snr-value { color: #050a15; }
 
-/* ===== POC BANNER ===== */
+/* POC */
 .poc-banner { background: linear-gradient(135deg, #fbbf24, #d97706); color: #050a15; font-family: 'Orbitron', sans-serif; font-weight: 900; text-align: center; padding: 14px; border-radius: 12px; margin-bottom: 12px; font-size: 14px; letter-spacing: 2px; box-shadow: 0 0 30px rgba(251,191,36,0.5); }
 
-/* ===== CHART ===== */
+/* CHART */
 #chart, #chart-backtest { width: 100%; background: rgba(10,21,37,0.8); border-radius: 12px; border: 1px solid var(--border-glow); overflow: hidden; }
 #chart { height: 380px; }
 #chart-backtest { height: 240px; }
 
-/* ===== AI INPUT ===== */
+/* AI INPUT */
 .ai-input-container { display: flex; gap: 8px; margin-top: 12px; }
 .ai-input { flex: 1; padding: 12px 16px; border-radius: 22px; border: 1px solid var(--border-glow); background: rgba(10,21,37,0.8); color: white; font-size: 13px; outline: none; font-family: 'Rajdhani', sans-serif; }
 .ai-input:focus { border-color: var(--neon-blue); box-shadow: 0 0 15px rgba(56,189,248,0.3); }
 .ai-send-btn { background: linear-gradient(135deg, #38bdf8, #0284c7); color: white; padding: 12px 20px; border-radius: 22px; border: none; cursor: pointer; font-family: 'Orbitron', sans-serif; font-weight: 900; font-size: 11px; letter-spacing: 1px; box-shadow: 0 0 20px rgba(56,189,248,0.4); }
 .ai-result-box { margin-top: 12px; padding: 15px; background: rgba(10,21,37,0.9); border-radius: 12px; border-left: 3px solid var(--neon-blue); display: none; }
 
-/* ===== NEWS ITEM ===== */
+/* NEWS */
 .news-item { background: linear-gradient(135deg, rgba(13,21,38,0.95), rgba(10,21,37,0.95)); border: 1px solid var(--border-glow); border-radius: 12px; padding: 14px; margin-bottom: 10px; border-left: 3px solid var(--neon-gold); position: relative; }
 .news-countdown { border-left: 3px solid var(--neon-red); }
 .countdown-timer { text-align: center; font-family: 'Orbitron', sans-serif; font-size: 32px; font-weight: 900; letter-spacing: 2px; margin-bottom: 4px; }
 .news-info-box { background: rgba(0,0,0,0.3); padding: 10px; border-radius: 8px; margin-bottom: 8px; }
 .bias-box { padding: 10px; border-radius: 8px; }
 
-/* ===== AI DESK ===== */
+/* AI DESK */
 .desk-topbar { display: flex; justify-content: space-between; align-items: center; padding: 12px; background: linear-gradient(90deg, rgba(13,26,51,0.95), rgba(10,21,37,0.95)); border: 1px solid var(--border-glow); border-radius: 12px; margin-bottom: 12px; }
 .desk-run-btn { background: linear-gradient(135deg, #a78bfa, #7c3aed); color: white; padding: 14px; border-radius: 12px; border: none; cursor: pointer; width: 100%; font-family: 'Orbitron', sans-serif; font-weight: 900; letter-spacing: 2px; font-size: 12px; margin-bottom: 12px; box-shadow: 0 0 25px rgba(167,139,250,0.4); }
 .tracker-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin-bottom: 10px; }
 .tracker-item { text-align: center; background: rgba(10,21,37,0.8); padding: 10px 4px; border-radius: 10px; border: 1px solid var(--border); }
 
-/* ===== BOTTOM NAV ===== */
+/* BOTTOM NAV */
 #bottom-nav {
-  position: fixed;
-  bottom: 0;
-  left: 0;
-  width: 100%;
+  position: fixed; bottom: 0; left: 0; width: 100%;
   background: linear-gradient(180deg, #0a1525, #050a15);
   border-top: 1px solid var(--border-glow);
-  display: flex;
-  justify-content: space-around;
-  padding: 10px 0 12px;
-  z-index: 100;
+  display: flex; justify-content: space-around;
+  padding: 10px 0 12px; z-index: 100;
   box-shadow: 0 -5px 30px rgba(56,189,248,0.15);
 }
 .nav-item {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  color: #64748b;
-  font-size: 8px;
-  cursor: pointer;
-  background: none;
-  border: none;
-  width: 16%;
-  letter-spacing: 1px;
-  font-weight: 900;
+  display: flex; flex-direction: column; align-items: center;
+  color: #64748b; font-size: 8px; cursor: pointer;
+  background: none; border: none; width: 16%;
+  letter-spacing: 1px; font-weight: 900;
   font-family: 'Orbitron', sans-serif;
-  padding: 4px 0;
-  transition: all 0.3s ease;
+  padding: 4px 0; transition: all 0.3s ease;
 }
-.nav-item.active {
-  color: var(--neon-gold);
-  text-shadow: 0 0 12px rgba(251,191,36,0.7);
-}
+.nav-item.active { color: var(--neon-gold); text-shadow: 0 0 12px rgba(251,191,36,0.7); }
 .nav-item.active span { color: var(--neon-gold); }
 .nav-item span { margin-top: 3px; }
-.nav-item svg, .nav-item .nav-icon { font-size: 18px; line-height: 1; }
+.nav-item .nav-icon { font-size: 18px; line-height: 1; }
 
-/* ===== FOOTER INFO ===== */
+/* FOOTER */
 .footer-info {
-  text-align: center;
-  padding: 12px;
-  font-size: 9px;
-  color: var(--text-gray);
-  letter-spacing: 1.5px;
+  text-align: center; padding: 12px; font-size: 9px;
+  color: var(--text-gray); letter-spacing: 1.5px;
   font-family: 'Orbitron', sans-serif;
-  border-top: 1px solid var(--border);
-  margin-top: 10px;
+  border-top: 1px solid var(--border); margin-top: 10px;
 }
 .footer-info .signal-id { color: var(--neon-blue); font-weight: 700; }
 .footer-info .strategy { color: var(--neon-gold); font-weight: 700; }
@@ -648,7 +374,7 @@ select:focus { border-color: var(--neon-blue); box-shadow: 0 0 15px rgba(56,189,
 </head>
 <body>
 
-<!-- ===== HEADER ===== -->
+<!-- HEADER -->
 <div class="header">
   <div class="header-top">
     <div class="header-left">
@@ -675,23 +401,19 @@ select:focus { border-color: var(--neon-blue); box-shadow: 0 0 15px rgba(56,189,
   </select>
 </div>
 
-<!-- ===== STATUS BAR ===== -->
+<!-- STATUS BAR -->
 <div class="status-bar awaiting" id="status-bar">● AWAITING SIGNAL · TEMPLATE MODE</div>
 
-<!-- ===== SCREEN: SIGNAL ===== -->
+<!-- SCREEN: SIGNAL -->
 <div id="screen-signal" class="screen active">
-
-  <!-- SIGNAL BOX -->
   <div id="signal-box" class="signal-box wait">
     <div>WAIT</div>
     <div style="font-size:12px; font-weight:400; margin-top:6px; letter-spacing:1px; font-family:'Rajdhani',sans-serif;">Menunggu setup 3/4 TF</div>
   </div>
 
-  <!-- CONFIDENCE + GRADE -->
   <div id="grade-display" style="text-align:center; margin-bottom:12px;"></div>
   <div id="lock-status" style="text-align:center; margin-bottom:12px;"></div>
 
-  <!-- 5 BOX GRID -->
   <div class="glass-card">
     <p class="card-title">📊 LIVE MARKET DATA</p>
     <div class="data-grid-5">
@@ -718,15 +440,12 @@ select:focus { border-color: var(--neon-blue); box-shadow: 0 0 15px rgba(56,189,
     </div>
   </div>
 
-  <!-- SPREAD INFO -->
   <div id="spread-info-display"></div>
 
-  <!-- 4 TF ANALYSIS -->
   <div class="glass-card">
     <p class="card-title">📈 4 TIMEFRAME ANALYSIS</p>
     <div id="tf-list-container"></div>
     <div style="text-align:center; font-size:10px; color:#64748b; margin-top:8px;" id="tf-agreement">Agreement: -</div>
-    <!-- Hidden grid untuk compatibility -->
     <div class="tf-status" style="display:none;">
       <div class="tf-item" id="tf-m5-box"><span class="tf-label">M5</span><span class="tf-value" id="tf-m5-val">-</span><div class="tf-rsi" id="tf-m5-rsi">-</div></div>
       <div class="tf-item" id="tf-m15-box"><span class="tf-label">M15</span><span class="tf-value" id="tf-m15-val">-</span><div class="tf-rsi" id="tf-m15-rsi">-</div></div>
@@ -735,13 +454,9 @@ select:focus { border-color: var(--neon-blue); box-shadow: 0 0 15px rgba(56,189,
     </div>
   </div>
 
-  <!-- PATTERN -->
   <div id="pattern-display"></div>
-
-  <!-- FILTER STATUS -->
   <div id="filter-status" style="text-align:center; margin:10px 0;"></div>
 
-  <!-- RISK ASSESSMENT + TECHNICAL INDICATORS -->
   <div class="glass-card">
     <p class="card-title">🛡️ RISK ASSESSMENT</p>
     <div class="risk-panel">
@@ -755,7 +470,6 @@ select:focus { border-color: var(--neon-blue); box-shadow: 0 0 15px rgba(56,189,
     </div>
   </div>
 
-  <!-- TECHNICAL INDICATORS -->
   <div class="glass-card">
     <p class="card-title">⚡ TECHNICAL INDICATORS</p>
     <div class="rsi-gauge">
@@ -783,7 +497,6 @@ select:focus { border-color: var(--neon-blue); box-shadow: 0 0 15px rgba(56,189,
     </div>
   </div>
 
-  <!-- SL/TP GRID -->
   <div class="glass-card">
     <p class="card-title">🎯 SL / TP (AUTO)</p>
     <div class="sltp-grid">
@@ -800,19 +513,16 @@ select:focus { border-color: var(--neon-blue); box-shadow: 0 0 15px rgba(56,189,
     </div>
   </div>
 
-  <!-- NEWS COUNTDOWN -->
   <div id="news-countdown-card" class="glass-card news-countdown" style="display:none;">
     <p class="card-title" style="color:#ef4444;">🚨 NEWS COUNTDOWN</p>
     <div id="news-countdown-content"></div>
   </div>
 
-  <!-- UPCOMING EVENTS -->
   <div id="upcoming-events-card" class="glass-card" style="border-left:3px solid #fbbf24; display:none;">
     <p class="card-title" style="color:#fbbf24;">📅 UPCOMING EVENTS</p>
     <div id="upcoming-events-content"></div>
   </div>
 
-  <!-- PRE-NEWS -->
   <div id="pre-news-card" class="glass-card" style="border-left:3px solid #fbbf24;">
     <p class="card-title" style="color:#fbbf24; justify-content:space-between;">
       <span>📰 PRE-NEWS PREDICTION</span>
@@ -821,7 +531,6 @@ select:focus { border-color: var(--neon-blue); box-shadow: 0 0 15px rgba(56,189,
     <div id="pre-news-content"><p style="text-align:center; color:#64748b; font-size:12px; padding:10px;">Tekan REFRESH</p></div>
   </div>
 
-  <!-- AI INPUT -->
   <div class="ai-input-container">
     <input type="text" id="soalan-ai" class="ai-input" placeholder="Ask about this signal...">
     <button onclick="tanyaAI()" class="ai-send-btn">ASK AI</button>
@@ -834,14 +543,12 @@ select:focus { border-color: var(--neon-blue); box-shadow: 0 0 15px rgba(56,189,
     <p id="hasil-ai-text" style="color:#cbd5e1; font-size:13px; line-height:1.8; margin:0; white-space:pre-wrap;"></p>
   </div>
 
-  <!-- FOOTER INFO -->
   <div class="footer-info" id="footer-info">
     SIGNAL ID: <span class="signal-id" id="footer-signal-id">-</span> · Generated by BPT V4
     <br>
     Strategy: <span class="strategy" id="footer-strategy">-</span> · R:R TP1: <span id="footer-rr1">-</span> · R:R TP2: <span id="footer-rr2">-</span>
   </div>
 
-  <!-- HIDDEN INDICATORS (untuk compatibility) -->
   <div style="display:none;">
     <span id="ema9">-</span>
     <span id="ema21">-</span>
@@ -855,7 +562,7 @@ select:focus { border-color: var(--neon-blue); box-shadow: 0 0 15px rgba(56,189,
   </div>
 </div>
 
-<!-- ===== SCREEN: LEVELS ===== -->
+<!-- SCREEN: LEVELS -->
 <div id="screen-levels" class="screen">
   <div class="poc-banner">☆ POC <span id="poc-val">-</span></div>
   <div class="glass-card">
@@ -874,7 +581,7 @@ select:focus { border-color: var(--neon-blue); box-shadow: 0 0 15px rgba(56,189,
   </div>
 </div>
 
-<!-- ===== SCREEN: CHART ===== -->
+<!-- SCREEN: CHART -->
 <div id="screen-chart" class="screen">
   <div class="glass-card">
     <p class="card-title">📉 CHART</p>
@@ -882,7 +589,7 @@ select:focus { border-color: var(--neon-blue); box-shadow: 0 0 15px rgba(56,189,
   </div>
 </div>
 
-<!-- ===== SCREEN: NEWS ===== -->
+<!-- SCREEN: NEWS -->
 <div id="screen-news" class="screen">
   <div class="glass-card">
     <p class="card-title" style="color:#fbbf24;">📰 ECONOMIC NEWS</p>
@@ -890,7 +597,7 @@ select:focus { border-color: var(--neon-blue); box-shadow: 0 0 15px rgba(56,189,
   </div>
 </div>
 
-<!-- ===== SCREEN: AI DESK ===== -->
+<!-- SCREEN: AI DESK -->
 <div id="screen-desk" class="screen">
   <div class="desk-topbar">
     <div>
@@ -906,7 +613,7 @@ select:focus { border-color: var(--neon-blue); box-shadow: 0 0 15px rgba(56,189,
   <div id="signal-result-card" style="display:none; background:linear-gradient(135deg, rgba(13,26,51,0.95), rgba(10,21,37,0.95)); border:2px solid #a78bfa; border-radius:12px; padding:14px; margin-bottom:12px;"></div>
 </div>
 
-<!-- ===== SCREEN: STRATEGY ===== -->
+<!-- SCREEN: STRATEGY -->
 <div id="screen-strategy" class="screen">
   <div class="glass-card">
     <p class="card-title">⚡ STRATEGY AI · BACKTEST</p>
@@ -921,7 +628,7 @@ select:focus { border-color: var(--neon-blue); box-shadow: 0 0 15px rgba(56,189,
   </div>
 </div>
 
-<!-- ===== BOTTOM NAV ===== -->
+<!-- BOTTOM NAV -->
 <nav id="bottom-nav">
   <button class="nav-item active" onclick="switchTab('signal', this)"><span class="nav-icon">📈</span><span>SIGNAL</span></button>
   <button class="nav-item" onclick="switchTab('levels', this)"><span class="nav-icon">⭐</span><span>LEVELS</span></button>
@@ -969,6 +676,7 @@ function tukarMarket() {
   loadNewsPrediction();
 }
 
+// ===== MAIN: dapatkanSignal =====
 async function dapatkanSignal() {
   try {
     const res = await fetch(`/api/signal?symbol=${marketAktif}`);
@@ -979,6 +687,12 @@ async function dapatkanSignal() {
     if (data.signal === 'BUY' || data.signal === 'SELL') {
       statusBar.className = 'status-bar active';
       statusBar.innerHTML = `● SIGNAL ACTIVE · ${data.signal} · ${data.mtf ? data.mtf.grade : '-'} · ${data.confidence}% CONFIDENCE`;
+    } else if (data.display_status === 'SETUP') {
+      statusBar.className = 'status-bar setup';
+      statusBar.innerHTML = `● SETUP TERBENTUK · ${data.display_message} · ${marketAktif}`;
+    } else if (data.display_status === 'COOLDOWN') {
+      statusBar.className = 'status-bar awaiting';
+      statusBar.innerHTML = `● COOLDOWN · ${data.display_message} · ${marketAktif}`;
     } else {
       statusBar.className = 'status-bar awaiting';
       statusBar.innerHTML = `● AWAITING SIGNAL · TEMPLATE MODE · ${marketAktif}`;
@@ -1002,28 +716,23 @@ async function dapatkanSignal() {
     document.getElementById('data-tp1').innerText = data.sltp ? data.sltp.tp1 : '-';
     document.getElementById('data-tp2').innerText = data.sltp ? data.sltp.tp2 : '-';
 
-    // ===== SIGNAL BOX =====
+    // ===== SIGNAL BOX (GUNA display_status) =====
     const sb = document.getElementById('signal-box');
     const gradeDisplay = document.getElementById('grade-display');
     const lockStatus = document.getElementById('lock-status');
 
-    if (data.cooldown && data.cooldown.active) {
-      sb.innerHTML = `<div>COOLDOWN</div><div style="font-size:18px; margin-top:6px;">⏳ ${data.cooldown.remainMin} minit</div>`;
-      sb.className = "signal-box cooldown";
-      gradeDisplay.innerHTML = `<span class="grade-badge grade-SKIP">COOLDOWN ${data.cooldown.remainMin}m</span>`;
-      lockStatus.innerHTML = `<span class="lock-badge cooldown">⏳ COOLDOWN ${data.cooldown.remainMin}m</span>`;
-    } else if (data.signal === "BUY" || data.signal === "SELL") {
+    if (data.signal === 'BUY' || data.signal === 'SELL') {
+      // SIGNAL AKTIF
       const displayPrice = data.harga_entry || data.harga;
-      const arrow = data.signal === "BUY" ? "▲" : "▼";
+      const arrow = data.signal === 'BUY' ? '▲' : '▼';
       sb.innerHTML = `<div>${arrow} ${data.signal}</div><div style="font-size:16px; margin-top:6px; font-family:'Rajdhani',sans-serif;">@ ${displayPrice}</div>`;
-      sb.className = data.signal === "BUY" ? "signal-box buy" : "signal-box sell";
+      sb.className = data.signal === 'BUY' ? "signal-box buy" : "signal-box sell";
 
       const grade = data.mtf ? data.mtf.grade : 'B';
       const gradeClass = grade === 'A+' ? 'grade-A' : grade === 'B' ? 'grade-B' : 'grade-SKIP';
       const agree = data.mtf ? data.mtf.agreement : '';
       const conf = data.confidence || 0;
       
-      // CONFIDENCE HEXAGON
       gradeDisplay.innerHTML = `
         <div class="confidence-hex">
           <div class="confidence-hex-content">
@@ -1036,12 +745,29 @@ async function dapatkanSignal() {
       `;
 
       if (data.locked) {
-        lockStatus.innerHTML = `<span class="lock-badge locked">🔒 LOCKED ${data.lockAgeMin}m / 60m</span><div class="lock-info">Entry kekal di ${displayPrice} (max 1 jam)</div>`;
+        lockStatus.innerHTML = `<span class="lock-badge locked">🔒 LOCKED ${data.lockAgeMin}m / 15m</span><div class="lock-info">Entry kekal di ${displayPrice} (max 15 minit)</div>`;
       } else {
         lockStatus.innerHTML = `<span class="lock-badge fresh">⚡ FRESH SIGNAL</span>`;
       }
+    } else if (data.display_status === 'SETUP') {
+      // SETUP TERBENTUK (MTF lulus tapi belum trigger)
+      sb.innerHTML = `<div style="font-size:24px;">⏳ SETUP</div><div style="font-size:11px; font-weight:400; margin-top:6px; letter-spacing:1px; font-family:'Rajdhani',sans-serif;">${data.display_message}</div>`;
+      sb.className = "signal-box setup";
+      
+      const agree = data.mtf ? data.mtf.agreement : '0/4';
+      const grade = data.mtf ? data.mtf.grade : '-';
+      const gradeClass = grade === 'A+' ? 'grade-A' : 'grade-B';
+      gradeDisplay.innerHTML = `<span class="grade-badge grade-SETUP">⏳ SETUP ${grade} (${agree}) — Tunggu Trigger</span>`;
+      lockStatus.innerHTML = `<span class="lock-badge setup">⚡ SETUP TERBENTUK</span>`;
+    } else if (data.display_status === 'COOLDOWN') {
+      // COOLDOWN
+      sb.innerHTML = `<div>COOLDOWN</div><div style="font-size:18px; margin-top:6px;">⏳ ${data.cooldown.remainMin} minit</div>`;
+      sb.className = "signal-box cooldown";
+      gradeDisplay.innerHTML = `<span class="grade-badge grade-SKIP">COOLDOWN ${data.cooldown.remainMin}m</span>`;
+      lockStatus.innerHTML = `<span class="lock-badge cooldown">⏳ COOLDOWN ${data.cooldown.remainMin}m</span>`;
     } else {
-      sb.innerHTML = `<div>WAIT</div><div style="font-size:11px; font-weight:400; margin-top:6px; letter-spacing:1px; font-family:'Rajdhani',sans-serif;">Menunggu setup 3/4 TF</div>`;
+      // WAIT
+      sb.innerHTML = `<div>WAIT</div><div style="font-size:11px; font-weight:400; margin-top:6px; letter-spacing:1px; font-family:'Rajdhani',sans-serif;">${data.display_message || 'Menunggu setup 3/4 TF'}</div>`;
       sb.className = "signal-box wait";
       const agree = data.mtf ? data.mtf.agreement : '0/4';
       gradeDisplay.innerHTML = `<span class="grade-badge grade-SKIP">SKIP (${agree}) perlu 3/4</span>`;
@@ -1072,7 +798,6 @@ async function dapatkanSignal() {
       tfListContainer.innerHTML = html;
       document.getElementById('tf-agreement').innerText = `Agreement: ${data.mtf.agreement} · Grade: ${data.mtf.grade} · Consensus: ${data.mtf.consensus}`;
 
-      // Update hidden grid
       const tfMap = { 'M5': 'm5', 'M15': 'm15', 'H1': 'h1', 'H4': 'h4' };
       data.mtf.timeframes.forEach(tf => {
         const key = tfMap[tf.label];
@@ -1109,7 +834,7 @@ async function dapatkanSignal() {
       spreadInfoDisplay.innerHTML = '';
     }
 
-    // ===== RISK ASSESSMENT =====
+    // ===== RISK =====
     if (data.risk_level) {
       const rl = data.risk_level;
       const rlEl = document.getElementById('risk-level-label');
@@ -1129,11 +854,9 @@ async function dapatkanSignal() {
     // ===== RSI GAUGE =====
     const rsiVal = parseFloat(data.rsi) || 50;
     const rsiDeg = (rsiVal / 100) * 360;
-    const rsiCircle = document.getElementById('rsi-circle');
-    rsiCircle.style.setProperty('--rsi-deg', rsiDeg + 'deg');
+    document.getElementById('rsi-circle').style.setProperty('--rsi-deg', rsiDeg + 'deg');
     document.getElementById('rsi-gauge-value').innerText = rsiVal.toFixed(1);
-    let rsiStatus = 'NEUTRAL';
-    let rsiColor = '#fbbf24';
+    let rsiStatus = 'NEUTRAL', rsiColor = '#fbbf24';
     if (rsiVal > 70) { rsiStatus = 'OVERBOUGHT'; rsiColor = '#ef4444'; }
     else if (rsiVal < 30) { rsiStatus = 'OVERSOLD'; rsiColor = '#22c55e'; }
     else if (rsiVal > 55) { rsiStatus = 'BULLISH BIAS'; rsiColor = '#4ade80'; }
@@ -1142,7 +865,7 @@ async function dapatkanSignal() {
     document.getElementById('rsi-status').style.color = rsiColor;
     document.getElementById('rsi-desc').innerText = `RSI reading at ${rsiVal.toFixed(1)} indicates ${rsiStatus.toLowerCase()}`;
 
-    // ===== TECHNICAL INDICATORS =====
+    // ===== INDICATORS =====
     if (data.macd) {
       document.getElementById('ind-macd').innerText = data.macd.macd.toFixed(3);
       document.getElementById('ind-macd-cross').innerText = data.macd.cross;
@@ -1181,9 +904,7 @@ async function dapatkanSignal() {
     // ===== FILTER REASONS =====
     let badges = '';
     if (data.reasons && data.reasons.length > 0) {
-      data.reasons.forEach(r => {
-        badges += `<span class="filter-badge filter-info">${r}</span>`;
-      });
+      data.reasons.forEach(r => { badges += `<span class="filter-badge filter-info">${r}</span>`; });
     }
     if (data.reset_pattern) badges += `<span class="filter-badge filter-fail">🔓 ${data.reset_pattern}</span>`;
     document.getElementById('filter-status').innerHTML = badges;
@@ -1279,8 +1000,7 @@ async function dapatkanCandleData() {
   if (!chart) {
     const c = document.getElementById('chart');
     chart = LightweightCharts.createChart(c, {
-      width: c.clientWidth,
-      height: 380,
+      width: c.clientWidth, height: 380,
       layout: { background: { color: '#0a1525' }, textColor: '#94a3b8' },
       grid: { vertLines: { color: 'rgba(56,189,248,0.05)' }, horzLines: { color: 'rgba(56,189,248,0.05)' } }
     });
@@ -1343,12 +1063,7 @@ async function jalankanBacktest() {
       document.getElementById('bt-signals').innerText = data.totalTrades;
       const c = document.getElementById('chart-backtest');
       c.innerHTML = "";
-      backtestChart = LightweightCharts.createChart(c, {
-        width: c.clientWidth,
-        height: 240,
-        layout: { background: { color: '#0a1525' }, textColor: '#94a3b8' },
-        grid: { vertLines: { color: 'rgba(56,189,248,0.05)' }, horzLines: { color: 'rgba(56,189,248,0.05)' } }
-      });
+      backtestChart = LightweightCharts.createChart(c, { width: c.clientWidth, height: 240, layout: { background: { color: '#0a1525' }, textColor: '#94a3b8' }, grid: { vertLines: { color: 'rgba(56,189,248,0.05)' }, horzLines: { color: 'rgba(56,189,248,0.05)' } } });
       backtestSeries = backtestChart.addCandlestickSeries({ upColor: '#22c55e', downColor: '#ef4444' });
       backtestSeries.setData(data.candles);
       backtestSeries.setMarkers(data.markers);
@@ -1372,12 +1087,10 @@ async function runAIDesk() {
   btn.innerText = '⚡ RUN AI DESK CYCLE';
 }
 
-// ===== AUTO REFRESH =====
 setInterval(dapatkanSignal, 30000);
 setInterval(dapatkanMarketData, 30000);
 setInterval(loadNewsPrediction, 60000);
 
-// ===== INIT =====
 dapatkanSignal();
 dapatkanMarketData();
 loadNewsPrediction();
