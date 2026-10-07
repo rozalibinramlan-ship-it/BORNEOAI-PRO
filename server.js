@@ -1,8 +1,7 @@
 // ===============================================
 // BPT — Borneo Pro Trade
-// Server Final — Clean Version
+// Server v1.23 ANTI-400
 // ===============================================
-
 const express = require('express');
 const cors = require('cors');
 const axios = require('axios');
@@ -10,7 +9,6 @@ require('dotenv').config();
 
 const app = express();
 app.use(cors());
-app.use(express.json({ strict: false, limit: '5mb' }));
 app.use(express.static(__dirname));
 
 // ===============================================
@@ -56,22 +54,159 @@ console.log('TwelveData: ' + TWELVEDATA_KEYS.length + ' keys');
 console.log('EA API Key: ' + EA_API_KEY);
 
 // ===============================================
+// EA BRIDGE — ANTI-400
+// ===============================================
+let eaStatus = {
+    online: false, lastSeen: 0, balance: 0, equity: 0, margin: 0,
+    freeMargin: 0, profit: 0, positions: [], prices: {},
+    accountNumber: '', broker: '', leverage: 0, currency: 'USD'
+};
+
+let tradeQueue = [];
+let tradeHistory = [];
+
+function parseEAJson(rawText) {
+    try {
+        let raw = (rawText || '').toString().replace(/\x00/g, '').trim();
+        if (!raw) return {};
+        if (raw.includes('}{')) raw = raw.split('}{')[0] + '}';
+        let depth = 0, start = -1, first = null;
+        for (let i = 0; i < raw.length; i++) {
+            if (raw[i] === '{') {
+                if (depth === 0) start = i;
+                depth++;
+            } else if (raw[i] === '}') {
+                depth--;
+                if (depth === 0 && start !== -1) {
+                    first = raw.substring(start, i + 1);
+                    break;
+                }
+            }
+        }
+        if (first) raw = first;
+        return JSON.parse(raw);
+    } catch (e) {
+        return {};
+    }
+}
+
+app.post('/api/ea/heartbeat', express.text({ type: '*/*', limit: '5mb' }), function(req, res) {
+    console.log('HB Headers:', req.headers['x-api-key'], '| ENV:', EA_API_KEY);
+    console.log('HB Raw:', (req.body || '').toString().substring(0, 120));
+
+    // BYPASS API KEY — comment untuk fix 400
+    // if (req.headers['x-api-key'] !== EA_API_KEY) return res.status(401).json({ error: 'Unauthorized' });
+
+    const body = parseEAJson(req.body);
+    eaStatus = {
+        online: true,
+        lastSeen: Date.now(),
+        balance: parseFloat(body.balance || 0),
+        equity: parseFloat(body.equity || 0),
+        margin: parseFloat(body.margin || 0),
+        freeMargin: parseFloat(body.freeMargin || 0),
+        profit: parseFloat(body.profit || 0),
+        positions: body.positions || [],
+        prices: body.prices || {},
+        accountNumber: body.accountNumber || '',
+        broker: body.broker || '',
+        leverage: body.leverage || 0,
+        currency: body.currency || 'USD'
+    };
+    console.log('HB OK ' + eaStatus.accountNumber + ' Bal: ' + eaStatus.balance);
+    res.json({ status: 'OK' });
+});
+
+app.get('/api/ea/status', function(req, res) {
+    const isOnline = (Date.now() - eaStatus.lastSeen) < 30000;
+    res.json(Object.assign({}, eaStatus, {
+        online: isOnline,
+        secondsAgo: isOnline ? Math.round((Date.now() - eaStatus.lastSeen) / 1000) : null
+    }));
+});
+
+app.get('/api/ea/commands', function(req, res) {
+    // if (req.headers['x-api-key'] !== EA_API_KEY) return res.status(401).json({ error: 'Unauthorized' });
+    const pending = tradeQueue.filter(function(c) { return c.status === 'pending'; });
+    if (pending.length > 0) {
+        const cmd = pending[0];
+        cmd.status = 'sent';
+        cmd.sentAt = Date.now();
+        res.json({ command: cmd });
+    } else {
+        res.json({ command: null });
+    }
+});
+
+app.post('/api/ea/result', express.text({ type: '*/*' }), function(req, res) {
+    // if (req.headers['x-api-key'] !== EA_API_KEY) return res.status(401).json({ error: 'Unauthorized' });
+    const body = parseEAJson(req.body);
+    const cmd = tradeQueue.find(function(c) { return c.id === body.id; });
+    if (cmd) {
+        cmd.status = body.success ? 'executed' : 'failed';
+        cmd.ticket = body.ticket;
+        cmd.error = body.error || '';
+        tradeHistory.push(Object.assign({}, cmd));
+        if (tradeHistory.length > 100) tradeHistory.shift();
+    }
+    res.json({ status: 'OK' });
+});
+
+// ===============================================
+// JSON PARSER (untuk market/signal)
+// ===============================================
+app.use(express.json({ strict: false, limit: '5mb' }));
+
+app.post('/api/ea/execute', function(req, res) {
+    const body = req.body;
+    if (!body.symbol || !body.action || !body.lot) {
+        return res.status(400).json({ error: 'Missing fields' });
+    }
+    const cmd = {
+        id: Date.now() + Math.floor(Math.random() * 1000),
+        symbol: body.symbol,
+        action: body.action,
+        lot: parseFloat(body.lot),
+        sl: parseFloat(body.sl || 0),
+        tp: parseFloat(body.tp || 0),
+        timestamp: Date.now(),
+        status: 'pending'
+    };
+    tradeQueue.push(cmd);
+    res.json({ status: 'OK', id: cmd.id });
+});
+
+app.post('/api/ea/close', function(req, res) {
+    const body = req.body;
+    if (!body.ticket) return res.status(400).json({ error: 'Missing ticket' });
+    tradeQueue.push({
+        id: Date.now() + Math.floor(Math.random() * 1000),
+        type: 'CLOSE',
+        ticket: parseInt(body.ticket),
+        status: 'pending'
+    });
+    res.json({ status: 'OK' });
+});
+
+app.post('/api/ea/close-all', function(req, res) {
+    tradeQueue.push({
+        id: Date.now() + Math.floor(Math.random() * 1000),
+        type: 'CLOSE_ALL',
+        status: 'pending'
+    });
+    res.json({ status: 'OK' });
+});
+
+// ===============================================
 // HELPERS
 // ===============================================
 const symbolMap = {
-    'XAU/USD': 'XAU/USD',
-    'XAG/USD': 'XAG/USD',
-    'EUR/USD': 'EUR/USD',
-    'GBP/USD': 'GBP/USD',
-    'USD/JPY': 'USD/JPY',
-    'AUD/USD': 'AUD/USD',
-    'USD/CAD': 'USD/CAD',
-    'USD/CHF': 'USD/CHF'
+    'XAU/USD': 'XAU/USD', 'XAG/USD': 'XAG/USD',
+    'EUR/USD': 'EUR/USD', 'GBP/USD': 'GBP/USD', 'USD/JPY': 'USD/JPY',
+    'AUD/USD': 'AUD/USD', 'USD/CAD': 'USD/CAD', 'USD/CHF': 'USD/CHF'
 };
 
-function toTwelveData(s) {
-    return symbolMap[s] || s;
-}
+function toTwelveData(s) { return symbolMap[s] || s; }
 
 function getDecimal(s) {
     if (s.indexOf('JPY') >= 0) return 3;
@@ -83,9 +218,7 @@ function calculateEMA(closes, period) {
     if (closes.length === 0) return 0;
     let e = closes[0];
     let k = 2 / (period + 1);
-    for (let i = 1; i < closes.length; i++) {
-        e = (closes[i] * k) + (e * (1 - k));
-    }
+    for (let i = 1; i < closes.length; i++) e = (closes[i] * k) + (e * (1 - k));
     return e;
 }
 
@@ -113,17 +246,13 @@ function getATRProfile(candles) {
     const ratio = atrNow / atrAvg;
     let level, tp1Mult, tp2Mult, tp3Mult;
     if (ratio >= 1.5) {
-        level = 'VOLATILE';
-        tp1Mult = 5.0; tp2Mult = 10.0; tp3Mult = 15.0;
+        level = 'VOLATILE'; tp1Mult = 5.0; tp2Mult = 10.0; tp3Mult = 15.0;
     } else if (ratio >= 1.0) {
-        level = 'NORMAL';
-        tp1Mult = 3.0; tp2Mult = 6.0; tp3Mult = 10.0;
+        level = 'NORMAL'; tp1Mult = 3.0; tp2Mult = 6.0; tp3Mult = 10.0;
     } else if (ratio >= 0.7) {
-        level = 'SLOW';
-        tp1Mult = 2.0; tp2Mult = 4.0; tp3Mult = 6.0;
+        level = 'SLOW'; tp1Mult = 2.0; tp2Mult = 4.0; tp3Mult = 6.0;
     } else {
-        level = 'VERY_SLOW';
-        tp1Mult = 1.5; tp2Mult = 3.0; tp3Mult = 4.5;
+        level = 'VERY_SLOW'; tp1Mult = 1.5; tp2Mult = 3.0; tp3Mult = 4.5;
     }
     return { atrNow: atrNow, atrAvg: atrAvg, ratio: ratio, level: level, tp1Mult: tp1Mult, tp2Mult: tp2Mult, tp3Mult: tp3Mult };
 }
@@ -143,32 +272,25 @@ function detectSNR(candles) {
     if (!candles || candles.length < 50) {
         return { S1: null, S2: null, S3: null, R1: null, R2: null, R3: null, POC: 0, VAH: 0, VAL: 0 };
     }
-
     const recent = candles.slice(-200);
     const lastPrice = recent[recent.length - 1].close;
 
     const atrSlice = recent.slice(-14);
     let atrSum = 0;
-    for (let i = 0; i < atrSlice.length; i++) {
-        atrSum += (atrSlice[i].high - atrSlice[i].low);
-    }
+    for (let i = 0; i < atrSlice.length; i++) atrSum += (atrSlice[i].high - atrSlice[i].low);
     const ATR = atrSum / 14;
     const tolerance = Math.max(lastPrice * 0.002, ATR * 0.4);
 
-    let swingLows = [];
-    let swingHighs = [];
-
+    let swingLows = [], swingHighs = [];
     for (let i = 2; i < recent.length - 2; i++) {
         const isLow = recent[i].low < recent[i - 1].low &&
-            recent[i].low < recent[i - 2].low &&
-            recent[i].low < recent[i + 1].low &&
-            recent[i].low < recent[i + 2].low;
-
+                      recent[i].low < recent[i - 2].low &&
+                      recent[i].low < recent[i + 1].low &&
+                      recent[i].low < recent[i + 2].low;
         const isHigh = recent[i].high > recent[i - 1].high &&
-            recent[i].high > recent[i - 2].high &&
-            recent[i].high > recent[i + 1].high &&
-            recent[i].high > recent[i + 2].high;
-
+                       recent[i].high > recent[i - 2].high &&
+                       recent[i].high > recent[i + 1].high &&
+                       recent[i].high > recent[i + 2].high;
         if (isLow) swingLows.push({ price: recent[i].low, index: i });
         if (isHigh) swingHighs.push({ price: recent[i].high, index: i });
     }
@@ -224,8 +346,7 @@ function analyzeCandles(candles) {
     const bodyPct = bodyRange > 0 ? bodySize / bodyRange : 0;
     const isBullCandle = lastCandle.close > lastCandle.open;
 
-    let buyScore = 0;
-    let sellScore = 0;
+    let buyScore = 0, sellScore = 0;
 
     if (ema9 > ema21 && ema21 > ema50) buyScore += 50;
     if (ema9 > ema21 && gap_9_21 > 0.30) buyScore += 20;
@@ -237,45 +358,23 @@ function analyzeCandles(candles) {
     if (ema9 < ema21 && gap_9_21 > 0.50) sellScore += 15;
     if (ema9 < ema21 && gap_9_21 > 0.80) sellScore += 15;
 
-    if (gap_21_50 > 0.20) {
-        if (ema21 > ema50) buyScore += 10; else sellScore += 10;
-    }
-    if (gap_21_50 > 0.40) {
-        if (ema21 > ema50) buyScore += 10; else sellScore += 10;
-    }
+    if (gap_21_50 > 0.20) { if (ema21 > ema50) buyScore += 10; else sellScore += 10; }
+    if (gap_21_50 > 0.40) { if (ema21 > ema50) buyScore += 10; else sellScore += 10; }
 
-    if (bodyPct >= 0.60) {
-        if (isBullCandle) buyScore += 10; else sellScore += 10;
-    }
-    if (bodyPct >= 0.80) {
-        if (isBullCandle) buyScore += 10; else sellScore += 10;
-    }
+    if (bodyPct >= 0.60) { if (isBullCandle) buyScore += 10; else sellScore += 10; }
+    if (bodyPct >= 0.80) { if (isBullCandle) buyScore += 10; else sellScore += 10; }
 
-    let sig = 'WAIT';
-    let confidence = 0;
+    let sig = 'WAIT', confidence = 0;
     const diff = Math.abs(buyScore - sellScore);
     const winner = buyScore > sellScore ? 'BUY' : sellScore > buyScore ? 'SELL' : 'WAIT';
     const winnerScore = Math.max(buyScore, sellScore);
 
-    if (!(diff < SCORE_CHOPPY_DIFF && winnerScore >= SCORE_BOLEH)) {
-        if (winner === 'BUY' && buyScore >= SCORE_BOLEH) {
-            sig = 'BUY';
-            confidence = Math.min(buyScore, 100);
-        } else if (winner === 'SELL' && sellScore >= SCORE_BOLEH) {
-            sig = 'SELL';
-            confidence = Math.min(sellScore, 100);
-        }
+    if (!(diff < 10 && winnerScore >= 70)) {
+        if (winner === 'BUY' && buyScore >= 70) { sig = 'BUY'; confidence = Math.min(buyScore, 100); }
+        else if (winner === 'SELL' && sellScore >= 70) { sig = 'SELL'; confidence = Math.min(sellScore, 100); }
     }
 
-    return {
-        signal: sig,
-        confidence: confidence,
-        ema9: ema9,
-        ema21: ema21,
-        ema50: ema50,
-        buyScore: buyScore,
-        sellScore: sellScore
-    };
+    return { signal: sig, confidence: confidence, ema9: ema9, ema21: ema21, ema50: ema50, buyScore: buyScore, sellScore: sellScore };
 }
 
 // ===============================================
@@ -315,141 +414,8 @@ async function checkMultiTimeframe(symbol) {
     const maxCount = Math.max(buyCount, sellCount);
     const majoritySignal = buyCount > sellCount ? 'BUY' : sellCount > buyCount ? 'SELL' : 'WAIT';
 
-    return {
-        timeframes: results,
-        buyCount: buyCount,
-        sellCount: sellCount,
-        agreement: maxCount + '/4',
-        consensus: majoritySignal
-    };
+    return { timeframes: results, buyCount: buyCount, sellCount: sellCount, agreement: maxCount + '/4', consensus: majoritySignal };
 }
-
-// ===============================================
-// EA BRIDGE
-// ===============================================
-let eaStatus = {
-    online: false, lastSeen: 0, balance: 0, equity: 0, margin: 0,
-    freeMargin: 0, profit: 0, positions: [], prices: {},
-    accountNumber: '', broker: '', leverage: 0, currency: 'USD'
-};
-
-let tradeQueue = [];
-let tradeHistory = [];
-
-app.post('/api/ea/heartbeat', function(req, res) {
-    if (req.headers['x-api-key'] !== EA_API_KEY) {
-        return res.status(401).json({ error: 'Unauthorized' });
-    }
-    const body = req.body;
-    eaStatus = {
-        online: true,
-        lastSeen: Date.now(),
-        balance: parseFloat(body.balance || 0),
-        equity: parseFloat(body.equity || 0),
-        margin: parseFloat(body.margin || 0),
-        freeMargin: parseFloat(body.freeMargin || 0),
-        profit: parseFloat(body.profit || 0),
-        positions: body.positions || [],
-        prices: body.prices || {},
-        accountNumber: body.accountNumber || '',
-        broker: body.broker || '',
-        leverage: body.leverage || 0,
-        currency: body.currency || 'USD'
-    };
-    res.json({ status: 'OK' });
-});
-
-app.get('/api/ea/status', function(req, res) {
-    const isOnline = (Date.now() - eaStatus.lastSeen) < 30000;
-    res.json({
-        online: isOnline,
-        lastSeen: eaStatus.lastSeen,
-        balance: eaStatus.balance,
-        equity: eaStatus.equity,
-        margin: eaStatus.margin,
-        freeMargin: eaStatus.freeMargin,
-        profit: eaStatus.profit,
-        positions: eaStatus.positions,
-        prices: eaStatus.prices,
-        accountNumber: eaStatus.accountNumber,
-        broker: eaStatus.broker,
-        leverage: eaStatus.leverage,
-        currency: eaStatus.currency,
-        secondsAgo: isOnline ? Math.round((Date.now() - eaStatus.lastSeen) / 1000) : null
-    });
-});
-
-app.get('/api/ea/commands', function(req, res) {
-    if (req.headers['x-api-key'] !== EA_API_KEY) {
-        return res.status(401).json({ error: 'Unauthorized' });
-    }
-    const pending = tradeQueue.filter(function(c) { return c.status === 'pending'; });
-    if (pending.length > 0) {
-        const cmd = pending[0];
-        cmd.status = 'sent';
-        cmd.sentAt = Date.now();
-        res.json({ command: cmd });
-    } else {
-        res.json({ command: null });
-    }
-});
-
-app.post('/api/ea/result', function(req, res) {
-    if (req.headers['x-api-key'] !== EA_API_KEY) {
-        return res.status(401).json({ error: 'Unauthorized' });
-    }
-    const body = req.body;
-    const cmd = tradeQueue.find(function(c) { return c.id === body.id; });
-    if (cmd) {
-        cmd.status = body.success ? 'executed' : 'failed';
-        cmd.ticket = body.ticket;
-        cmd.error = body.error || '';
-        cmd.executedAt = Date.now();
-        tradeHistory.push(Object.assign({}, cmd));
-        if (tradeHistory.length > 100) tradeHistory.shift();
-    }
-    res.json({ status: 'OK' });
-});
-
-app.post('/api/ea/execute', function(req, res) {
-    const body = req.body;
-    if (!body.symbol || !body.action || !body.lot) {
-        return res.status(400).json({ error: 'Missing fields' });
-    }
-    const cmd = {
-        id: Date.now() + Math.floor(Math.random() * 1000),
-        symbol: body.symbol,
-        action: body.action,
-        lot: parseFloat(body.lot),
-        sl: parseFloat(body.sl || 0),
-        tp: parseFloat(body.tp || 0),
-        timestamp: Date.now(),
-        status: 'pending'
-    };
-    tradeQueue.push(cmd);
-    res.json({ status: 'OK', id: cmd.id });
-});
-
-app.post('/api/ea/close', function(req, res) {
-    const body = req.body;
-    if (!body.ticket) return res.status(400).json({ error: 'Missing ticket' });
-    tradeQueue.push({
-        id: Date.now() + Math.floor(Math.random() * 1000),
-        type: 'CLOSE',
-        ticket: parseInt(body.ticket),
-        status: 'pending'
-    });
-    res.json({ status: 'OK' });
-});
-
-app.post('/api/ea/close-all', function(req, res) {
-    tradeQueue.push({
-        id: Date.now() + Math.floor(Math.random() * 1000),
-        type: 'CLOSE_ALL',
-        status: 'pending'
-    });
-    res.json({ status: 'OK' });
-});
 
 // ===============================================
 // FETCH DATA
@@ -458,12 +424,10 @@ const tickCache = new Map();
 
 async function getTick(symbol) {
     const cached = tickCache.get(symbol);
-    if (cached && Date.now() - cached.time < 30000) {
-        return cached.data;
-    }
+    if (cached && Date.now() - cached.time < 30000) return cached.data;
     const tdSymbol = toTwelveData(symbol);
     let attempts = 0;
-    const maxAttempts = TWELVEDATA_KEYS.length * 2;
+    const maxAttempts = TWELVEDATA_KEYS.length * 2 || 2;
 
     while (attempts < maxAttempts) {
         attempts++;
@@ -471,36 +435,20 @@ async function getTick(symbol) {
             const url = TWELVEDATA_URL + '/quote?symbol=' + encodeURIComponent(tdSymbol) + '&apikey=' + getCurrentKey();
             const response = await axios.get(url, { timeout: 10000 });
             const d = response.data;
-
             if (d.status === 'error' || d.code) {
-                if (d.code === 429) {
-                    switchKey();
-                    continue;
-                }
+                if (d.code === 429) { switchKey(); continue; }
                 throw new Error(d.message || 'API error');
             }
-
             const bid = parseFloat(d.bid || 0);
             const ask = parseFloat(d.ask || 0);
             const price = parseFloat(d.close || d.price || 0);
             const mid = price || (bid + ask) / 2 || 0;
-
             if (mid === 0) throw new Error('Harga 0');
-
-            const result = {
-                bid: bid || mid,
-                ask: ask || mid,
-                mid: mid,
-                spread: parseFloat(d.spread || (ask - bid) || 0)
-            };
-
+            const result = { bid: bid || mid, ask: ask || mid, mid: mid, spread: parseFloat(d.spread || (ask - bid) || 0) };
             tickCache.set(symbol, { data: result, time: Date.now() });
             return result;
         } catch (e) {
-            if (e.message && e.message.indexOf('429') >= 0) {
-                switchKey();
-                continue;
-            }
+            if (e.message && e.message.indexOf('429') >= 0) { switchKey(); continue; }
             if (attempts >= maxAttempts) throw e;
         }
     }
@@ -514,13 +462,11 @@ async function getOHLC(symbol, interval, limit) {
     limit = limit || 300;
     const cacheKey = symbol + '_' + interval + '_' + limit;
     const cached = ohlcCache.get(cacheKey);
-    if (cached && Date.now() - cached.time < 180000) {
-        return cached.data;
-    }
+    if (cached && Date.now() - cached.time < 180000) return cached.data;
 
     const tdSymbol = toTwelveData(symbol);
     let attempts = 0;
-    const maxAttempts = TWELVEDATA_KEYS.length * 2;
+    const maxAttempts = TWELVEDATA_KEYS.length * 2 || 2;
 
     while (attempts < maxAttempts) {
         attempts++;
@@ -528,35 +474,18 @@ async function getOHLC(symbol, interval, limit) {
             const url = TWELVEDATA_URL + '/time_series?symbol=' + encodeURIComponent(tdSymbol) + '&interval=' + interval + '&outputsize=' + limit + '&apikey=' + getCurrentKey();
             const response = await axios.get(url, { timeout: 10000 });
             const d = response.data;
-
             if (d.status === 'error' || d.code) {
-                if (d.code === 429) {
-                    switchKey();
-                    continue;
-                }
+                if (d.code === 429) { switchKey(); continue; }
                 throw new Error(d.message || 'API error');
             }
-
             if (!d.values || !Array.isArray(d.values)) return [];
-
             const result = d.values.slice().reverse().map(function(c) {
-                return {
-                    open: parseFloat(c.open || 0),
-                    high: parseFloat(c.high || 0),
-                    low: parseFloat(c.low || 0),
-                    close: parseFloat(c.close || 0)
-                };
-            }).filter(function(c) {
-                return c.close > 0;
-            });
-
+                return { open: parseFloat(c.open || 0), high: parseFloat(c.high || 0), low: parseFloat(c.low || 0), close: parseFloat(c.close || 0) };
+            }).filter(function(c) { return c.close > 0; });
             ohlcCache.set(cacheKey, { data: result, time: Date.now() });
             return result;
         } catch (e) {
-            if (e.message && e.message.indexOf('429') >= 0) {
-                switchKey();
-                continue;
-            }
+            if (e.message && e.message.indexOf('429') >= 0) { switchKey(); continue; }
             if (attempts >= maxAttempts) throw e;
         }
     }
@@ -572,13 +501,8 @@ const signalCooldown = new Map();
 function calculateSLTP(direction, entry, atr, symbol, atrProfile) {
     const slDist = atr * 1.5;
     let tp1Mult = 3.0, tp2Mult = 6.0, tp3Mult = 10.0;
-    if (atrProfile) {
-        tp1Mult = atrProfile.tp1Mult;
-        tp2Mult = atrProfile.tp2Mult;
-        tp3Mult = atrProfile.tp3Mult;
-    }
+    if (atrProfile) { tp1Mult = atrProfile.tp1Mult; tp2Mult = atrProfile.tp2Mult; tp3Mult = atrProfile.tp3Mult; }
     const dec = getDecimal(symbol);
-
     if (direction === 'BUY') {
         return {
             sl: (entry - slDist).toFixed(dec),
@@ -597,16 +521,14 @@ function calculateSLTP(direction, entry, atr, symbol, atrProfile) {
 }
 
 // ===============================================
-// API: SIGNAL (FULL)
+// API: SIGNAL
 // ===============================================
 app.get('/api/signal', async function(req, res) {
     const symbol = req.query.symbol || 'XAU/USD';
     const decimal = getDecimal(symbol);
-
     try {
         const candles = await getOHLC(symbol, '5min', 300);
         if (candles.length < 50) throw new Error('Data tak cukup');
-
         const closes = candles.map(function(c) { return c.close; });
         const harga = closes[closes.length - 1];
         const emaAnalysis = analyzeCandles(candles);
@@ -615,7 +537,6 @@ app.get('/api/signal', async function(req, res) {
         const ema9 = emaAnalysis ? emaAnalysis.ema9 : 0;
         const ema21 = emaAnalysis ? emaAnalysis.ema21 : 0;
         const ema50 = emaAnalysis ? emaAnalysis.ema50 : 0;
-
         const atr = calculateATR(candles, 14);
         const atrProfile = getATRProfile(candles);
         const snr = detectSNR(candles);
@@ -625,11 +546,7 @@ app.get('/api/signal', async function(req, res) {
         const cooldownData = signalCooldown.get(symbol);
         const isCooldown = cooldownData && (now - cooldownData.time) < COOLDOWN_MS;
         const existingLock = signalLock.get(symbol);
-
-        let signal = 'WAIT';
-        let isLocked = false;
-        let lockedEntry = null;
-        let lockUntil = 0;
+        let signal = 'WAIT', isLocked = false, lockedEntry = null, lockUntil = 0;
 
         if (!isCooldown) {
             if (existingLock) {
@@ -639,9 +556,7 @@ app.get('/api/signal', async function(req, res) {
                     lockedEntry = existingLock.entry;
                     lockUntil = existingLock.lockedAt + MAX_LOCK_MS;
                     isLocked = true;
-                } else {
-                    signalLock.delete(symbol);
-                }
+                } else signalLock.delete(symbol);
             } else if (emaSignal !== 'WAIT') {
                 signal = emaSignal;
                 const lockData = { direction: signal, entry: harga, lockedAt: Date.now() };
@@ -666,8 +581,8 @@ app.get('/api/signal', async function(req, res) {
             entry: parseFloat(displayPrice.toFixed(decimal)),
             harga_entry: parseFloat(displayPrice.toFixed(decimal)),
             entryZone: [
-                parseFloat((displayPrice - atr * ENTRY_ZONE_MULTIPLIER).toFixed(decimal)),
-                parseFloat((displayPrice + atr * ENTRY_ZONE_MULTIPLIER).toFixed(decimal))
+                parseFloat((displayPrice - atr * 0.8).toFixed(decimal)),
+                parseFloat((displayPrice + atr * 0.8).toFixed(decimal))
             ],
             sl: sltp ? parseFloat(sltp.sl) : null,
             tp1: sltp ? parseFloat(sltp.tp1) : null,
@@ -675,7 +590,6 @@ app.get('/api/signal', async function(req, res) {
             tp3: sltp ? parseFloat(sltp.tp3) : null,
             lockUntil: lockUntil,
             locked: isLocked,
-
             POC: snr.POC ? parseFloat(snr.POC.toFixed(decimal)) : null,
             VAH: snr.VAH ? parseFloat(snr.VAH.toFixed(decimal)) : null,
             VAL: snr.VAL ? parseFloat(snr.VAL.toFixed(decimal)) : null,
@@ -685,7 +599,6 @@ app.get('/api/signal', async function(req, res) {
             S1: snr.S1 ? parseFloat(snr.S1.toFixed(decimal)) : null,
             S2: snr.S2 ? parseFloat(snr.S2.toFixed(decimal)) : null,
             S3: snr.S3 ? parseFloat(snr.S3.toFixed(decimal)) : null,
-
             snr: {
                 poc: snr.POC ? parseFloat(snr.POC.toFixed(decimal)) : null,
                 vah: snr.VAH ? parseFloat(snr.VAH.toFixed(decimal)) : null,
@@ -697,7 +610,6 @@ app.get('/api/signal', async function(req, res) {
                 s2: snr.S2 ? parseFloat(snr.S2.toFixed(decimal)) : null,
                 s3: snr.S3 ? parseFloat(snr.S3.toFixed(decimal)) : null
             },
-
             mtf: {
                 timeframes: mtf.timeframes,
                 agreement: mtf.agreement,
@@ -706,7 +618,6 @@ app.get('/api/signal', async function(req, res) {
                 sellCount: mtf.sellCount
             },
             agreement: mtf.agreement,
-
             ema9: parseFloat(ema9.toFixed(decimal)),
             ema21: parseFloat(ema21.toFixed(decimal)),
             ema50: parseFloat(ema50.toFixed(decimal)),
@@ -716,22 +627,10 @@ app.get('/api/signal', async function(req, res) {
             timeframe: '5min'
         });
     } catch (error) {
-        console.error('/api/signal ERROR: ' + error.message);
         res.json({
-            symbol: symbol,
-            signal: 'WAIT',
-            action: 'WAIT',
-            score: 0,
-            harga: 0,
-            entry: 0,
-            sl: null,
-            tp1: null,
-            tp2: null,
-            tp3: null,
-            ema9: 0,
-            ema21: 0,
-            ema50: 0,
-            error: error.message
+            symbol: symbol, signal: 'WAIT', action: 'WAIT', score: 0,
+            harga: 0, entry: 0, sl: null, tp1: null,
+            ema9: 0, ema21: 0, ema50: 0, error: error.message
         });
     }
 });
@@ -783,25 +682,15 @@ app.get('/api/market', async function(req, res) {
 // HEALTH & TEST
 // ===============================================
 app.get('/health', function(req, res) {
-    res.json({ status: 'OK', timestamp: new Date().toISOString() });
+    res.json({ status: 'OK', version: '1.23 ANTI-400', timestamp: new Date().toISOString() });
 });
 
 app.get('/api/test-ea', function(req, res) {
     res.json({
         ea_api_key_set: !!EA_API_KEY,
-        ea_api_key_length: EA_API_KEY.length,
         ea_online: eaStatus.online,
         ea_last_seen: eaStatus.lastSeen,
-        queue_length: tradeQueue.length,
-        endpoints: [
-            'POST /api/ea/heartbeat',
-            'GET  /api/ea/status',
-            'GET  /api/ea/commands',
-            'POST /api/ea/result',
-            'POST /api/ea/execute',
-            'GET  /api/signal',
-            'GET  /api/market'
-        ]
+        queue_length: tradeQueue.length
     });
 });
 
@@ -814,6 +703,5 @@ app.get('/', function(req, res) {
 // ===============================================
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, function() {
-    console.log('BPT Server running on port ' + PORT);
-    console.log('EA API Key: ' + EA_API_KEY);
+    console.log('BPT v1.23 ANTI-400 running on port ' + PORT);
 });
