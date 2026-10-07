@@ -20,8 +20,8 @@ const TWELVEDATA_URL = 'https://api.twelvedata.com';
 const EA_API_KEY = process.env.EA_API_KEY || 'ea-secret-2024';
 const ACCOUNT_BALANCE = parseFloat(process.env.ACCOUNT_BALANCE || '1000');
 const RISK_PERCENT = parseFloat(process.env.RISK_PERCENT || '1');
-const USE_FIXED_LOT = process.env.USE_FIXED_LOT === 'true';
 const FIXED_LOT = parseFloat(process.env.FIXED_LOT || '0.01');
+const USE_FIXED_LOT = process.env.USE_FIXED_LOT === 'true';
 
 const CANDLE_BODY_MIN = 0.30;
 const SCORE_CUN = 90;
@@ -737,49 +737,6 @@ app.get('/api/signal', async function(req, res) {
 });
 
 // ===============================================
-// API: SIGNAL SIMPLE
-// ===============================================
-app.get('/api/signal-simple', async function(req, res) {
-    const symbol = req.query.symbol || 'XAU/USD';
-    const decimal = getDecimal(symbol);
-    try {
-        const candles = await getOHLC(symbol, '5min', 300);
-        if (candles.length < 50) throw new Error('Data tak cukup');
-        const closes = candles.map(function(c) { return c.close; });
-        const harga = closes[closes.length - 1];
-        const emaAnalysis = analyzeCandles(candles);
-        const emaSignal = emaAnalysis ? emaAnalysis.signal : 'WAIT';
-        const emaConfidence = emaAnalysis ? emaAnalysis.confidence : 0;
-        const ema9 = emaAnalysis ? emaAnalysis.ema9 : 0;
-        const ema21 = emaAnalysis ? emaAnalysis.ema21 : 0;
-        const ema50 = emaAnalysis ? emaAnalysis.ema50 : 0;
-        const atr = calculateATR(candles, 14);
-        const atrProfile = getATRProfile(candles);
-        const sltp = (emaSignal === 'BUY' || emaSignal === 'SELL') ? calculateSLTP(emaSignal, harga, atr, symbol, atrProfile) : null;
-        res.json({
-            symbol: symbol.replace('/', ''),
-            action: emaSignal,
-            score: emaConfidence,
-            entryZone: [
-                parseFloat((harga - atr * ENTRY_ZONE_MULTIPLIER).toFixed(decimal)),
-                parseFloat((harga + atr * ENTRY_ZONE_MULTIPLIER).toFixed(decimal))
-            ],
-            sl: sltp ? parseFloat(sltp.sl) : null,
-            tp1: sltp ? parseFloat(sltp.tp1) : null,
-            tp2: sltp ? parseFloat(sltp.tp2) : null,
-            tp3: sltp ? parseFloat(sltp.tp3) : null,
-            ema9: parseFloat(ema9.toFixed(decimal)),
-            ema21: parseFloat(ema21.toFixed(decimal)),
-            ema50: parseFloat(ema50.toFixed(decimal)),
-            harga: parseFloat(harga.toFixed(decimal)),
-            session: getMarketSession()
-        });
-    } catch (error) {
-        res.json({ symbol: symbol.replace('/', ''), action: 'WAIT', score: 0, error: error.message });
-    }
-});
-
-// ===============================================
 // API: MARKET
 // ===============================================
 app.get('/api/market', async function(req, res) {
@@ -823,7 +780,7 @@ app.get('/api/market', async function(req, res) {
 });
 
 // ===============================================
-// API: HEALTH & TEST
+// HEALTH & TEST
 // ===============================================
 app.get('/health', function(req, res) {
     res.json({ status: 'OK', timestamp: new Date().toISOString() });
@@ -835,7 +792,16 @@ app.get('/api/test-ea', function(req, res) {
         ea_api_key_length: EA_API_KEY.length,
         ea_online: eaStatus.online,
         ea_last_seen: eaStatus.lastSeen,
-        queue_length: tradeQueue.length
+        queue_length: tradeQueue.length,
+        endpoints: [
+            'POST /api/ea/heartbeat',
+            'GET  /api/ea/status',
+            'GET  /api/ea/commands',
+            'POST /api/ea/result',
+            'POST /api/ea/execute',
+            'GET  /api/signal',
+            'GET  /api/market'
+        ]
     });
 });
 
