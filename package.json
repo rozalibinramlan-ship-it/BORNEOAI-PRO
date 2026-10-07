@@ -1,7 +1,7 @@
 {
   "name": "bpt-borneo-pro-trade",
   "version": "1.0.0",
-  "description": "BPT - Borneo Pro Trade",
+  "description": "BPT - Borneo Pro Trade with MT4 Bridge",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"
@@ -11,7 +11,8 @@
     "axios": "^1.6.8",
     "cors": "^2.8.5",
     "dotenv": "^16.3.1",
-    "express": "^4.19.2"
+    "express": "^4.19.2",
+    "form-data": "^4.0.0"
   },
   "engines": {
     "node": ">=18.0.0"
