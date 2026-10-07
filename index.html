@@ -38,36 +38,66 @@ body {
   padding: 15px;
   background: linear-gradient(180deg, #0a1525 0%, #050a15 100%);
   border-bottom: 1px solid var(--border);
+  position: relative;
 }
-.header-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
-.header-left { display: flex; align-items: center; gap: 12px; }
-.logo-hex {
-  width: 45px; height: 45px;
-  background: linear-gradient(135deg, #fbbf24, #d97706);
-  clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
-  display: flex; align-items: center; justify-content: center;
-  font-family: 'Rajdhani', sans-serif; font-weight: 700;
-  color: #050a15; font-size: 16px;
-  box-shadow: 0 0 20px rgba(251,191,36,0.6);
+.header-top { position: relative; text-align: center; padding-top: 5px; }
+.header-logo-center {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+.header-logo-center img {
+  width: 70px;
+  height: 70px;
+  border-radius: 50%;
+  object-fit: cover;
+  box-shadow: 0 0 25px rgba(251,191,36,0.8);
+  border: 2px solid #fbbf24;
+  display: block;
 }
 .header-text h1 {
-  font-family: 'Rajdhani', sans-serif; font-size: 22px; font-weight: 700;
-  color: var(--neon-gold); letter-spacing: 1px; margin-bottom: 2px;
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 26px;
+  font-weight: 700;
+  color: var(--neon-gold);
+  letter-spacing: 2px;
+  margin-bottom: 2px;
 }
-.header-text p { font-size: 12px; color: var(--neon-blue); letter-spacing: 1px; font-weight: 500; }
-.header-right { font-size: 10px; color: var(--text-gray); text-align: right; line-height: 1.5; }
+.header-text p {
+  font-size: 11px;
+  color: var(--neon-blue);
+  letter-spacing: 2px;
+  font-weight: 600;
+}
+.header-right {
+  position: absolute;
+  top: 0;
+  right: 0;
+  font-size: 10px;
+  color: var(--text-gray);
+  text-align: right;
+  line-height: 1.6;
+}
 .pro-badge {
   background: linear-gradient(135deg, rgba(251,191,36,0.2), rgba(217,119,6,0.2));
-  border: 1px solid rgba(251,191,36,0.5); padding: 3px 8px; border-radius: 6px;
-  color: var(--neon-gold); font-weight: 600; letter-spacing: 0.5px;
-  display: inline-block; margin-bottom: 3px;
+  border: 1px solid rgba(251,191,36,0.5);
+  padding: 3px 8px;
+  border-radius: 6px;
+  color: var(--neon-gold);
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  display: inline-block;
+  margin-bottom: 3px;
 }
 .utc-clock { color: var(--neon-blue); font-weight: 600; }
 
 .status-bar {
   text-align: center; padding: 8px;
   background: linear-gradient(90deg, transparent, rgba(56,189,248,0.08), transparent);
-  border-top: 1px solid var(--border); border-bottom: 1px solid var(--border);
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
   font-size: 11px; letter-spacing: 1px; font-weight: 600;
   color: var(--text-gray);
 }
@@ -206,17 +236,18 @@ select {
 
 <div class="header">
   <div class="header-top">
-    <div class="header-left">
-      <img src="logo.png" alt="BPT Logo" style="width:50px; height:50px; border-radius:50%; object-fit:cover; box-shadow: 0 0 20px rgba(251,191,36,0.6); border: 2px solid #fbbf24;">
+    <div class="header-right">
+      <div class="pro-badge">PRO-7841 · PREMIUM</div>
+      <div>⏰ <span class="utc-clock" id="utc-clock">--:--:-- MYT</span></div>
+      <div>📅 <span id="utc-date">--</span></div>
+    </div>
+
+    <div class="header-logo-center">
+      <img src="logo.png" alt="BPT Logo" onerror="this.style.display='none'">
       <div class="header-text">
         <h1>BPT</h1>
         <p>BORNEO PRO TRADE</p>
       </div>
-    </div>
-    <div class="header-right">
-      <div class="pro-badge">PRO-7841 · PREMIUM</div>
-      <div>⏰ <span class="utc-clock" id="utc-clock">--:--:-- UTC</span></div>
-      <div>📅 <span id="utc-date">--</span></div>
     </div>
   </div>
   <select id="market-selector" onchange="tukarMarket()">
@@ -339,28 +370,6 @@ select {
       <div class="data-box">
         <div class="data-label">TP2</div>
         <div class="data-value tp" id="sltp-tp2">-</div>
-      </div>
-    </div>
-  </div>
-
-  <div class="glass-card">
-    <p class="card-title">💰 Risk Management</p>
-    <div class="data-grid-5" style="grid-template-columns:repeat(2,1fr);">
-      <div class="data-box">
-        <div class="data-label">Balance</div>
-        <div class="data-value" id="risk-balance" style="color:#fbbf24;">-</div>
-      </div>
-      <div class="data-box">
-        <div class="data-label">Lot Size</div>
-        <div class="data-value" id="risk-lot" style="color:#fbbf24;">-</div>
-      </div>
-      <div class="data-box">
-        <div class="data-label">Risk %</div>
-        <div class="data-value" id="risk-percent" style="color:#fbbf24;">-</div>
-      </div>
-      <div class="data-box">
-        <div class="data-label">Potential Loss</div>
-        <div class="data-value" id="risk-loss" style="color:#ef4444;">-</div>
       </div>
     </div>
   </div>
@@ -495,18 +504,24 @@ let chart = null, candleSeries = null;
 let backtestChart = null, backtestSeries = null;
 let newsLoaded = false;
 
-// ===== UTC CLOCK =====
+// ===== MYT CLOCK (UTC+8) =====
 function updateUTCClock() {
   const now = new Date();
-  const h = String(now.getUTCHours()).padStart(2, '0');
-  const m = String(now.getUTCMinutes()).padStart(2, '0');
-  const s = String(now.getUTCSeconds()).padStart(2, '0');
-  document.getElementById('utc-clock').innerText = `${h}:${m}:${s} UTC`;
-  const months = ['Jan','Feb','Mac','Apr','Mei','Jun','Jul','Ogo','Sep','Okt','Nov','Dis'];
-  const d = String(now.getUTCDate()).padStart(2, '0');
-  const mo = months[now.getUTCMonth()];
-  const yr = now.getUTCFullYear();
-  document.getElementById('utc-date').innerText = `${d} ${mo} ${yr}`;
+  const timeStr = now.toLocaleTimeString('ms-MY', {
+    timeZone: 'Asia/Kuala_Lumpur',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: false
+  });
+  const dateStr = now.toLocaleDateString('ms-MY', {
+    timeZone: 'Asia/Kuala_Lumpur',
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric'
+  });
+  document.getElementById('utc-clock').innerText = timeStr + ' MYT';
+  document.getElementById('utc-date').innerText = dateStr;
 }
 setInterval(updateUTCClock, 1000);
 updateUTCClock();
@@ -534,19 +549,16 @@ async function dapatkanSignal() {
     const statusBar = document.getElementById('status-bar');
     if (data.signal === 'BUY' || data.signal === 'SELL') {
       statusBar.className = 'status-bar active';
-      statusBar.innerHTML = `● Signal Active · ${data.signal} · ${data.confidence}% Confidence`;
-    } else if (data.display_status === 'SETUP') {
-      statusBar.className = 'status-bar setup';
-      statusBar.innerHTML = `● Setup · ${data.display_message}`;
+      statusBar.innerHTML = `● Signal Active · ${data.signal} · ${data.score || 0}% Confidence`;
     } else {
       statusBar.className = 'status-bar awaiting';
-      statusBar.innerHTML = `● Awaiting Signal · Template Mode · ${marketAktif}`;
+      statusBar.innerHTML = `● Awaiting Signal · ${marketAktif}`;
     }
 
-    document.getElementById('main-price-signal').innerText = data.harga;
-    document.getElementById('ema9').innerText = data.ema9;
-    document.getElementById('ema21').innerText = data.ema21;
-    document.getElementById('ema50').innerText = data.ema50;
+    document.getElementById('main-price-signal').innerText = data.harga || '-';
+    document.getElementById('ema9').innerText = data.ema9 || '-';
+    document.getElementById('ema21').innerText = data.ema21 || '-';
+    document.getElementById('ema50').innerText = data.ema50 || '-';
     document.getElementById('session').innerText = data.session || '-';
 
     const ema9Val = parseFloat(data.ema9);
@@ -577,38 +589,29 @@ async function dapatkanSignal() {
       trendDisplay.style.display = 'none';
     }
 
-    document.getElementById('data-entry-zone').innerText = data.entry_zone ? `${data.entry_zone.from} - ${data.entry_zone.to}` : '-';
-    document.getElementById('data-sl').innerText = data.sltp ? data.sltp.sl : '-';
-    document.getElementById('data-tp1').innerText = data.sltp ? data.sltp.tp1 : '-';
-    document.getElementById('data-tp2').innerText = data.sltp ? data.sltp.tp2 : '-';
+    // Entry zone
+    if (data.entryZone && Array.isArray(data.entryZone)) {
+      document.getElementById('data-entry-zone').innerText = `${data.entryZone[0]} - ${data.entryZone[1]}`;
+    } else {
+      document.getElementById('data-entry-zone').innerText = '-';
+    }
+    
+    document.getElementById('data-sl').innerText = data.sl || '-';
+    document.getElementById('data-tp1').innerText = data.tp1 || '-';
+    document.getElementById('data-tp2').innerText = data.tp2 || '-';
 
     const sb = document.getElementById('signal-box');
     const gradeDisplay = document.getElementById('grade-display');
     const lockStatus = document.getElementById('lock-status');
 
     if (data.signal === 'BUY' || data.signal === 'SELL') {
-      const displayPrice = data.harga_entry || data.harga;
+      const displayPrice = data.entry || data.harga;
       const arrow = data.signal === 'BUY' ? '▲' : '▼';
       sb.innerHTML = `<div>${arrow} ${data.signal}</div><div style="font-size:16px; margin-top:6px;">@ ${displayPrice}</div>`;
       sb.className = data.signal === 'BUY' ? "signal-box buy" : "signal-box sell";
       
-      const conf = data.confidence || 0;
+      const conf = data.score || 0;
       gradeDisplay.innerHTML = `<div style="font-size:14px; color:#fbbf24;">Confidence: ${conf}%</div>`;
-      
-      if (data.locked) {
-        lockStatus.innerHTML = `<div style="font-size:12px; color:#fbbf24;">🔒 Locked ${data.lockAgeMin}m / 15m</div>`;
-      } else {
-        lockStatus.innerHTML = `<div style="font-size:12px; color:#38bdf8;">⚡ Fresh Signal</div>`;
-      }
-    } else if (data.display_status === 'SETUP') {
-      sb.innerHTML = `<div style="font-size:22px;">⏳ SETUP</div><div style="font-size:12px; margin-top:6px;">${data.display_message}</div>`;
-      sb.className = "signal-box setup";
-      gradeDisplay.innerHTML = '';
-      lockStatus.innerHTML = '';
-    } else if (data.cooldown && data.cooldown.active) {
-      sb.innerHTML = `<div>COOLDOWN</div><div style="font-size:16px; margin-top:6px;">⏳ ${data.cooldown.remainMin} minit</div>`;
-      sb.className = "signal-box cooldown";
-      gradeDisplay.innerHTML = '';
       lockStatus.innerHTML = '';
     } else {
       sb.innerHTML = `<div>WAIT</div><div style="font-size:12px; font-weight:400; margin-top:6px;">Menunggu setup</div>`;
@@ -617,6 +620,7 @@ async function dapatkanSignal() {
       lockStatus.innerHTML = '';
     }
 
+    // MTF
     if (data.mtf && data.mtf.timeframes) {
       const tfMap = { 'M5': 'm5', 'M15': 'm15', 'M30': 'm30', 'H1': 'h1' };
       data.mtf.timeframes.forEach(tf => {
@@ -630,38 +634,14 @@ async function dapatkanSignal() {
           else val.style.color = '#94a3b8';
         }
       });
-      document.getElementById('tf-agreement').innerText = `Agreement: ${data.mtf.agreement} | Trend: ${data.mtf.consensus}`;
+      document.getElementById('tf-agreement').innerText = `Agreement: ${data.mtf.agreement || '-'} | Trend: ${data.mtf.consensus || '-'}`;
     }
 
-    let badges = '';
-    if (data.reasons && data.reasons.length > 0) {
-      data.reasons.forEach(r => {
-        badges += `<div style="display:inline-block; padding:5px 10px; border-radius:6px; font-size:11px; background:rgba(251,191,36,0.15); color:#fbbf24; border:1px solid rgba(251,191,36,0.5); margin:3px;">${r}</div>`;
-      });
-    }
-    document.getElementById('filter-status').innerHTML = badges;
-
-    if (data.sltp) {
-      document.getElementById('sltp-entry').innerText = data.harga_entry || data.harga;
-      document.getElementById('sltp-sl').innerText = data.sltp.sl;
-      document.getElementById('sltp-tp1').innerText = data.sltp.tp1;
-      document.getElementById('sltp-tp2').innerText = data.sltp.tp2;
-    }
-
-    if (data.risk_mgmt) {
-      document.getElementById('risk-balance').innerText = '$' + data.risk_mgmt.balance;
-      document.getElementById('risk-percent').innerText = data.risk_mgmt.riskPercent + '%';
-      document.getElementById('risk-lot').innerText = data.risk_mgmt.lotSize;
-      document.getElementById('risk-loss').innerText = '$' + data.risk_mgmt.potentialLoss;
-    }
-
-    const spreadInfoDisplay = document.getElementById('spread-info-display');
-    if (data.spread_info && data.spread_info.level !== 'UNKNOWN') {
-      const si = data.spread_info;
-      spreadInfoDisplay.innerHTML = `<div style="padding:10px 14px; border-radius:10px; margin:10px 0; background:${si.color}15; border:1px solid ${si.color}60; color:${si.color}; font-size:12px; font-weight:600;"><span>${si.icon}</span> Spread: ${data.spread} — ${si.text}</div>`;
-    } else {
-      spreadInfoDisplay.innerHTML = '';
-    }
+    // SL/TP Section
+    document.getElementById('sltp-entry').innerText = data.entry || data.harga || '-';
+    document.getElementById('sltp-sl').innerText = data.sl || '-';
+    document.getElementById('sltp-tp1').innerText = data.tp1 || '-';
+    document.getElementById('sltp-tp2').innerText = data.tp2 || '-';
 
   } catch (e) { console.error('Signal error:', e); }
 }
@@ -670,13 +650,19 @@ async function dapatkanMarketData() {
   try {
     const res = await fetch(`/api/market?symbol=${marketAktif}`);
     const data = await res.json();
-    document.getElementById('poc-val').innerText = data.poc;
-    document.getElementById('poc-box').innerText = data.poc;
-    ['r3','r2','r1','vah','val','s1','s2','s3'].forEach(k => {
-      const el = document.getElementById(k);
-      if (el) el.innerText = data.snr[k];
-    });
-  } catch (e) {}
+    
+    // ✅ Fix: guna field uppercase
+    document.getElementById('poc-val').innerText = data.POC || '-';
+    document.getElementById('poc-box').innerText = data.POC || '-';
+    document.getElementById('r3').innerText = data.R3 || '-';
+    document.getElementById('r2').innerText = data.R2 || '-';
+    document.getElementById('r1').innerText = data.R1 || '-';
+    document.getElementById('vah').innerText = data.VAH || '-';
+    document.getElementById('val').innerText = data.VAL || '-';
+    document.getElementById('s1').innerText = data.S1 || '-';
+    document.getElementById('s2').innerText = data.S2 || '-';
+    document.getElementById('s3').innerText = data.S3 || '-';
+  } catch (e) { console.error('Market error:', e); }
 }
 
 async function tanyaAI() {

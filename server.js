@@ -1,6 +1,6 @@
 // ===============================================
 // BPT — Borneo Pro Trade
-// Server v1.23 ANTI-400
+// Server v1.23.1 — Fix Confidence 0%
 // ===============================================
 const express = require('express');
 const cors = require('cors');
@@ -29,9 +29,6 @@ const ENTRY_ZONE_MULTIPLIER = 0.8;
 const COOLDOWN_MS = 5 * 60 * 1000;
 const MAX_LOCK_MS = 15 * 60 * 1000;
 
-// ===============================================
-// TWELVEDATA KEYS
-// ===============================================
 const TWELVEDATA_KEYS = [
     process.env.TWELVEDATA_API_KEY || '',
     process.env.TWELVEDATA_API_KEY_2 || '',
@@ -39,29 +36,20 @@ const TWELVEDATA_KEYS = [
 ].filter(function(k) { return k.length > 0; });
 
 let currentKeyIndex = 0;
-
-function getCurrentKey() {
-    return TWELVEDATA_KEYS[currentKeyIndex] || TWELVEDATA_KEYS[0] || '';
-}
-
-function switchKey() {
-    if (TWELVEDATA_KEYS.length > 1) {
-        currentKeyIndex = (currentKeyIndex + 1) % TWELVEDATA_KEYS.length;
-    }
-}
+function getCurrentKey() { return TWELVEDATA_KEYS[currentKeyIndex] || TWELVEDATA_KEYS[0] || ''; }
+function switchKey() { if (TWELVEDATA_KEYS.length > 1) { currentKeyIndex = (currentKeyIndex + 1) % TWELVEDATA_KEYS.length; } }
 
 console.log('TwelveData: ' + TWELVEDATA_KEYS.length + ' keys');
 console.log('EA API Key: ' + EA_API_KEY);
 
 // ===============================================
-// EA BRIDGE — ANTI-400
+// EA BRIDGE - ANTI 400
 // ===============================================
 let eaStatus = {
     online: false, lastSeen: 0, balance: 0, equity: 0, margin: 0,
     freeMargin: 0, profit: 0, positions: [], prices: {},
     accountNumber: '', broker: '', leverage: 0, currency: 'USD'
 };
-
 let tradeQueue = [];
 let tradeHistory = [];
 
@@ -72,35 +60,21 @@ function parseEAJson(rawText) {
         if (raw.includes('}{')) raw = raw.split('}{')[0] + '}';
         let depth = 0, start = -1, first = null;
         for (let i = 0; i < raw.length; i++) {
-            if (raw[i] === '{') {
-                if (depth === 0) start = i;
-                depth++;
-            } else if (raw[i] === '}') {
-                depth--;
-                if (depth === 0 && start !== -1) {
-                    first = raw.substring(start, i + 1);
-                    break;
-                }
-            }
+            if (raw[i] === '{') { if (depth === 0) start = i; depth++; }
+            else if (raw[i] === '}') { depth--; if (depth === 0 && start !== -1) { first = raw.substring(start, i + 1); break; } }
         }
         if (first) raw = first;
         return JSON.parse(raw);
-    } catch (e) {
-        return {};
-    }
+    } catch (e) { return {}; }
 }
 
 app.post('/api/ea/heartbeat', express.text({ type: '*/*', limit: '5mb' }), function(req, res) {
     console.log('HB Headers:', req.headers['x-api-key'], '| ENV:', EA_API_KEY);
     console.log('HB Raw:', (req.body || '').toString().substring(0, 120));
 
-    // BYPASS API KEY — comment untuk fix 400
-    // if (req.headers['x-api-key'] !== EA_API_KEY) return res.status(401).json({ error: 'Unauthorized' });
-
     const body = parseEAJson(req.body);
     eaStatus = {
-        online: true,
-        lastSeen: Date.now(),
+        online: true, lastSeen: Date.now(),
         balance: parseFloat(body.balance || 0),
         equity: parseFloat(body.equity || 0),
         margin: parseFloat(body.margin || 0),
@@ -126,7 +100,6 @@ app.get('/api/ea/status', function(req, res) {
 });
 
 app.get('/api/ea/commands', function(req, res) {
-    // if (req.headers['x-api-key'] !== EA_API_KEY) return res.status(401).json({ error: 'Unauthorized' });
     const pending = tradeQueue.filter(function(c) { return c.status === 'pending'; });
     if (pending.length > 0) {
         const cmd = pending[0];
@@ -139,7 +112,6 @@ app.get('/api/ea/commands', function(req, res) {
 });
 
 app.post('/api/ea/result', express.text({ type: '*/*' }), function(req, res) {
-    // if (req.headers['x-api-key'] !== EA_API_KEY) return res.status(401).json({ error: 'Unauthorized' });
     const body = parseEAJson(req.body);
     const cmd = tradeQueue.find(function(c) { return c.id === body.id; });
     if (cmd) {
@@ -152,25 +124,17 @@ app.post('/api/ea/result', express.text({ type: '*/*' }), function(req, res) {
     res.json({ status: 'OK' });
 });
 
-// ===============================================
-// JSON PARSER (untuk market/signal)
-// ===============================================
+// JSON PARSER untuk market/signal
 app.use(express.json({ strict: false, limit: '5mb' }));
 
 app.post('/api/ea/execute', function(req, res) {
     const body = req.body;
-    if (!body.symbol || !body.action || !body.lot) {
-        return res.status(400).json({ error: 'Missing fields' });
-    }
+    if (!body.symbol || !body.action || !body.lot) return res.status(400).json({ error: 'Missing fields' });
     const cmd = {
         id: Date.now() + Math.floor(Math.random() * 1000),
-        symbol: body.symbol,
-        action: body.action,
-        lot: parseFloat(body.lot),
-        sl: parseFloat(body.sl || 0),
-        tp: parseFloat(body.tp || 0),
-        timestamp: Date.now(),
-        status: 'pending'
+        symbol: body.symbol, action: body.action, lot: parseFloat(body.lot),
+        sl: parseFloat(body.sl || 0), tp: parseFloat(body.tp || 0),
+        timestamp: Date.now(), status: 'pending'
     };
     tradeQueue.push(cmd);
     res.json({ status: 'OK', id: cmd.id });
@@ -181,9 +145,7 @@ app.post('/api/ea/close', function(req, res) {
     if (!body.ticket) return res.status(400).json({ error: 'Missing ticket' });
     tradeQueue.push({
         id: Date.now() + Math.floor(Math.random() * 1000),
-        type: 'CLOSE',
-        ticket: parseInt(body.ticket),
-        status: 'pending'
+        type: 'CLOSE', ticket: parseInt(body.ticket), status: 'pending'
     });
     res.json({ status: 'OK' });
 });
@@ -191,8 +153,7 @@ app.post('/api/ea/close', function(req, res) {
 app.post('/api/ea/close-all', function(req, res) {
     tradeQueue.push({
         id: Date.now() + Math.floor(Math.random() * 1000),
-        type: 'CLOSE_ALL',
-        status: 'pending'
+        type: 'CLOSE_ALL', status: 'pending'
     });
     res.json({ status: 'OK' });
 });
@@ -205,9 +166,7 @@ const symbolMap = {
     'EUR/USD': 'EUR/USD', 'GBP/USD': 'GBP/USD', 'USD/JPY': 'USD/JPY',
     'AUD/USD': 'AUD/USD', 'USD/CAD': 'USD/CAD', 'USD/CHF': 'USD/CHF'
 };
-
 function toTwelveData(s) { return symbolMap[s] || s; }
-
 function getDecimal(s) {
     if (s.indexOf('JPY') >= 0) return 3;
     if (s.indexOf('XAU') >= 0 || s.indexOf('XAG') >= 0) return 2;
@@ -227,9 +186,7 @@ function calculateATR(candles, period) {
     if (candles.length < period + 1) return 0;
     let trs = [];
     for (let i = candles.length - period; i < candles.length; i++) {
-        const h = candles[i].high;
-        const l = candles[i].low;
-        const pc = candles[i - 1].close;
+        const h = candles[i].high, l = candles[i].low, pc = candles[i - 1].close;
         trs.push(Math.max(h - l, Math.abs(h - pc), Math.abs(l - pc)));
     }
     let sum = 0;
@@ -240,20 +197,13 @@ function calculateATR(candles, period) {
 function getATRProfile(candles) {
     const atrNow = calculateATR(candles, 14);
     const atrAvg = calculateATR(candles, 50);
-    if (atrAvg === 0 || atrNow === 0) {
-        return { atrNow: 0, ratio: 1, level: 'NORMAL', tp1Mult: 3.0, tp2Mult: 6.0, tp3Mult: 10.0 };
-    }
+    if (atrAvg === 0 || atrNow === 0) return { atrNow: 0, ratio: 1, level: 'NORMAL', tp1Mult: 3.0, tp2Mult: 6.0, tp3Mult: 10.0 };
     const ratio = atrNow / atrAvg;
     let level, tp1Mult, tp2Mult, tp3Mult;
-    if (ratio >= 1.5) {
-        level = 'VOLATILE'; tp1Mult = 5.0; tp2Mult = 10.0; tp3Mult = 15.0;
-    } else if (ratio >= 1.0) {
-        level = 'NORMAL'; tp1Mult = 3.0; tp2Mult = 6.0; tp3Mult = 10.0;
-    } else if (ratio >= 0.7) {
-        level = 'SLOW'; tp1Mult = 2.0; tp2Mult = 4.0; tp3Mult = 6.0;
-    } else {
-        level = 'VERY_SLOW'; tp1Mult = 1.5; tp2Mult = 3.0; tp3Mult = 4.5;
-    }
+    if (ratio >= 1.5) { level = 'VOLATILE'; tp1Mult = 5.0; tp2Mult = 10.0; tp3Mult = 15.0; }
+    else if (ratio >= 1.0) { level = 'NORMAL'; tp1Mult = 3.0; tp2Mult = 6.0; tp3Mult = 10.0; }
+    else if (ratio >= 0.7) { level = 'SLOW'; tp1Mult = 2.0; tp2Mult = 4.0; tp3Mult = 6.0; }
+    else { level = 'VERY_SLOW'; tp1Mult = 1.5; tp2Mult = 3.0; tp3Mult = 4.5; }
     return { atrNow: atrNow, atrAvg: atrAvg, ratio: ratio, level: level, tp1Mult: tp1Mult, tp2Mult: tp2Mult, tp3Mult: tp3Mult };
 }
 
@@ -265,16 +215,10 @@ function getMarketSession() {
     return 'CLOSED';
 }
 
-// ===============================================
-// SNR DETECTION
-// ===============================================
 function detectSNR(candles) {
-    if (!candles || candles.length < 50) {
-        return { S1: null, S2: null, S3: null, R1: null, R2: null, R3: null, POC: 0, VAH: 0, VAL: 0 };
-    }
+    if (!candles || candles.length < 50) return { S1: null, S2: null, S3: null, R1: null, R2: null, R3: null, POC: 0, VAH: 0, VAL: 0 };
     const recent = candles.slice(-200);
     const lastPrice = recent[recent.length - 1].close;
-
     const atrSlice = recent.slice(-14);
     let atrSum = 0;
     for (let i = 0; i < atrSlice.length; i++) atrSum += (atrSlice[i].high - atrSlice[i].low);
@@ -283,29 +227,21 @@ function detectSNR(candles) {
 
     let swingLows = [], swingHighs = [];
     for (let i = 2; i < recent.length - 2; i++) {
-        const isLow = recent[i].low < recent[i - 1].low &&
-                      recent[i].low < recent[i - 2].low &&
-                      recent[i].low < recent[i + 1].low &&
-                      recent[i].low < recent[i + 2].low;
-        const isHigh = recent[i].high > recent[i - 1].high &&
-                       recent[i].high > recent[i - 2].high &&
-                       recent[i].high > recent[i + 1].high &&
-                       recent[i].high > recent[i + 2].high;
+        const isLow = recent[i].low < recent[i - 1].low && recent[i].low < recent[i - 2].low &&
+                      recent[i].low < recent[i + 1].low && recent[i].low < recent[i + 2].low;
+        const isHigh = recent[i].high > recent[i - 1].high && recent[i].high > recent[i - 2].high &&
+                       recent[i].high > recent[i + 1].high && recent[i].high > recent[i + 2].high;
         if (isLow) swingLows.push({ price: recent[i].low, index: i });
         if (isHigh) swingHighs.push({ price: recent[i].high, index: i });
     }
 
     let supports = swingLows.filter(function(s) { return s.price < lastPrice; });
     supports.sort(function(a, b) { return b.price - a.price; });
-    supports = supports.filter(function(s, i) {
-        return i === 0 || Math.abs(s.price - supports[i - 1].price) > tolerance;
-    });
+    supports = supports.filter(function(s, i) { return i === 0 || Math.abs(s.price - supports[i - 1].price) > tolerance; });
 
     let resistances = swingHighs.filter(function(s) { return s.price > lastPrice; });
     resistances.sort(function(a, b) { return a.price - b.price; });
-    resistances = resistances.filter(function(s, i) {
-        return i === 0 || Math.abs(s.price - resistances[i - 1].price) > tolerance;
-    });
+    resistances = resistances.filter(function(s, i) { return i === 0 || Math.abs(s.price - resistances[i - 1].price) > tolerance; });
 
     const prices = recent.map(function(c) { return c.close; });
     prices.sort(function(a, b) { return a - b; });
@@ -320,19 +256,12 @@ function detectSNR(candles) {
         R1: resistances[0] ? resistances[0].price : null,
         R2: resistances[1] ? resistances[1].price : null,
         R3: resistances[2] ? resistances[2].price : null,
-        POC: POC,
-        VAH: VAH,
-        VAL: VAL,
-        atr: ATR
+        POC: POC, VAH: VAH, VAL: VAL, atr: ATR
     };
 }
 
-// ===============================================
-// ANALYZE CANDLES
-// ===============================================
 function analyzeCandles(candles) {
     if (!candles || candles.length < 50) return null;
-
     const closes = candles.map(function(c) { return c.close; });
     const ema9 = calculateEMA(closes, 9);
     const ema21 = calculateEMA(closes, 21);
@@ -347,7 +276,6 @@ function analyzeCandles(candles) {
     const isBullCandle = lastCandle.close > lastCandle.open;
 
     let buyScore = 0, sellScore = 0;
-
     if (ema9 > ema21 && ema21 > ema50) buyScore += 50;
     if (ema9 > ema21 && gap_9_21 > 0.30) buyScore += 20;
     if (ema9 > ema21 && gap_9_21 > 0.50) buyScore += 15;
@@ -360,7 +288,6 @@ function analyzeCandles(candles) {
 
     if (gap_21_50 > 0.20) { if (ema21 > ema50) buyScore += 10; else sellScore += 10; }
     if (gap_21_50 > 0.40) { if (ema21 > ema50) buyScore += 10; else sellScore += 10; }
-
     if (bodyPct >= 0.60) { if (isBullCandle) buyScore += 10; else sellScore += 10; }
     if (bodyPct >= 0.80) { if (isBullCandle) buyScore += 10; else sellScore += 10; }
 
@@ -369,17 +296,20 @@ function analyzeCandles(candles) {
     const winner = buyScore > sellScore ? 'BUY' : sellScore > buyScore ? 'SELL' : 'WAIT';
     const winnerScore = Math.max(buyScore, sellScore);
 
-    if (!(diff < 10 && winnerScore >= 70)) {
-        if (winner === 'BUY' && buyScore >= 70) { sig = 'BUY'; confidence = Math.min(buyScore, 100); }
-        else if (winner === 'SELL' && sellScore >= 70) { sig = 'SELL'; confidence = Math.min(sellScore, 100); }
+    // ✅ FIX CARA B — Kekal filter choppy, tapi jangan bagi signal kalau confidence rendah
+    if (!(diff < SCORE_CHOPPY_DIFF && winnerScore >= SCORE_BOLEH)) {
+        if (winner === 'BUY' && buyScore >= SCORE_BOLEH) {
+            sig = 'BUY';
+            confidence = Math.min(buyScore, 100);
+        } else if (winner === 'SELL' && sellScore >= SCORE_BOLEH) {
+            sig = 'SELL';
+            confidence = Math.min(sellScore, 100);
+        }
     }
 
-    return { signal: sig, confidence: confidence, ema9: ema9, ema21: ema21, ema50: ema50, buyScore: buyScore, sellScore: sellScore };
+    return { signal: sig, confidence: confidence, ema9: ema9, ema21: ema21, ema50: ema50, buyScore: buyScore, sellScore: sellScore, winner: winner, diff: diff };
 }
 
-// ===============================================
-// MULTI-TIMEFRAME
-// ===============================================
 async function checkMultiTimeframe(symbol) {
     const timeframes = [
         { tf: '5min', label: 'M5' },
@@ -388,47 +318,33 @@ async function checkMultiTimeframe(symbol) {
         { tf: '1h', label: 'H1' }
     ];
     const results = [];
-
     for (let i = 0; i < timeframes.length; i++) {
         const item = timeframes[i];
         let tfResult = null;
         try {
             const candles = await getOHLC(symbol, item.tf, 100);
             tfResult = analyzeCandles(candles);
-        } catch (e) {
-            console.log('TF ' + item.label + ' fail: ' + e.message);
-        }
-        if (tfResult) {
-            results.push({ tf: item.tf, label: item.label, signal: tfResult.signal, confidence: tfResult.confidence });
-        } else {
-            results.push({ tf: item.tf, label: item.label, signal: 'WAIT', confidence: 0 });
-        }
+        } catch (e) { console.log('TF ' + item.label + ' fail: ' + e.message); }
+        if (tfResult) results.push({ tf: item.tf, label: item.label, signal: tfResult.signal, confidence: tfResult.confidence });
+        else results.push({ tf: item.tf, label: item.label, signal: 'WAIT', confidence: 0 });
     }
-
     let buyCount = 0, sellCount = 0;
     for (let i = 0; i < results.length; i++) {
         if (results[i].signal === 'BUY') buyCount++;
         if (results[i].signal === 'SELL') sellCount++;
     }
-
     const maxCount = Math.max(buyCount, sellCount);
     const majoritySignal = buyCount > sellCount ? 'BUY' : sellCount > buyCount ? 'SELL' : 'WAIT';
-
     return { timeframes: results, buyCount: buyCount, sellCount: sellCount, agreement: maxCount + '/4', consensus: majoritySignal };
 }
 
-// ===============================================
-// FETCH DATA
-// ===============================================
 const tickCache = new Map();
-
 async function getTick(symbol) {
     const cached = tickCache.get(symbol);
     if (cached && Date.now() - cached.time < 30000) return cached.data;
     const tdSymbol = toTwelveData(symbol);
     let attempts = 0;
     const maxAttempts = TWELVEDATA_KEYS.length * 2 || 2;
-
     while (attempts < maxAttempts) {
         attempts++;
         try {
@@ -456,18 +372,15 @@ async function getTick(symbol) {
 }
 
 const ohlcCache = new Map();
-
 async function getOHLC(symbol, interval, limit) {
     interval = interval || '5min';
     limit = limit || 300;
     const cacheKey = symbol + '_' + interval + '_' + limit;
     const cached = ohlcCache.get(cacheKey);
     if (cached && Date.now() - cached.time < 180000) return cached.data;
-
     const tdSymbol = toTwelveData(symbol);
     let attempts = 0;
     const maxAttempts = TWELVEDATA_KEYS.length * 2 || 2;
-
     while (attempts < maxAttempts) {
         attempts++;
         try {
@@ -492,9 +405,6 @@ async function getOHLC(symbol, interval, limit) {
     return [];
 }
 
-// ===============================================
-// SIGNAL LOCK
-// ===============================================
 const signalLock = new Map();
 const signalCooldown = new Map();
 
@@ -557,7 +467,8 @@ app.get('/api/signal', async function(req, res) {
                     lockUntil = existingLock.lockedAt + MAX_LOCK_MS;
                     isLocked = true;
                 } else signalLock.delete(symbol);
-            } else if (emaSignal !== 'WAIT') {
+            } else if (emaSignal !== 'WAIT' && emaConfidence >= 70) {
+                // ✅ FIX CARA B — Hanya lock kalau confidence >= 70
                 signal = emaSignal;
                 const lockData = { direction: signal, entry: harga, lockedAt: Date.now() };
                 signalLock.set(symbol, lockData);
@@ -652,6 +563,16 @@ app.get('/api/market', async function(req, res) {
         const ema50 = emaAnalysis ? emaAnalysis.ema50 : 0;
         const snr = detectSNR(candles);
 
+        const poc = snr.POC ? parseFloat(snr.POC.toFixed(decimal)) : null;
+        const vah = snr.VAH ? parseFloat(snr.VAH.toFixed(decimal)) : null;
+        const val = snr.VAL ? parseFloat(snr.VAL.toFixed(decimal)) : null;
+        const r1 = snr.R1 ? parseFloat(snr.R1.toFixed(decimal)) : null;
+        const r2 = snr.R2 ? parseFloat(snr.R2.toFixed(decimal)) : null;
+        const r3 = snr.R3 ? parseFloat(snr.R3.toFixed(decimal)) : null;
+        const s1 = snr.S1 ? parseFloat(snr.S1.toFixed(decimal)) : null;
+        const s2 = snr.S2 ? parseFloat(snr.S2.toFixed(decimal)) : null;
+        const s3 = snr.S3 ? parseFloat(snr.S3.toFixed(decimal)) : null;
+
         res.json({
             symbol: symbol,
             harga: parseFloat(harga.toFixed(decimal)),
@@ -661,15 +582,20 @@ app.get('/api/market', async function(req, res) {
             ema9: parseFloat(ema9.toFixed(decimal)),
             ema21: parseFloat(ema21.toFixed(decimal)),
             ema50: parseFloat(ema50.toFixed(decimal)),
-            POC: snr.POC ? parseFloat(snr.POC.toFixed(decimal)) : null,
-            VAH: snr.VAH ? parseFloat(snr.VAH.toFixed(decimal)) : null,
-            VAL: snr.VAL ? parseFloat(snr.VAL.toFixed(decimal)) : null,
-            R1: snr.R1 ? parseFloat(snr.R1.toFixed(decimal)) : null,
-            R2: snr.R2 ? parseFloat(snr.R2.toFixed(decimal)) : null,
-            R3: snr.R3 ? parseFloat(snr.R3.toFixed(decimal)) : null,
-            S1: snr.S1 ? parseFloat(snr.S1.toFixed(decimal)) : null,
-            S2: snr.S2 ? parseFloat(snr.S2.toFixed(decimal)) : null,
-            S3: snr.S3 ? parseFloat(snr.S3.toFixed(decimal)) : null,
+            // ✅ Uppercase
+            POC: poc, VAH: vah, VAL: val,
+            R1: r1, R2: r2, R3: r3,
+            S1: s1, S2: s2, S3: s3,
+            // ✅ Lowercase (untuk app kau)
+            poc: poc, vah: vah, val: val,
+            r1: r1, r2: r2, r3: r3,
+            s1: s1, s2: s2, s3: s3,
+            // ✅ Object snr (untuk app kau)
+            snr: {
+                poc: poc, vah: vah, val: val,
+                r1: r1, r2: r2, r3: r3,
+                s1: s1, s2: s2, s3: s3
+            },
             session: getMarketSession(),
             time: new Date().toLocaleTimeString()
         });
@@ -682,7 +608,7 @@ app.get('/api/market', async function(req, res) {
 // HEALTH & TEST
 // ===============================================
 app.get('/health', function(req, res) {
-    res.json({ status: 'OK', version: '1.23 ANTI-400', timestamp: new Date().toISOString() });
+    res.json({ status: 'OK', version: '1.23.1-FIX', timestamp: new Date().toISOString() });
 });
 
 app.get('/api/test-ea', function(req, res) {
@@ -703,5 +629,5 @@ app.get('/', function(req, res) {
 // ===============================================
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, function() {
-    console.log('BPT v1.23 ANTI-400 running on port ' + PORT);
+    console.log('BPT v1.23.1 FIX running on port ' + PORT);
 });
