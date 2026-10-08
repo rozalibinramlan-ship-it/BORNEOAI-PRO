@@ -1,6 +1,6 @@
 // ===============================================
 // BPT — Borneo Pro Trade
-// Server v1.26 — News + Mapping + Semua Fix
+// Server v1.26.1 — FIX Valetax .vxx + Spread
 // ===============================================
 const express = require('express');
 const cors = require('cors');
@@ -25,8 +25,7 @@ const GEMINI_API_KEY = process.env.GEMINI_API_KEY || '';
 const ai = new GoogleGenAI({ apiKey: GEMINI_API_KEY });
 const GEMINI_MODEL = 'gemini-flash-latest';
 
-const SCORE_CUN = 90;
-const SCORE_BOLEH = 70;
+const SCORE_BOLEH = 65;              // ✅ dari 70 → 65
 const SCORE_CHOPPY_DIFF = 10;
 const COOLDOWN_MS = 15 * 60 * 1000;
 const MAX_LOCK_MS = 30 * 60 * 1000;
@@ -65,9 +64,7 @@ async function sendTelegram(message) {
     if (!TELEGRAM_BOT_TOKEN || !TELEGRAM_CHAT_ID) return;
     try {
         const url = 'https://api.telegram.org/bot' + TELEGRAM_BOT_TOKEN + '/sendMessage';
-        await axios.post(url, {
-            chat_id: TELEGRAM_CHAT_ID, text: message, parse_mode: 'HTML'
-        }, { timeout: 8000 });
+        await axios.post(url, { chat_id: TELEGRAM_CHAT_ID, text: message, parse_mode: 'HTML' }, { timeout: 8000 });
         console.log('📱 Telegram sent');
     } catch (e) { console.log('❌ Telegram error:', e.message); }
 }
@@ -114,7 +111,8 @@ app.post('/api/ea/heartbeat', express.text({ type: '*/*', limit: '5mb' }), funct
         leverage: body.leverage || 0,
         currency: body.currency || 'USD'
     };
-    console.log('♥ HB ' + eaStatus.accountNumber + ' | ' + Object.keys(eaStatus.prices).length + ' pairs');
+    const priceCount = Object.keys(eaStatus.prices).length;
+    console.log('♥ HB ' + eaStatus.accountNumber + ' | ' + priceCount + ' pairs | ' + Object.keys(eaStatus.prices).join(','));
     res.json({ status: 'OK' });
 });
 
@@ -384,19 +382,16 @@ function detectSNR(candles) {
 }
 
 // ===============================================
-// ✅ NEWS FETCH (Biquote)
+// NEWS
 // ===============================================
 async function fetchNews() {
-    if (Date.now() - newsCache.fetchedAt < NEWS_CACHE_MS && newsCache.events.length > 0) {
-        return newsCache.events;
-    }
+    if (Date.now() - newsCache.fetchedAt < NEWS_CACHE_MS && newsCache.events.length > 0) return newsCache.events;
     try {
         const response = await axios.get(BIQUOTE_URL + '/calendar', { timeout: 10000 })
             .catch(function() { return { data: { events: [] } }; });
         const d = response.data;
         let events = d.events || d.data || d.calendar || (Array.isArray(d) ? d : []);
         if (!Array.isArray(events)) events = [];
-        
         const usdEvents = events
             .filter(function(e) {
                 const cur = String(e.currency || e.country || '').toUpperCase();
@@ -414,13 +409,12 @@ async function fetchNews() {
                     previous: String(e.previous || e.prior || '-')
                 };
             });
-        
         newsCache.events = usdEvents;
         newsCache.fetchedAt = Date.now();
-        console.log('📰 News fetched: ' + usdEvents.length + ' events');
+        console.log('📰 News: ' + usdEvents.length + ' events');
         return usdEvents;
     } catch (e) {
-        console.log('News fetch error:', e.message);
+        console.log('News error:', e.message);
         return [];
     }
 }
@@ -450,12 +444,14 @@ function analyzeCandles(candles, symbol, snr) {
     let buyScore = 0, sellScore = 0;
     let buyReasons = [], sellReasons = [];
     
+    // EMA (50)
     if (ema9 > ema21 && ema21 > ema50) { buyScore += 50; buyReasons.push('EMA BUY'); }
     if (ema9 < ema21 && ema21 < ema50) { sellScore += 50; sellReasons.push('EMA SELL'); }
     
-    if (ema9 > ema21 && gap_9_21 > 0.30) { buyScore += 20; buyReasons.push('Gap +20'); }
+    // Gap (35)
+    if (ema9 > ema21 && gap_9_21 > 0.25) { buyScore += 20; buyReasons.push('Gap +20'); }
     if (ema9 > ema21 && gap_9_21 > 0.50) { buyScore += 15; buyReasons.push('Gap +15'); }
-    if (ema9 < ema21 && gap_9_21 > 0.30) { sellScore += 20; sellReasons.push('Gap +20'); }
+    if (ema9 < ema21 && gap_9_21 > 0.25) { sellScore += 20; sellReasons.push('Gap +20'); }
     if (ema9 < ema21 && gap_9_21 > 0.50) { sellScore += 15; sellReasons.push('Gap +15'); }
     
     if (gap_21_50 > 0.20) {
@@ -463,24 +459,29 @@ function analyzeCandles(candles, symbol, snr) {
         else { sellScore += 10; sellReasons.push('Trend kuat'); }
     }
     
+    // RSI (15)
     if (rsi >= 70) { sellScore += 15; sellReasons.push('RSI ' + rsi.toFixed(0) + ' OB'); }
     if (rsi <= 30) { buyScore += 15; buyReasons.push('RSI ' + rsi.toFixed(0) + ' OS'); }
     if (rsi > 55 && rsi < 70 && ema9 > ema21) { buyScore += 5; buyReasons.push('RSI bull'); }
     if (rsi < 45 && rsi > 30 && ema9 < ema21) { sellScore += 5; sellReasons.push('RSI bear'); }
     
+    // MACD (15)
     if (macd.cross === 'BULL_CROSS') { buyScore += 15; buyReasons.push('MACD cross UP'); }
     if (macd.cross === 'BEAR_CROSS') { sellScore += 15; sellReasons.push('MACD cross DOWN'); }
     if (macd.histogram > 0 && ema9 > ema21) { buyScore += 5; buyReasons.push('MACD+'); }
     if (macd.histogram < 0 && ema9 < ema21) { sellScore += 5; sellReasons.push('MACD-'); }
     
+    // BB (10)
     if (bb.position < 10) { buyScore += 10; buyReasons.push('BB lower'); }
     if (bb.position > 90) { sellScore += 10; sellReasons.push('BB upper'); }
     
+    // Stoch (10)
     if (stoch.k >= 80) { sellScore += 5; sellReasons.push('Stoch OB'); }
     if (stoch.k <= 20) { buyScore += 5; buyReasons.push('Stoch OS'); }
     if (stoch.cross === 'BULL_CROSS') { buyScore += 5; buyReasons.push('Stoch cross UP'); }
     if (stoch.cross === 'BEAR_CROSS') { sellScore += 5; sellReasons.push('Stoch cross DOWN'); }
     
+    // Body (20)
     if (bodyPct >= 0.60) {
         if (isBullCandle) { buyScore += 10; buyReasons.push('Body bull'); }
         else { sellScore += 10; sellReasons.push('Body bear'); }
@@ -490,6 +491,7 @@ function analyzeCandles(candles, symbol, snr) {
         else { sellScore += 10; sellReasons.push('Body bear strong'); }
     }
     
+    // Level (15)
     if (snr) {
         if (snr.S1 && Math.abs(currentPrice - snr.S1) / currentPrice < 0.003) {
             buyScore += 15; buyReasons.push('Dekat S1');
@@ -507,11 +509,11 @@ function analyzeCandles(candles, symbol, snr) {
     if (!(diff < SCORE_CHOPPY_DIFF && winnerScore >= SCORE_BOLEH)) {
         if (winner === 'BUY' && buyScore >= SCORE_BOLEH) {
             sig = 'BUY';
-            confidence = Math.min(Math.round(buyScore / 1.55), 100);
+            confidence = Math.min(buyScore, 100);  // ✅ Formula baru — score = confidence
             reasons = buyReasons;
         } else if (winner === 'SELL' && sellScore >= SCORE_BOLEH) {
             sig = 'SELL';
-            confidence = Math.min(Math.round(sellScore / 1.55), 100);
+            confidence = Math.min(sellScore, 100);
             reasons = sellReasons;
         }
     }
@@ -555,13 +557,20 @@ async function checkMultiTimeframe(symbol) {
 // ===============================================
 const tickCache = new Map();
 
+// ✅ FIX #1: Handle .vxx (double x)
 function toEASymbol(symbol) {
     const base = symbol.replace('/', '');
-    const suffixes = ['.vx', '', 'm', '.', 'c', 'pro', 'ecn', 'raw'];
-    if (eaStatus.prices) {
+    // ✅ .vxx dulu (Valetax)
+    const suffixes = ['.vxx', '.vx', '', 'm', '.', 'c', 'pro', 'ecn', 'raw'];
+    if (eaStatus.prices && Object.keys(eaStatus.prices).length > 0) {
         for (let i = 0; i < suffixes.length; i++) {
             const test = base + suffixes[i];
             if (eaStatus.prices[test]) return test;
+        }
+        // ✅ Fallback: scan semua keys — cari yang match base
+        const keys = Object.keys(eaStatus.prices);
+        for (let i = 0; i < keys.length; i++) {
+            if (keys[i].indexOf(base) === 0) return keys[i];
         }
     }
     return base;
@@ -576,7 +585,12 @@ async function getTick(symbol) {
             const bid = parseFloat(p.bid || p.price || 0);
             const ask = parseFloat(p.ask || 0);
             const mid = bid ? (ask ? (bid + ask) / 2 : bid) : 0;
-            if (mid > 0) return { bid: bid, ask: ask || bid, mid: mid, spread: ask ? ask - bid : 0, source: 'MT4' };
+            if (mid > 0) {
+                console.log('✅ Harga MT4: ' + symbol + ' → ' + eaSymbol + ' = ' + mid);
+                return { bid: bid, ask: ask || bid, mid: mid, spread: ask ? ask - bid : 0, source: 'MT4' };
+            }
+        } else {
+            console.log('⚠️ Symbol tak jumpa: ' + symbol + ' → ' + eaSymbol);
         }
     }
     const cached = tickCache.get(symbol);
@@ -669,9 +683,12 @@ function calculateSLTP(direction, entry, atr, symbol, atrProfile) {
     }
 }
 
+// ✅ FIX #2: Spread 0 = OK
 function isSpreadOK(symbol, spread) {
     const limit = getSpreadLimit(symbol);
-    return spread > 0 && spread <= limit;
+    // Spread 0 atau invalid = OK (takde data — terima je)
+    if (!spread || spread <= 0) return true;
+    return spread <= limit;
 }
 
 // ===============================================
@@ -810,14 +827,14 @@ Jangan panjang. Padat & actionable. Guna emoji.`;
             }
         };
         aiMappings.lastUpdate = Date.now();
-        console.log('✅ ' + sessionName + ' mapping sent & saved');
+        console.log('✅ ' + sessionName + ' mapping sent');
     } catch (e) {
         console.log('❌ ' + sessionName + ' error:', e.message);
     }
 }
 
 // ===============================================
-// SCHEDULE — Auto Mapping + News Refresh
+// SCHEDULE
 // ===============================================
 let lastTrigger = { ASIA: '', LONDON: '', NY: '' };
 
@@ -826,28 +843,21 @@ setInterval(function() {
     const utcHour = now.getUTCHours();
     const utcMinute = now.getUTCMinutes();
     const today = now.toISOString().split('T')[0];
-    
     if (utcHour === 23 && utcMinute < 5 && lastTrigger.ASIA !== today) {
         lastTrigger.ASIA = today;
-        console.log('⏰ ASIA mapping trigger');
         generateSessionMapping('XAU/USD', 'ASIA').catch(e => console.log(e.message));
     }
     if (utcHour === 7 && utcMinute < 5 && lastTrigger.LONDON !== today) {
         lastTrigger.LONDON = today;
-        console.log('⏰ LONDON mapping trigger');
         generateSessionMapping('XAU/USD', 'LONDON').catch(e => console.log(e.message));
     }
     if (utcHour === 12 && utcMinute < 5 && lastTrigger.NY !== today) {
         lastTrigger.NY = today;
-        console.log('⏰ NY mapping trigger');
         generateSessionMapping('XAU/USD', 'NEW YORK').catch(e => console.log(e.message));
     }
 }, 60000);
 
-// News refresh — setiap 30 minit
-setInterval(function() {
-    fetchNews().catch(e => console.log(e.message));
-}, 30 * 60 * 1000);
+setInterval(function() { fetchNews().catch(e => console.log(e.message)); }, 30 * 60 * 1000);
 
 // ===============================================
 // API: SIGNAL
@@ -874,14 +884,14 @@ app.get('/api/signal', async function(req, res) {
         const atr = calculateATR(candles, 14);
         const atrProfile = getATRProfile(candles);
         const mtf = await checkMultiTimeframe(symbol);
-
+        
         const now = Date.now();
         const cooldownData = signalCooldown.get(symbol);
         const isCooldown = cooldownData && (now - cooldownData.time) < COOLDOWN_MS;
         const existingLock = signalLock.get(symbol);
         let signal = 'WAIT', isLocked = false, lockedEntry = null, lockUntil = 0;
         let skipReason = null;
-
+        
         if (!spreadOK) {
             skipReason = 'Spread tinggi (' + tick.spread.toFixed(decimal) + ' > ' + getSpreadLimit(symbol) + ')';
         } else if (!isCooldown) {
@@ -893,7 +903,7 @@ app.get('/api/signal', async function(req, res) {
                     lockUntil = existingLock.lockedAt + MAX_LOCK_MS;
                     isLocked = true;
                 } else signalLock.delete(symbol);
-            } else if (emaSignal !== 'WAIT' && emaConfidence >= 70) {
+            } else if (emaSignal !== 'WAIT' && emaConfidence >= 65) {
                 signal = emaSignal;
                 const lockData = { direction: signal, entry: harga, lockedAt: Date.now() };
                 signalLock.set(symbol, lockData);
@@ -908,31 +918,21 @@ app.get('/api/signal', async function(req, res) {
                     const srcEmoji = tick.source === 'MT4' ? '💼' : '📡';
                     let confirmList = '';
                     analysis.reasons.forEach(function(r) { confirmList += '✅ ' + r + '\n'; });
-                    
                     const msgTg = emoji + ' <b>SIGNAL ' + signal + '</b> (' + emaConfidence + '%)\n' +
-                                   '━━━━━━━━━━━━━━━━\n' +
-                                   '📊 ' + symbol + '\n' +
-                                   '🎯 Entry: ' + harga.toFixed(decimal) + ' ' + srcEmoji + '\n\n' +
-                                   '🛑 SL: ' + sltpTg.sl + '\n' +
-                                   '✅ TP1: ' + sltpTg.tp1 + '\n' +
-                                   '✅ TP2: ' + sltpTg.tp2 + '\n' +
-                                   '✅ TP3: ' + sltpTg.tp3 + '\n\n' +
-                                   '━━━━━━━━━━━━━━━━\n' +
-                                   '📊 <b>CONFIRMATIONS:</b>\n' + confirmList + '\n' +
-                                   '📊 RSI: ' + analysis.rsi.toFixed(0) + ' | MACD: ' + analysis.macd.cross + '\n' +
-                                   '📊 Stoch: ' + analysis.stoch.k.toFixed(0) + ' | BB: ' + analysis.bb.position.toFixed(0) + '%\n' +
-                                   '📊 Spread: ' + tick.spread.toFixed(decimal) + ' ✅\n\n' +
-                                   '📊 ATR: ' + atrProfile.level + '\n' +
-                                   '⏰ ' + getMarketSession() + '\n' +
-                                   '📈 MTF: ' + mtf.agreement;
+                                   '━━━━━━━━━━━━━━━━\n📊 ' + symbol + '\n🎯 Entry: ' + harga.toFixed(decimal) + ' ' + srcEmoji + '\n\n' +
+                                   '🛑 SL: ' + sltpTg.sl + '\n✅ TP1: ' + sltpTg.tp1 + '\n✅ TP2: ' + sltpTg.tp2 + '\n✅ TP3: ' + sltpTg.tp3 + '\n\n' +
+                                   '━━━━━━━━━━━━━━━━\n📊 <b>CONFIRMATIONS:</b>\n' + confirmList +
+                                   '━━━━━━━━━━━━━━━━\n📊 RSI: ' + analysis.rsi.toFixed(0) + ' | MACD: ' + analysis.macd.cross + '\n' +
+                                   '📊 Stoch: ' + analysis.stoch.k.toFixed(0) + ' | BB: ' + analysis.bb.position.toFixed(0) + '%\n\n' +
+                                   '⏰ ' + getMarketSession() + '\n📈 MTF: ' + mtf.agreement;
                     await sendTelegram(msgTg);
                 } catch (e) {}
             }
         }
-
+        
         const displayPrice = lockedEntry !== null ? lockedEntry : harga;
         const sltp = (signal === 'BUY' || signal === 'SELL') ? calculateSLTP(signal, displayPrice, atr, symbol, atrProfile) : null;
-
+        
         res.json({
             symbol: symbol, harga: parseFloat(harga.toFixed(decimal)),
             harga_source: tick.source || 'TWELVEDATA',
@@ -952,13 +952,7 @@ app.get('/api/signal', async function(req, res) {
             spread_ok: spreadOK, spread_limit: getSpreadLimit(symbol),
             rsi: parseFloat(analysis.rsi.toFixed(1)),
             macd: { histogram: parseFloat(analysis.macd.histogram.toFixed(4)), cross: analysis.macd.cross },
-            bb: {
-                position: parseFloat(analysis.bb.position.toFixed(1)),
-                squeeze: analysis.bb.squeeze,
-                upper: parseFloat(analysis.bb.upper.toFixed(decimal)),
-                middle: parseFloat(analysis.bb.middle.toFixed(decimal)),
-                lower: parseFloat(analysis.bb.lower.toFixed(decimal))
-            },
+            bb: { position: parseFloat(analysis.bb.position.toFixed(1)), squeeze: analysis.bb.squeeze, upper: parseFloat(analysis.bb.upper.toFixed(decimal)), middle: parseFloat(analysis.bb.middle.toFixed(decimal)), lower: parseFloat(analysis.bb.lower.toFixed(decimal)) },
             stoch: { k: parseFloat(analysis.stoch.k.toFixed(1)), d: parseFloat(analysis.stoch.d.toFixed(1)), cross: analysis.stoch.cross },
             reasons: analysis.reasons,
             POC: snr.POC ? parseFloat(snr.POC.toFixed(decimal)) : null,
@@ -970,17 +964,7 @@ app.get('/api/signal', async function(req, res) {
             S1: snr.S1 ? parseFloat(snr.S1.toFixed(decimal)) : null,
             S2: snr.S2 ? parseFloat(snr.S2.toFixed(decimal)) : null,
             S3: snr.S3 ? parseFloat(snr.S3.toFixed(decimal)) : null,
-            snr: {
-                poc: snr.POC ? parseFloat(snr.POC.toFixed(decimal)) : null,
-                vah: snr.VAH ? parseFloat(snr.VAH.toFixed(decimal)) : null,
-                val: snr.VAL ? parseFloat(snr.VAL.toFixed(decimal)) : null,
-                r1: snr.R1 ? parseFloat(snr.R1.toFixed(decimal)) : null,
-                r2: snr.R2 ? parseFloat(snr.R2.toFixed(decimal)) : null,
-                r3: snr.R3 ? parseFloat(snr.R3.toFixed(decimal)) : null,
-                s1: snr.S1 ? parseFloat(snr.S1.toFixed(decimal)) : null,
-                s2: snr.S2 ? parseFloat(snr.S2.toFixed(decimal)) : null,
-                s3: snr.S3 ? parseFloat(snr.S3.toFixed(decimal)) : null
-            },
+            snr: { poc: snr.POC ? parseFloat(snr.POC.toFixed(decimal)) : null, vah: snr.VAH ? parseFloat(snr.VAH.toFixed(decimal)) : null, val: snr.VAL ? parseFloat(snr.VAL.toFixed(decimal)) : null, r1: snr.R1 ? parseFloat(snr.R1.toFixed(decimal)) : null, r2: snr.R2 ? parseFloat(snr.R2.toFixed(decimal)) : null, r3: snr.R3 ? parseFloat(snr.R3.toFixed(decimal)) : null, s1: snr.S1 ? parseFloat(snr.S1.toFixed(decimal)) : null, s2: snr.S2 ? parseFloat(snr.S2.toFixed(decimal)) : null, s3: snr.S3 ? parseFloat(snr.S3.toFixed(decimal)) : null },
             mtf: { timeframes: mtf.timeframes, agreement: mtf.agreement, consensus: mtf.consensus, buyCount: mtf.buyCount, sellCount: mtf.sellCount },
             agreement: mtf.agreement,
             ema9: parseFloat(ema9.toFixed(decimal)),
@@ -993,24 +977,18 @@ app.get('/api/signal', async function(req, res) {
         });
     } catch (error) {
         console.error('/api/signal error:', error.message);
-        res.json({
-            symbol: symbol, signal: 'WAIT', action: 'WAIT', score: 0,
-            harga: 0, entry: 0, sl: null, tp1: null,
-            ema9: 0, ema21: 0, ema50: 0, error: error.message
-        });
+        res.json({ symbol: symbol, signal: 'WAIT', action: 'WAIT', score: 0, harga: 0, entry: 0, sl: null, tp1: null, ema9: 0, ema21: 0, ema50: 0, error: error.message });
     }
 });
 
 // ===============================================
-// API: NEWS — Fetch dari Biquote
+// API: NEWS
 // ===============================================
 app.get('/api/news', async function(req, res) {
     try {
         const events = await fetchNews();
         res.json({ status: 'success', events: events, cached: Date.now() - newsCache.fetchedAt < NEWS_CACHE_MS });
-    } catch (e) {
-        res.json({ status: 'success', events: [], error: e.message });
-    }
+    } catch (e) { res.json({ status: 'success', events: [], error: e.message }); }
 });
 
 // ===============================================
@@ -1042,7 +1020,6 @@ app.get('/api/market', async function(req, res) {
         const harga = tick.mid || closes[closes.length - 1];
         const snr = detectSNR(candles);
         const analysis = analyzeCandles(candles, symbol, snr);
-
         const poc = snr.POC ? parseFloat(snr.POC.toFixed(decimal)) : null;
         const vah = snr.VAH ? parseFloat(snr.VAH.toFixed(decimal)) : null;
         const val = snr.VAL ? parseFloat(snr.VAL.toFixed(decimal)) : null;
@@ -1052,10 +1029,8 @@ app.get('/api/market', async function(req, res) {
         const s1 = snr.S1 ? parseFloat(snr.S1.toFixed(decimal)) : null;
         const s2 = snr.S2 ? parseFloat(snr.S2.toFixed(decimal)) : null;
         const s3 = snr.S3 ? parseFloat(snr.S3.toFixed(decimal)) : null;
-
         res.json({
-            symbol: symbol,
-            harga: parseFloat(harga.toFixed(decimal)),
+            symbol: symbol, harga: parseFloat(harga.toFixed(decimal)),
             harga_source: tick.source || 'TWELVEDATA',
             bid: parseFloat((tick.bid || harga).toFixed(decimal)),
             ask: parseFloat((tick.ask || harga).toFixed(decimal)),
@@ -1068,23 +1043,17 @@ app.get('/api/market', async function(req, res) {
             macd_cross: analysis ? analysis.macd.cross : 'NONE',
             stoch_k: analysis ? parseFloat(analysis.stoch.k.toFixed(1)) : 0,
             bb_position: analysis ? parseFloat(analysis.bb.position.toFixed(1)) : 50,
-            POC: poc, VAH: vah, VAL: val,
-            R1: r1, R2: r2, R3: r3,
-            S1: s1, S2: s2, S3: s3,
-            poc: poc, vah: vah, val: val,
-            r1: r1, r2: r2, r3: r3,
-            s1: s1, s2: s2, s3: s3,
+            POC: poc, VAH: vah, VAL: val, R1: r1, R2: r2, R3: r3, S1: s1, S2: s2, S3: s3,
+            poc: poc, vah: vah, val: val, r1: r1, r2: r2, r3: r3, s1: s1, s2: s2, s3: s3,
             snr: { poc: poc, vah: vah, val: val, r1: r1, r2: r2, r3: r3, s1: s1, s2: s2, s3: s3 },
             session: getMarketSession(),
             time: new Date().toLocaleTimeString()
         });
-    } catch (error) {
-        res.status(500).json({ error: error.message });
-    }
+    } catch (error) { res.status(500).json({ error: error.message }); }
 });
 
 // ===============================================
-// TEST ENDPOINTS
+// TEST
 // ===============================================
 app.get('/api/test-twelvedata', async function(req, res) {
     try {
@@ -1101,7 +1070,7 @@ app.get('/api/test-news', async function(req, res) {
 });
 
 app.get('/health', function(req, res) {
-    res.json({ status: 'OK', version: '1.26', timestamp: new Date().toISOString() });
+    res.json({ status: 'OK', version: '1.26.1', timestamp: new Date().toISOString() });
 });
 
 app.get('/api/test-ea', function(req, res) {
@@ -1110,13 +1079,13 @@ app.get('/api/test-ea', function(req, res) {
         queue_length: tradeQueue.length, prices_count: Object.keys(eaStatus.prices || {}).length,
         telegram_set: !!TELEGRAM_BOT_TOKEN && !!TELEGRAM_CHAT_ID,
         gemini_set: !!GEMINI_API_KEY, gemini_model: GEMINI_MODEL,
-        version: '1.26'
+        version: '1.26.1'
     });
 });
 
 app.get('/api/test-telegram', async function(req, res) {
     try {
-        await sendTelegram('🧪 <b>Test Telegram</b>\n\nBPT v1.26 ✅');
+        await sendTelegram('🧪 <b>Test Telegram</b>\n\nBPT v1.26.1 ✅');
         res.json({ status: 'OK' });
     } catch (e) { res.json({ status: 'FAIL', error: e.message }); }
 });
@@ -1128,6 +1097,6 @@ app.get('/', function(req, res) { res.sendFile(__dirname + '/index.html'); });
 // ===============================================
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, function() {
-    console.log('BPT v1.26 running on port ' + PORT);
-    fetchNews().catch(e => console.log('Initial news fetch fail:', e.message));
+    console.log('BPT v1.26.1 running on port ' + PORT);
+    fetchNews().catch(e => console.log('News fail:', e.message));
 });
