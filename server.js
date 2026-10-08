@@ -1,10 +1,11 @@
 // ===============================================
 // BPT — Borneo Pro Trade
-// Server v1.23.1 — Fix Confidence 0%
+// Server v1.24 — AI Mapping + Telegram + Harga MT4
 // ===============================================
 const express = require('express');
 const cors = require('cors');
 const axios = require('axios');
+const { GoogleGenAI } = require('@google/genai');
 require('dotenv').config();
 
 const app = express();
@@ -16,10 +17,11 @@ app.use(express.static(__dirname));
 // ===============================================
 const TWELVEDATA_URL = 'https://api.twelvedata.com';
 const EA_API_KEY = process.env.EA_API_KEY || 'ea-secret-2024';
-const ACCOUNT_BALANCE = parseFloat(process.env.ACCOUNT_BALANCE || '1000');
-const RISK_PERCENT = parseFloat(process.env.RISK_PERCENT || '1');
-const FIXED_LOT = parseFloat(process.env.FIXED_LOT || '0.01');
-const USE_FIXED_LOT = process.env.USE_FIXED_LOT === 'true';
+const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN || '';
+const TELEGRAM_CHAT_ID = process.env.TELEGRAM_CHAT_ID || '';
+const GEMINI_API_KEY = process.env.GEMINI_API_KEY || '';
+
+const ai = new GoogleGenAI({ apiKey: GEMINI_API_KEY });
 
 const CANDLE_BODY_MIN = 0.30;
 const SCORE_CUN = 90;
@@ -41,6 +43,39 @@ function switchKey() { if (TWELVEDATA_KEYS.length > 1) { currentKeyIndex = (curr
 
 console.log('TwelveData: ' + TWELVEDATA_KEYS.length + ' keys');
 console.log('EA API Key: ' + EA_API_KEY);
+console.log('Telegram: ' + (TELEGRAM_BOT_TOKEN ? 'OK' : 'TAK SET'));
+console.log('Gemini: ' + (GEMINI_API_KEY ? 'OK' : 'TAK SET'));
+
+// ===============================================
+// MAPPING STORAGE
+// ===============================================
+let aiMappings = {
+    ASIA: null,
+    LONDON: null,
+    'NEW YORK': null,
+    lastUpdate: 0
+};
+
+// ===============================================
+// TELEGRAM
+// ===============================================
+async function sendTelegram(message) {
+    if (!TELEGRAM_BOT_TOKEN || !TELEGRAM_CHAT_ID) {
+        console.log('⚠️ Telegram env tak set');
+        return;
+    }
+    try {
+        const url = 'https://api.telegram.org/bot' + TELEGRAM_BOT_TOKEN + '/sendMessage';
+        await axios.post(url, {
+            chat_id: TELEGRAM_CHAT_ID,
+            text: message,
+            parse_mode: 'HTML'
+        }, { timeout: 8000 });
+        console.log('📱 Telegram sent');
+    } catch (e) {
+        console.log('❌ Telegram error:', e.message);
+    }
+}
 
 // ===============================================
 // EA BRIDGE - ANTI 400
@@ -69,9 +104,6 @@ function parseEAJson(rawText) {
 }
 
 app.post('/api/ea/heartbeat', express.text({ type: '*/*', limit: '5mb' }), function(req, res) {
-    console.log('HB Headers:', req.headers['x-api-key'], '| ENV:', EA_API_KEY);
-    console.log('HB Raw:', (req.body || '').toString().substring(0, 120));
-
     const body = parseEAJson(req.body);
     eaStatus = {
         online: true, lastSeen: Date.now(),
@@ -87,7 +119,7 @@ app.post('/api/ea/heartbeat', express.text({ type: '*/*', limit: '5mb' }), funct
         leverage: body.leverage || 0,
         currency: body.currency || 'USD'
     };
-    console.log('HB OK ' + eaStatus.accountNumber + ' Bal: ' + eaStatus.balance);
+    console.log('♥ HB ' + eaStatus.accountNumber + ' | ' + Object.keys(eaStatus.prices).length + ' pairs');
     res.json({ status: 'OK' });
 });
 
@@ -124,7 +156,6 @@ app.post('/api/ea/result', express.text({ type: '*/*' }), function(req, res) {
     res.json({ status: 'OK' });
 });
 
-// JSON PARSER untuk market/signal
 app.use(express.json({ strict: false, limit: '5mb' }));
 
 app.post('/api/ea/execute', function(req, res) {
@@ -208,11 +239,20 @@ function getATRProfile(candles) {
 }
 
 function getMarketSession() {
+    const dayOfWeek = new Date().getUTCDay();
+    if (dayOfWeek === 0 || dayOfWeek === 6) return 'CLOSED';
     const h = new Date().getUTCHours();
-    if (h >= 7 && h < 16) return 'LONDON';
-    if (h >= 12 && h < 21) return 'NEW YORK';
+    if (h >= 7 && h < 12) return 'LONDON';
+    if (h >= 12 && h < 16) return 'LONDON';
+    if (h >= 16 && h < 21) return 'NEW YORK';
     if (h >= 0 && h < 7) return 'ASIA';
     return 'CLOSED';
+}
+
+function getSessionStatus(session) {
+    if (session === 'LONDON' || session === 'NEW YORK') return '🟢 PRIME';
+    if (session === 'ASIA') return '🟡 SLOW';
+    return '🔴 CLOSED';
 }
 
 function detectSNR(candles) {
@@ -296,7 +336,6 @@ function analyzeCandles(candles) {
     const winner = buyScore > sellScore ? 'BUY' : sellScore > buyScore ? 'SELL' : 'WAIT';
     const winnerScore = Math.max(buyScore, sellScore);
 
-    // ✅ FIX CARA B — Kekal filter choppy, tapi jangan bagi signal kalau confidence rendah
     if (!(diff < SCORE_CHOPPY_DIFF && winnerScore >= SCORE_BOLEH)) {
         if (winner === 'BUY' && buyScore >= SCORE_BOLEH) {
             sig = 'BUY';
@@ -307,7 +346,7 @@ function analyzeCandles(candles) {
         }
     }
 
-    return { signal: sig, confidence: confidence, ema9: ema9, ema21: ema21, ema50: ema50, buyScore: buyScore, sellScore: sellScore, winner: winner, diff: diff };
+    return { signal: sig, confidence: confidence, ema9: ema9, ema21: ema21, ema50: ema50, buyScore: buyScore, sellScore: sellScore };
 }
 
 async function checkMultiTimeframe(symbol) {
@@ -338,29 +377,68 @@ async function checkMultiTimeframe(symbol) {
     return { timeframes: results, buyCount: buyCount, sellCount: sellCount, agreement: maxCount + '/4', consensus: majoritySignal };
 }
 
+// ===============================================
+// GET TICK
+// ===============================================
 const tickCache = new Map();
+
+function toEASymbol(symbol) {
+    const base = symbol.replace('/', '');
+    const suffixes = ['.vx', '', 'm', '.', 'c', 'pro', 'ecn', 'raw'];
+    if (eaStatus.prices) {
+        for (let i = 0; i < suffixes.length; i++) {
+            const test = base + suffixes[i];
+            if (eaStatus.prices[test]) return test;
+        }
+    }
+    return base;
+}
+
 async function getTick(symbol) {
+    const isEAOnline = (Date.now() - eaStatus.lastSeen) < 30000;
+    
+    if (isEAOnline && eaStatus.prices) {
+        const eaSymbol = toEASymbol(symbol);
+        const p = eaStatus.prices[eaSymbol];
+        
+        if (p) {
+            const bid = parseFloat(p.bid || p.price || 0);
+            const ask = parseFloat(p.ask || 0);
+            const mid = bid ? (ask ? (bid + ask) / 2 : bid) : 0;
+            
+            if (mid > 0) {
+                return { bid: bid, ask: ask || bid, mid: mid, spread: ask ? ask - bid : 0, source: 'MT4' };
+            }
+        }
+    }
+    
     const cached = tickCache.get(symbol);
     if (cached && Date.now() - cached.time < 30000) return cached.data;
+    
     const tdSymbol = toTwelveData(symbol);
     let attempts = 0;
     const maxAttempts = TWELVEDATA_KEYS.length * 2 || 2;
+    
     while (attempts < maxAttempts) {
         attempts++;
         try {
             const url = TWELVEDATA_URL + '/quote?symbol=' + encodeURIComponent(tdSymbol) + '&apikey=' + getCurrentKey();
             const response = await axios.get(url, { timeout: 10000 });
             const d = response.data;
+            
             if (d.status === 'error' || d.code) {
                 if (d.code === 429) { switchKey(); continue; }
                 throw new Error(d.message || 'API error');
             }
+            
             const bid = parseFloat(d.bid || 0);
             const ask = parseFloat(d.ask || 0);
             const price = parseFloat(d.close || d.price || 0);
             const mid = price || (bid + ask) / 2 || 0;
+            
             if (mid === 0) throw new Error('Harga 0');
-            const result = { bid: bid || mid, ask: ask || mid, mid: mid, spread: parseFloat(d.spread || (ask - bid) || 0) };
+            
+            const result = { bid: bid || mid, ask: ask || mid, mid: mid, spread: parseFloat(d.spread || (ask - bid) || 0), source: 'TWELVEDATA' };
             tickCache.set(symbol, { data: result, time: Date.now() });
             return result;
         } catch (e) {
@@ -431,7 +509,200 @@ function calculateSLTP(direction, entry, atr, symbol, atrProfile) {
 }
 
 // ===============================================
-// API: SIGNAL
+// AI SESSION MAPPING
+// ===============================================
+async function generateSessionMapping(symbol, sessionName) {
+    try {
+        console.log('🤖 AI mapping: ' + symbol + ' (' + sessionName + ')...');
+        
+        const decimal = getDecimal(symbol);
+        const tick = await getTick(symbol);
+        const harga = tick.mid;
+        
+        const candlesH4 = await getOHLC(symbol, '4h', 100);
+        const candlesH1 = await getOHLC(symbol, '1h', 200);
+        const candlesM15 = await getOHLC(symbol, '15min', 200);
+        const candlesM5 = await getOHLC(symbol, '5min', 300);
+        
+        if (candlesH4.length < 50) { console.log('Data tak cukup'); return; }
+        
+        const h4Analysis = analyzeCandles(candlesH4);
+        const h1Analysis = analyzeCandles(candlesH1);
+        const m15Analysis = analyzeCandles(candlesM15);
+        const m5Analysis = analyzeCandles(candlesM5);
+        
+        const h4SNR = detectSNR(candlesH4);
+        const h1SNR = detectSNR(candlesH1);
+        const h4ATR = calculateATR(candlesH4, 14);
+        const h1ATR = calculateATR(candlesH1, 14);
+        
+        const mtf = await checkMultiTimeframe(symbol);
+        const sessionStatus = getSessionStatus(sessionName);
+        
+        const nowMYT = new Date(Date.now() + 8 * 60 * 60 * 1000);
+        const dateStr = nowMYT.toISOString().split('T')[0];
+        const timeStr = nowMYT.toTimeString().substring(0, 5);
+        const dayName = ['Ahad','Isnin','Selasa','Rabu','Khamis','Jumaat','Sabtu'][nowMYT.getUTCDay()];
+        
+        // Prompt Gemini
+        const prompt = `Kau trader professional. Buat SESSION MAPPING untuk ${sessionName}.
+
+DATA:
+- Pair: ${symbol}
+- Harga: ${harga.toFixed(decimal)} (${tick.source})
+- Masa: ${timeStr} MYT, ${dayName} ${dateStr}
+- Session: ${sessionName} (${sessionStatus})
+
+ANALISIS TEKNIKAL:
+H4 Bias: ${h4Analysis ? h4Analysis.signal : 'WAIT'} (${h4Analysis ? h4Analysis.confidence : 0}%)
+EMA9: ${h4Analysis ? h4Analysis.ema9.toFixed(decimal) : '-'} | EMA21: ${h4Analysis ? h4Analysis.ema21.toFixed(decimal) : '-'} | EMA50: ${h4Analysis ? h4Analysis.ema50.toFixed(decimal) : '-'}
+ATR H4: ${h4ATR.toFixed(decimal)}
+
+Key Levels H4:
+R2: ${h4SNR.R2 ? h4SNR.R2.toFixed(decimal) : '-'}
+R1: ${h4SNR.R1 ? h4SNR.R1.toFixed(decimal) : '-'}
+POC: ${h4SNR.POC ? h4SNR.POC.toFixed(decimal) : '-'}
+S1: ${h4SNR.S1 ? h4SNR.S1.toFixed(decimal) : '-'}
+S2: ${h4SNR.S2 ? h4SNR.S2.toFixed(decimal) : '-'}
+
+MTF: M5=${m5Analysis ? m5Analysis.signal : 'WAIT'}, M15=${m15Analysis ? m15Analysis.signal : 'WAIT'}, H1=${h1Analysis ? h1Analysis.signal : 'WAIT'} (${mtf.agreement}, ${mtf.consensus})
+
+FORMAT JAWAPAN (Bahasa Melayu, padat):
+
+📉/📈 BIAS ${sessionName}: [BUY/SELL/WAIT] - [1 ayat reason]
+
+🎯 KEY LEVEL:
+• Resistance: X.XX
+• Support: X.XX
+
+📍 PLAN ENTRY:
+• Entry: X.XX – X.XX
+• SL: X.XX
+• TP1: X.XX
+• TP2: X.XX
+
+⚠️ WHAT TO WATCH:
+• [3-4 pointer tentang apa nak tengok]
+
+💡 SESSION TIP:
+[1-2 ayat spesifik untuk session ni]
+
+Jangan panjang. Padat & actionable. Guna emoji.`;
+
+        const result = await ai.models.generateContent({
+            model: 'gemini-2.0-flash',
+            contents: prompt
+        });
+        
+        const aiAnalysis = result.text;
+        const sessionEmoji = sessionName === 'LONDON' ? '🇬🇧' : sessionName === 'NEW YORK' ? '🇺🇸' : sessionName === 'ASIA' ? '🇯🇵' : '🌍';
+        
+        // Build message Telegram
+        const msg = `${sessionEmoji} <b>SESSION ${sessionName}</b>\n` +
+                    `⏰ ${timeStr} MYT | 📅 ${dayName} ${dateStr}\n` +
+                    `━━━━━━━━━━━━━━━━\n\n` +
+                    `💰 <b>${symbol}: ${harga.toFixed(decimal)}</b> (${tick.source})\n` +
+                    `📊 ${sessionStatus}\n\n` +
+                    `━━━━━━━━━━━━━━━━\n` +
+                    `🤖 <b>AI ANALYSIS</b>\n` +
+                    `━━━━━━━━━━━━━━━━\n\n` +
+                    aiAnalysis + `\n\n` +
+                    `━━━━━━━━━━━━━━━━\n` +
+                    `📈 MTF: ${mtf.agreement} (${mtf.consensus})\n` +
+                    `⚠️ <i>Auto mapping — bukan signal. Trade guna setup sendiri.</i>`;
+        
+        // Split kalau panjang
+        if (msg.length > 4000) {
+            const parts = [];
+            let current = '';
+            const lines = msg.split('\n');
+            for (const line of lines) {
+                if ((current + line).length > 3900) {
+                    parts.push(current);
+                    current = line + '\n';
+                } else {
+                    current += line + '\n';
+                }
+            }
+            if (current) parts.push(current);
+            
+            for (const part of parts) {
+                await sendTelegram(part);
+                await new Promise(r => setTimeout(r, 1000));
+            }
+        } else {
+            await sendTelegram(msg);
+        }
+        
+        // SAVE untuk app
+        aiMappings[sessionName] = {
+            session: sessionName,
+            time: nowMYT.toISOString(),
+            timeStr: timeStr,
+            dateStr: dateStr,
+            dayName: dayName,
+            symbol: symbol,
+            harga: parseFloat(harga.toFixed(decimal)),
+            harga_source: tick.source,
+            session_status: sessionStatus,
+            ai_analysis: aiAnalysis,
+            mtf_agreement: mtf.agreement,
+            mtf_consensus: mtf.consensus,
+            h4_signal: h4Analysis ? h4Analysis.signal : 'WAIT',
+            h4_confidence: h4Analysis ? h4Analysis.confidence : 0,
+            levels: {
+                r2: h4SNR.R2 ? parseFloat(h4SNR.R2.toFixed(decimal)) : null,
+                r1: h4SNR.R1 ? parseFloat(h4SNR.R1.toFixed(decimal)) : null,
+                poc: h4SNR.POC ? parseFloat(h4SNR.POC.toFixed(decimal)) : null,
+                s1: h4SNR.S1 ? parseFloat(h4SNR.S1.toFixed(decimal)) : null,
+                s2: h4SNR.S2 ? parseFloat(h4SNR.S2.toFixed(decimal)) : null
+            }
+        };
+        aiMappings.lastUpdate = Date.now();
+        
+        console.log('✅ ' + sessionName + ' mapping sent & saved');
+        
+    } catch (e) {
+        console.log('❌ ' + sessionName + ' error:', e.message);
+    }
+}
+
+// ===============================================
+// SCHEDULE — SETIAP SESSION
+// ===============================================
+let lastTrigger = { ASIA: '', LONDON: '', NY: '' };
+
+setInterval(function() {
+    const now = new Date();
+    const utcHour = now.getUTCHours();
+    const utcMinute = now.getUTCMinutes();
+    const today = now.toISOString().split('T')[0];
+    
+    // ASIA: 7 AM MYT = 23:00 UTC
+    if (utcHour === 23 && utcMinute < 5 && lastTrigger.ASIA !== today) {
+        lastTrigger.ASIA = today;
+        console.log('⏰ ASIA mapping...');
+        generateSessionMapping('XAU/USD', 'ASIA').catch(e => console.log(e.message));
+    }
+    
+    // LONDON: 3 PM MYT = 07:00 UTC
+    if (utcHour === 7 && utcMinute < 5 && lastTrigger.LONDON !== today) {
+        lastTrigger.LONDON = today;
+        console.log('⏰ LONDON mapping...');
+        generateSessionMapping('XAU/USD', 'LONDON').catch(e => console.log(e.message));
+    }
+    
+    // NY: 8 PM MYT = 12:00 UTC
+    if (utcHour === 12 && utcMinute < 5 && lastTrigger.NY !== today) {
+        lastTrigger.NY = today;
+        console.log('⏰ NY mapping...');
+        generateSessionMapping('XAU/USD', 'NEW YORK').catch(e => console.log(e.message));
+    }
+    
+}, 60000);
+
+// ===============================================
+// API: SIGNAL — Guna harga MT4 + Telegram
 // ===============================================
 app.get('/api/signal', async function(req, res) {
     const symbol = req.query.symbol || 'XAU/USD';
@@ -440,7 +711,10 @@ app.get('/api/signal', async function(req, res) {
         const candles = await getOHLC(symbol, '5min', 300);
         if (candles.length < 50) throw new Error('Data tak cukup');
         const closes = candles.map(function(c) { return c.close; });
-        const harga = closes[closes.length - 1];
+        
+        const tick = await getTick(symbol);
+        const harga = tick.mid || closes[closes.length - 1];
+        
         const emaAnalysis = analyzeCandles(candles);
         const emaSignal = emaAnalysis ? emaAnalysis.signal : 'WAIT';
         const emaConfidence = emaAnalysis ? emaAnalysis.confidence : 0;
@@ -468,7 +742,6 @@ app.get('/api/signal', async function(req, res) {
                     isLocked = true;
                 } else signalLock.delete(symbol);
             } else if (emaSignal !== 'WAIT' && emaConfidence >= 70) {
-                // ✅ FIX CARA B — Hanya lock kalau confidence >= 70
                 signal = emaSignal;
                 const lockData = { direction: signal, entry: harga, lockedAt: Date.now() };
                 signalLock.set(symbol, lockData);
@@ -476,6 +749,29 @@ app.get('/api/signal', async function(req, res) {
                 lockedEntry = harga;
                 lockUntil = lockData.lockedAt + MAX_LOCK_MS;
                 isLocked = true;
+                
+                // ✅ Telegram
+                try {
+                    const sltpTg = calculateSLTP(signal, harga, atr, symbol, atrProfile);
+                    const emoji = emaConfidence >= 90 ? '🚀' : '⚡';
+                    const srcEmoji = tick.source === 'MT4' ? '💼' : '📡';
+                    
+                    const msgTg = emoji + ' <b>SIGNAL ' + signal + '</b> (' + emaConfidence + '%)\n' +
+                                   '━━━━━━━━━━━━━━━━\n' +
+                                   '📊 ' + symbol + '\n' +
+                                   '🎯 Entry: ' + harga.toFixed(decimal) + ' ' + srcEmoji + '\n\n' +
+                                   '🛑 SL: ' + sltpTg.sl + '\n' +
+                                   '✅ TP1: ' + sltpTg.tp1 + '\n' +
+                                   '✅ TP2: ' + sltpTg.tp2 + '\n' +
+                                   '✅ TP3: ' + sltpTg.tp3 + '\n\n' +
+                                   '📊 ATR: ' + atrProfile.level + '\n' +
+                                   '⏰ ' + getMarketSession() + '\n' +
+                                   '📈 MTF: ' + mtf.agreement;
+                    
+                    await sendTelegram(msgTg);
+                } catch (e) {
+                    console.log('TG send error:', e.message);
+                }
             }
         }
 
@@ -485,6 +781,7 @@ app.get('/api/signal', async function(req, res) {
         res.json({
             symbol: symbol,
             harga: parseFloat(harga.toFixed(decimal)),
+            harga_source: tick.source || 'TWELVEDATA',
             signal: signal,
             action: signal,
             bias: emaSignal,
@@ -538,11 +835,35 @@ app.get('/api/signal', async function(req, res) {
             timeframe: '5min'
         });
     } catch (error) {
+        console.error('/api/signal error:', error.message);
         res.json({
             symbol: symbol, signal: 'WAIT', action: 'WAIT', score: 0,
             harga: 0, entry: 0, sl: null, tp1: null,
             ema9: 0, ema21: 0, ema50: 0, error: error.message
         });
+    }
+});
+
+// ===============================================
+// API: MAPPING — untuk app
+// ===============================================
+app.get('/api/mapping', function(req, res) {
+    res.json({
+        status: 'OK',
+        mappings: aiMappings,
+        current_session: getMarketSession(),
+        timestamp: Date.now()
+    });
+});
+
+app.get('/api/generate-mapping', async function(req, res) {
+    const symbol = req.query.symbol || 'XAU/USD';
+    const session = req.query.session || 'LONDON';
+    try {
+        await generateSessionMapping(symbol, session.toUpperCase());
+        res.json({ status: 'OK', message: session + ' mapping sent' });
+    } catch (e) {
+        res.json({ status: 'FAIL', error: e.message });
     }
 });
 
@@ -576,26 +897,20 @@ app.get('/api/market', async function(req, res) {
         res.json({
             symbol: symbol,
             harga: parseFloat(harga.toFixed(decimal)),
+            harga_source: tick.source || 'TWELVEDATA',
             bid: parseFloat((tick.bid || harga).toFixed(decimal)),
             ask: parseFloat((tick.ask || harga).toFixed(decimal)),
             spread: parseFloat((tick.spread || 0).toFixed(decimal)),
             ema9: parseFloat(ema9.toFixed(decimal)),
             ema21: parseFloat(ema21.toFixed(decimal)),
             ema50: parseFloat(ema50.toFixed(decimal)),
-            // ✅ Uppercase
             POC: poc, VAH: vah, VAL: val,
             R1: r1, R2: r2, R3: r3,
             S1: s1, S2: s2, S3: s3,
-            // ✅ Lowercase (untuk app kau)
             poc: poc, vah: vah, val: val,
             r1: r1, r2: r2, r3: r3,
             s1: s1, s2: s2, s3: s3,
-            // ✅ Object snr (untuk app kau)
-            snr: {
-                poc: poc, vah: vah, val: val,
-                r1: r1, r2: r2, r3: r3,
-                s1: s1, s2: s2, s3: s3
-            },
+            snr: { poc: poc, vah: vah, val: val, r1: r1, r2: r2, r3: r3, s1: s1, s2: s2, s3: s3 },
             session: getMarketSession(),
             time: new Date().toLocaleTimeString()
         });
@@ -608,16 +923,27 @@ app.get('/api/market', async function(req, res) {
 // HEALTH & TEST
 // ===============================================
 app.get('/health', function(req, res) {
-    res.json({ status: 'OK', version: '1.23.1-FIX', timestamp: new Date().toISOString() });
+    res.json({ status: 'OK', version: '1.24', timestamp: new Date().toISOString() });
 });
 
 app.get('/api/test-ea', function(req, res) {
     res.json({
         ea_api_key_set: !!EA_API_KEY,
         ea_online: eaStatus.online,
-        ea_last_seen: eaStatus.lastSeen,
-        queue_length: tradeQueue.length
+        queue_length: tradeQueue.length,
+        prices_count: Object.keys(eaStatus.prices || {}).length,
+        telegram_set: !!TELEGRAM_BOT_TOKEN && !!TELEGRAM_CHAT_ID,
+        gemini_set: !!GEMINI_API_KEY
     });
+});
+
+app.get('/api/test-telegram', async function(req, res) {
+    try {
+        await sendTelegram('🧪 <b>Test Telegram</b>\n\nBPT v1.24 ✅');
+        res.json({ status: 'OK' });
+    } catch (e) {
+        res.json({ status: 'FAIL', error: e.message });
+    }
 });
 
 app.get('/', function(req, res) {
@@ -629,5 +955,5 @@ app.get('/', function(req, res) {
 // ===============================================
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, function() {
-    console.log('BPT v1.23.1 FIX running on port ' + PORT);
+    console.log('BPT v1.24 running on port ' + PORT);
 });
