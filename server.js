@@ -1,6 +1,6 @@
 // ===============================================
 // BPT — Borneo Pro Trade
-// Server v1.25.1 — FIX BUGS + Spread Filter
+// Server v1.26 — News + Mapping + Semua Fix
 // ===============================================
 const express = require('express');
 const cors = require('cors');
@@ -16,6 +16,7 @@ app.use(express.static(__dirname));
 // CONFIG
 // ===============================================
 const TWELVEDATA_URL = 'https://api.twelvedata.com';
+const BIQUOTE_URL = 'https://biquote.io/api';
 const EA_API_KEY = process.env.EA_API_KEY || 'ea-secret-2024';
 const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN || '';
 const TELEGRAM_CHAT_ID = process.env.TELEGRAM_CHAT_ID || '';
@@ -27,17 +28,12 @@ const GEMINI_MODEL = 'gemini-flash-latest';
 const SCORE_CUN = 90;
 const SCORE_BOLEH = 70;
 const SCORE_CHOPPY_DIFF = 10;
-const ENTRY_ZONE_MULTIPLIER = 0.8;
-const COOLDOWN_MS = 15 * 60 * 1000;  // ✅ 15 minit (dari 5)
-const MAX_LOCK_MS = 30 * 60 * 1000;  // ✅ 30 minit (dari 15)
+const COOLDOWN_MS = 15 * 60 * 1000;
+const MAX_LOCK_MS = 30 * 60 * 1000;
 
-// ✅ Spread threshold per symbol
 const SPREAD_LIMIT = {
-    'XAU/USD': 0.80,
-    'XAG/USD': 0.05,
-    'EUR/USD': 0.00025,
-    'GBP/USD': 0.00035,
-    'USD/JPY': 0.025,
+    'XAU/USD': 0.80, 'XAG/USD': 0.05,
+    'EUR/USD': 0.00025, 'GBP/USD': 0.00035, 'USD/JPY': 0.025,
     'DEFAULT': 0.0010
 };
 
@@ -56,9 +52,11 @@ console.log('Telegram: ' + (TELEGRAM_BOT_TOKEN ? 'OK' : 'TAK SET'));
 console.log('Gemini: ' + (GEMINI_API_KEY ? 'OK' : 'TAK SET'));
 
 // ===============================================
-// MAPPING STORAGE
+// STORAGE
 // ===============================================
 let aiMappings = { ASIA: null, LONDON: null, 'NEW YORK': null, lastUpdate: 0 };
+let newsCache = { events: [], fetchedAt: 0 };
+const NEWS_CACHE_MS = 10 * 60 * 1000;
 
 // ===============================================
 // TELEGRAM
@@ -196,9 +194,7 @@ function getDecimal(s) {
     if (s.indexOf('XAU') >= 0 || s.indexOf('XAG') >= 0) return 2;
     return 5;
 }
-function getSpreadLimit(symbol) {
-    return SPREAD_LIMIT[symbol] || SPREAD_LIMIT['DEFAULT'];
-}
+function getSpreadLimit(symbol) { return SPREAD_LIMIT[symbol] || SPREAD_LIMIT['DEFAULT']; }
 
 function calculateEMA(closes, period) {
     if (closes.length === 0) return 0;
@@ -208,9 +204,6 @@ function calculateEMA(closes, period) {
     return e;
 }
 
-// ===============================================
-// ✅ RSI — FIXED (buang extra bracket)
-// ===============================================
 function calculateRSI(closes, period) {
     period = period || 14;
     if (closes.length < period + 1) return 50;
@@ -226,7 +219,6 @@ function calculateRSI(closes, period) {
         const diff = closes[i] - closes[i - 1];
         const gain = diff > 0 ? diff : 0;
         const loss = diff < 0 ? Math.abs(diff) : 0;
-        // ✅ FIX: buang extra bracket
         avgGain = (avgGain * (period - 1) + gain) / period;
         avgLoss = (avgLoss * (period - 1) + loss) / period;
     }
@@ -235,9 +227,6 @@ function calculateRSI(closes, period) {
     return 100 - (100 / (1 + rs));
 }
 
-// ===============================================
-// ✅ MACD — FIXED (tambah bracket tertutup)
-// ===============================================
 function calculateMACD(closes) {
     if (closes.length < 35) return { macd: 0, signal: 0, histogram: 0, cross: 'NONE' };
     const ema12 = calculateEMA(closes.slice(-26), 12);
@@ -253,7 +242,6 @@ function calculateMACD(closes) {
     const signalLine = calculateEMA(macdHistory.slice(-9), 9);
     const histogram = macdLine - signalLine;
     const prevMacd = macdHistory.length >= 2 ? macdHistory[macdHistory.length - 2] : 0;
-    // ✅ FIX: tambah bracket tertutup
     const prevSignal = macdHistory.length >= 10 ? calculateEMA(macdHistory.slice(-10, -1), 9) : 0;
     let cross = 'NONE';
     if (macdLine > signalLine && prevMacd <= prevSignal) cross = 'BULL_CROSS';
@@ -261,9 +249,6 @@ function calculateMACD(closes) {
     return { macd: macdLine, signal: signalLine, histogram: histogram, cross: cross };
 }
 
-// ===============================================
-// Bollinger Bands
-// ===============================================
 function calculateBollingerBands(closes, period, mult) {
     period = period || 20;
     mult = mult || 2;
@@ -285,9 +270,6 @@ function calculateBollingerBands(closes, period, mult) {
     return { upper: upper, middle: sma, lower: lower, position: position, squeeze: squeeze, width: bbWidth * 100 };
 }
 
-// ===============================================
-// Stochastic
-// ===============================================
 function calculateStochastic(candles, period, kSmooth, dSmooth) {
     period = period || 14;
     kSmooth = kSmooth || 3;
@@ -402,26 +384,64 @@ function detectSNR(candles) {
 }
 
 // ===============================================
-// ANALYZE CANDLES v1.25
+// ✅ NEWS FETCH (Biquote)
+// ===============================================
+async function fetchNews() {
+    if (Date.now() - newsCache.fetchedAt < NEWS_CACHE_MS && newsCache.events.length > 0) {
+        return newsCache.events;
+    }
+    try {
+        const response = await axios.get(BIQUOTE_URL + '/calendar', { timeout: 10000 })
+            .catch(function() { return { data: { events: [] } }; });
+        const d = response.data;
+        let events = d.events || d.data || d.calendar || (Array.isArray(d) ? d : []);
+        if (!Array.isArray(events)) events = [];
+        
+        const usdEvents = events
+            .filter(function(e) {
+                const cur = String(e.currency || e.country || '').toUpperCase();
+                return cur === 'USD' || cur === 'US';
+            })
+            .slice(0, 30)
+            .map(function(e) {
+                return {
+                    time: String(e.time || e.date || e.datetime || ''),
+                    currency: String(e.currency || 'USD'),
+                    impact: String(e.impact || 'medium').toLowerCase(),
+                    event: String(e.event || e.title || e.name || ''),
+                    actual: String(e.actual || '-'),
+                    forecast: String(e.forecast || e.estimate || '-'),
+                    previous: String(e.previous || e.prior || '-')
+                };
+            });
+        
+        newsCache.events = usdEvents;
+        newsCache.fetchedAt = Date.now();
+        console.log('📰 News fetched: ' + usdEvents.length + ' events');
+        return usdEvents;
+    } catch (e) {
+        console.log('News fetch error:', e.message);
+        return [];
+    }
+}
+
+// ===============================================
+// ANALYZE CANDLES
 // ===============================================
 function analyzeCandles(candles, symbol, snr) {
     if (!candles || candles.length < 50) return null;
-    
     const closes = candles.map(function(c) { return c.close; });
     const currentPrice = closes[closes.length - 1];
-    
     const ema9 = calculateEMA(closes, 9);
     const ema21 = calculateEMA(closes, 21);
     const ema50 = calculateEMA(closes, 50);
     const gap_9_21 = Math.abs(ema9 - ema21);
     const gap_21_50 = Math.abs(ema21 - ema50);
-    
     const lastCandle = candles[candles.length - 1];
     const bodyRange = lastCandle.high - lastCandle.low;
     const bodySize = Math.abs(lastCandle.close - lastCandle.open);
     const bodyPct = bodyRange > 0 ? bodySize / bodyRange : 0;
     const isBullCandle = lastCandle.close > lastCandle.open;
-    
     const rsi = calculateRSI(closes, 14);
     const macd = calculateMACD(closes);
     const bb = calculateBollingerBands(closes, 20, 2);
@@ -430,11 +450,9 @@ function analyzeCandles(candles, symbol, snr) {
     let buyScore = 0, sellScore = 0;
     let buyReasons = [], sellReasons = [];
     
-    // EMA (50 pts)
     if (ema9 > ema21 && ema21 > ema50) { buyScore += 50; buyReasons.push('EMA BUY'); }
     if (ema9 < ema21 && ema21 < ema50) { sellScore += 50; sellReasons.push('EMA SELL'); }
     
-    // GAP (35 pts)
     if (ema9 > ema21 && gap_9_21 > 0.30) { buyScore += 20; buyReasons.push('Gap +20'); }
     if (ema9 > ema21 && gap_9_21 > 0.50) { buyScore += 15; buyReasons.push('Gap +15'); }
     if (ema9 < ema21 && gap_9_21 > 0.30) { sellScore += 20; sellReasons.push('Gap +20'); }
@@ -445,29 +463,24 @@ function analyzeCandles(candles, symbol, snr) {
         else { sellScore += 10; sellReasons.push('Trend kuat'); }
     }
     
-    // RSI (15 pts)
     if (rsi >= 70) { sellScore += 15; sellReasons.push('RSI ' + rsi.toFixed(0) + ' OB'); }
     if (rsi <= 30) { buyScore += 15; buyReasons.push('RSI ' + rsi.toFixed(0) + ' OS'); }
     if (rsi > 55 && rsi < 70 && ema9 > ema21) { buyScore += 5; buyReasons.push('RSI bull'); }
     if (rsi < 45 && rsi > 30 && ema9 < ema21) { sellScore += 5; sellReasons.push('RSI bear'); }
     
-    // MACD (15 pts)
     if (macd.cross === 'BULL_CROSS') { buyScore += 15; buyReasons.push('MACD cross UP'); }
     if (macd.cross === 'BEAR_CROSS') { sellScore += 15; sellReasons.push('MACD cross DOWN'); }
     if (macd.histogram > 0 && ema9 > ema21) { buyScore += 5; buyReasons.push('MACD+'); }
     if (macd.histogram < 0 && ema9 < ema21) { sellScore += 5; sellReasons.push('MACD-'); }
     
-    // BB (10 pts)
     if (bb.position < 10) { buyScore += 10; buyReasons.push('BB lower'); }
     if (bb.position > 90) { sellScore += 10; sellReasons.push('BB upper'); }
     
-    // Stoch (10 pts)
     if (stoch.k >= 80) { sellScore += 5; sellReasons.push('Stoch OB'); }
     if (stoch.k <= 20) { buyScore += 5; buyReasons.push('Stoch OS'); }
     if (stoch.cross === 'BULL_CROSS') { buyScore += 5; buyReasons.push('Stoch cross UP'); }
     if (stoch.cross === 'BEAR_CROSS') { sellScore += 5; sellReasons.push('Stoch cross DOWN'); }
     
-    // Body (20 pts)
     if (bodyPct >= 0.60) {
         if (isBullCandle) { buyScore += 10; buyReasons.push('Body bull'); }
         else { sellScore += 10; sellReasons.push('Body bear'); }
@@ -477,7 +490,6 @@ function analyzeCandles(candles, symbol, snr) {
         else { sellScore += 10; sellReasons.push('Body bear strong'); }
     }
     
-    // Level (15 pts)
     if (snr) {
         if (snr.S1 && Math.abs(currentPrice - snr.S1) / currentPrice < 0.003) {
             buyScore += 15; buyReasons.push('Dekat S1');
@@ -514,10 +526,8 @@ function analyzeCandles(candles, symbol, snr) {
 
 async function checkMultiTimeframe(symbol) {
     const timeframes = [
-        { tf: '5min', label: 'M5' },
-        { tf: '15min', label: 'M15' },
-        { tf: '30min', label: 'M30' },
-        { tf: '1h', label: 'H1' }
+        { tf: '5min', label: 'M5' }, { tf: '15min', label: 'M15' },
+        { tf: '30min', label: 'M30' }, { tf: '1h', label: 'H1' }
     ];
     const results = [];
     for (let i = 0; i < timeframes.length; i++) {
@@ -526,7 +536,7 @@ async function checkMultiTimeframe(symbol) {
         try {
             const candles = await getOHLC(symbol, item.tf, 100);
             tfResult = analyzeCandles(candles, symbol, null);
-        } catch (e) { console.log('TF ' + item.label + ' fail: ' + e.message); }
+        } catch (e) {}
         if (tfResult) results.push({ tf: item.tf, label: item.label, signal: tfResult.signal, confidence: tfResult.confidence });
         else results.push({ tf: item.tf, label: item.label, signal: 'WAIT', confidence: 0 });
     }
@@ -659,9 +669,6 @@ function calculateSLTP(direction, entry, atr, symbol, atrProfile) {
     }
 }
 
-// ===============================================
-// ✅ SPREAD CHECK
-// ===============================================
 function isSpreadOK(symbol, spread) {
     const limit = getSpreadLimit(symbol);
     return spread > 0 && spread <= limit;
@@ -708,9 +715,9 @@ ANALISIS TEKNIKAL:
 H4 Bias: ${h4Analysis ? h4Analysis.signal : 'WAIT'} (${h4Analysis ? h4Analysis.confidence : 0}%)
 EMA9: ${h4Analysis ? h4Analysis.ema9.toFixed(decimal) : '-'} | EMA21: ${h4Analysis ? h4Analysis.ema21.toFixed(decimal) : '-'} | EMA50: ${h4Analysis ? h4Analysis.ema50.toFixed(decimal) : '-'}
 RSI: ${h4Analysis ? h4Analysis.rsi.toFixed(0) : '-'}
-MACD: ${h4Analysis ? h4Analysis.macd.histogram.toFixed(3) : '-'} (${h4Analysis ? h4Analysis.macd.cross : '-'})
-Stoch: K=${h4Analysis ? h4Analysis.stoch.k.toFixed(0) : '-'} D=${h4Analysis ? h4Analysis.stoch.d.toFixed(0) : '-'}
-BB Position: ${h4Analysis ? h4Analysis.bb.position.toFixed(0) : '-'}%
+MACD: ${h4Analysis ? h4Analysis.macd.cross : '-'}
+Stoch: K=${h4Analysis ? h4Analysis.stoch.k.toFixed(0) : '-'}
+BB: ${h4Analysis ? h4Analysis.bb.position.toFixed(0) : '-'}%
 ATR H4: ${h4ATR.toFixed(decimal)}
 
 Key Levels H4:
@@ -771,9 +778,8 @@ Jangan panjang. Padat & actionable. Guna emoji.`;
             let current = '';
             const lines = msg.split('\n');
             for (const line of lines) {
-                if ((current + line).length > 3900) {
-                    parts.push(current); current = line + '\n';
-                } else { current += line + '\n'; }
+                if ((current + line).length > 3900) { parts.push(current); current = line + '\n'; }
+                else { current += line + '\n'; }
             }
             if (current) parts.push(current);
             for (const part of parts) {
@@ -811,7 +817,7 @@ Jangan panjang. Padat & actionable. Guna emoji.`;
 }
 
 // ===============================================
-// SCHEDULE
+// SCHEDULE — Auto Mapping + News Refresh
 // ===============================================
 let lastTrigger = { ASIA: '', LONDON: '', NY: '' };
 
@@ -823,20 +829,28 @@ setInterval(function() {
     
     if (utcHour === 23 && utcMinute < 5 && lastTrigger.ASIA !== today) {
         lastTrigger.ASIA = today;
+        console.log('⏰ ASIA mapping trigger');
         generateSessionMapping('XAU/USD', 'ASIA').catch(e => console.log(e.message));
     }
     if (utcHour === 7 && utcMinute < 5 && lastTrigger.LONDON !== today) {
         lastTrigger.LONDON = today;
+        console.log('⏰ LONDON mapping trigger');
         generateSessionMapping('XAU/USD', 'LONDON').catch(e => console.log(e.message));
     }
     if (utcHour === 12 && utcMinute < 5 && lastTrigger.NY !== today) {
         lastTrigger.NY = today;
+        console.log('⏰ NY mapping trigger');
         generateSessionMapping('XAU/USD', 'NEW YORK').catch(e => console.log(e.message));
     }
 }, 60000);
 
+// News refresh — setiap 30 minit
+setInterval(function() {
+    fetchNews().catch(e => console.log(e.message));
+}, 30 * 60 * 1000);
+
 // ===============================================
-// API: SIGNAL — v1.25.1 dengan SPREAD CHECK
+// API: SIGNAL
 // ===============================================
 app.get('/api/signal', async function(req, res) {
     const symbol = req.query.symbol || 'XAU/USD';
@@ -847,13 +861,9 @@ app.get('/api/signal', async function(req, res) {
         const closes = candles.map(function(c) { return c.close; });
         const tick = await getTick(symbol);
         const harga = tick.mid || closes[closes.length - 1];
-        
-        // ✅ SPREAD CHECK
         const spreadOK = isSpreadOK(symbol, tick.spread);
-        
         const snr = detectSNR(candles);
         const analysis = analyzeCandles(candles, symbol, snr);
-        
         if (!analysis) throw new Error('Analysis fail');
         
         const emaSignal = analysis.signal;
@@ -872,10 +882,8 @@ app.get('/api/signal', async function(req, res) {
         let signal = 'WAIT', isLocked = false, lockedEntry = null, lockUntil = 0;
         let skipReason = null;
 
-        // ✅ SPREAD REJECT
         if (!spreadOK) {
             skipReason = 'Spread tinggi (' + tick.spread.toFixed(decimal) + ' > ' + getSpreadLimit(symbol) + ')';
-            signal = 'WAIT';
         } else if (!isCooldown) {
             if (existingLock) {
                 const lockAge = Date.now() - existingLock.lockedAt;
@@ -898,7 +906,6 @@ app.get('/api/signal', async function(req, res) {
                     const sltpTg = calculateSLTP(signal, harga, atr, symbol, atrProfile);
                     const emoji = emaConfidence >= 90 ? '🚀' : emaConfidence >= 80 ? '⚡' : '📊';
                     const srcEmoji = tick.source === 'MT4' ? '💼' : '📡';
-                    
                     let confirmList = '';
                     analysis.reasons.forEach(function(r) { confirmList += '✅ ' + r + '\n'; });
                     
@@ -912,16 +919,14 @@ app.get('/api/signal', async function(req, res) {
                                    '✅ TP3: ' + sltpTg.tp3 + '\n\n' +
                                    '━━━━━━━━━━━━━━━━\n' +
                                    '📊 <b>CONFIRMATIONS:</b>\n' + confirmList + '\n' +
-                                   '━━━━━━━━━━━━━━━━\n' +
                                    '📊 RSI: ' + analysis.rsi.toFixed(0) + ' | MACD: ' + analysis.macd.cross + '\n' +
                                    '📊 Stoch: ' + analysis.stoch.k.toFixed(0) + ' | BB: ' + analysis.bb.position.toFixed(0) + '%\n' +
                                    '📊 Spread: ' + tick.spread.toFixed(decimal) + ' ✅\n\n' +
                                    '📊 ATR: ' + atrProfile.level + '\n' +
                                    '⏰ ' + getMarketSession() + '\n' +
-                                   '📈 MTF: ' + mtf.agreement + ' (' + mtf.consensus + ')';
-                    
+                                   '📈 MTF: ' + mtf.agreement;
                     await sendTelegram(msgTg);
-                } catch (e) { console.log('TG error:', e.message); }
+                } catch (e) {}
             }
         }
 
@@ -929,13 +934,9 @@ app.get('/api/signal', async function(req, res) {
         const sltp = (signal === 'BUY' || signal === 'SELL') ? calculateSLTP(signal, displayPrice, atr, symbol, atrProfile) : null;
 
         res.json({
-            symbol: symbol,
-            harga: parseFloat(harga.toFixed(decimal)),
+            symbol: symbol, harga: parseFloat(harga.toFixed(decimal)),
             harga_source: tick.source || 'TWELVEDATA',
-            signal: signal,
-            action: signal,
-            bias: emaSignal,
-            score: emaConfidence,
+            signal: signal, action: signal, bias: emaSignal, score: emaConfidence,
             entry: parseFloat(displayPrice.toFixed(decimal)),
             harga_entry: parseFloat(displayPrice.toFixed(decimal)),
             entryZone: [
@@ -946,19 +947,11 @@ app.get('/api/signal', async function(req, res) {
             tp1: sltp ? parseFloat(sltp.tp1) : null,
             tp2: sltp ? parseFloat(sltp.tp2) : null,
             tp3: sltp ? parseFloat(sltp.tp3) : null,
-            lockUntil: lockUntil,
-            locked: isLocked,
-            skip_reason: skipReason,
-            
+            lockUntil: lockUntil, locked: isLocked, skip_reason: skipReason,
             spread: parseFloat(tick.spread.toFixed(decimal)),
-            spread_ok: spreadOK,
-            spread_limit: getSpreadLimit(symbol),
-            
+            spread_ok: spreadOK, spread_limit: getSpreadLimit(symbol),
             rsi: parseFloat(analysis.rsi.toFixed(1)),
-            macd: {
-                histogram: parseFloat(analysis.macd.histogram.toFixed(4)),
-                cross: analysis.macd.cross
-            },
+            macd: { histogram: parseFloat(analysis.macd.histogram.toFixed(4)), cross: analysis.macd.cross },
             bb: {
                 position: parseFloat(analysis.bb.position.toFixed(1)),
                 squeeze: analysis.bb.squeeze,
@@ -966,13 +959,8 @@ app.get('/api/signal', async function(req, res) {
                 middle: parseFloat(analysis.bb.middle.toFixed(decimal)),
                 lower: parseFloat(analysis.bb.lower.toFixed(decimal))
             },
-            stoch: {
-                k: parseFloat(analysis.stoch.k.toFixed(1)),
-                d: parseFloat(analysis.stoch.d.toFixed(1)),
-                cross: analysis.stoch.cross
-            },
+            stoch: { k: parseFloat(analysis.stoch.k.toFixed(1)), d: parseFloat(analysis.stoch.d.toFixed(1)), cross: analysis.stoch.cross },
             reasons: analysis.reasons,
-            
             POC: snr.POC ? parseFloat(snr.POC.toFixed(decimal)) : null,
             VAH: snr.VAH ? parseFloat(snr.VAH.toFixed(decimal)) : null,
             VAL: snr.VAL ? parseFloat(snr.VAL.toFixed(decimal)) : null,
@@ -993,13 +981,7 @@ app.get('/api/signal', async function(req, res) {
                 s2: snr.S2 ? parseFloat(snr.S2.toFixed(decimal)) : null,
                 s3: snr.S3 ? parseFloat(snr.S3.toFixed(decimal)) : null
             },
-            mtf: {
-                timeframes: mtf.timeframes,
-                agreement: mtf.agreement,
-                consensus: mtf.consensus,
-                buyCount: mtf.buyCount,
-                sellCount: mtf.sellCount
-            },
+            mtf: { timeframes: mtf.timeframes, agreement: mtf.agreement, consensus: mtf.consensus, buyCount: mtf.buyCount, sellCount: mtf.sellCount },
             agreement: mtf.agreement,
             ema9: parseFloat(ema9.toFixed(decimal)),
             ema21: parseFloat(ema21.toFixed(decimal)),
@@ -1016,6 +998,18 @@ app.get('/api/signal', async function(req, res) {
             harga: 0, entry: 0, sl: null, tp1: null,
             ema9: 0, ema21: 0, ema50: 0, error: error.message
         });
+    }
+});
+
+// ===============================================
+// API: NEWS — Fetch dari Biquote
+// ===============================================
+app.get('/api/news', async function(req, res) {
+    try {
+        const events = await fetchNews();
+        res.json({ status: 'success', events: events, cached: Date.now() - newsCache.fetchedAt < NEWS_CACHE_MS });
+    } catch (e) {
+        res.json({ status: 'success', events: [], error: e.message });
     }
 });
 
@@ -1099,12 +1093,15 @@ app.get('/api/test-twelvedata', async function(req, res) {
     } catch (e) { res.json({ status: 'FAIL', error: e.message }); }
 });
 
-app.get('/api/news', function(req, res) {
-    res.json({ status: 'success', events: [], note: 'News endpoint — placeholder' });
+app.get('/api/test-news', async function(req, res) {
+    try {
+        const events = await fetchNews();
+        res.json({ status: 'OK', count: events.length, sample: events.slice(0, 5) });
+    } catch (e) { res.json({ status: 'FAIL', error: e.message }); }
 });
 
 app.get('/health', function(req, res) {
-    res.json({ status: 'OK', version: '1.25.1', timestamp: new Date().toISOString() });
+    res.json({ status: 'OK', version: '1.26', timestamp: new Date().toISOString() });
 });
 
 app.get('/api/test-ea', function(req, res) {
@@ -1113,13 +1110,13 @@ app.get('/api/test-ea', function(req, res) {
         queue_length: tradeQueue.length, prices_count: Object.keys(eaStatus.prices || {}).length,
         telegram_set: !!TELEGRAM_BOT_TOKEN && !!TELEGRAM_CHAT_ID,
         gemini_set: !!GEMINI_API_KEY, gemini_model: GEMINI_MODEL,
-        version: '1.25.1'
+        version: '1.26'
     });
 });
 
 app.get('/api/test-telegram', async function(req, res) {
     try {
-        await sendTelegram('🧪 <b>Test Telegram</b>\n\nBPT v1.25.1 ✅');
+        await sendTelegram('🧪 <b>Test Telegram</b>\n\nBPT v1.26 ✅');
         res.json({ status: 'OK' });
     } catch (e) { res.json({ status: 'FAIL', error: e.message }); }
 });
@@ -1131,5 +1128,6 @@ app.get('/', function(req, res) { res.sendFile(__dirname + '/index.html'); });
 // ===============================================
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, function() {
-    console.log('BPT v1.25.1 running on port ' + PORT);
+    console.log('BPT v1.26 running on port ' + PORT);
+    fetchNews().catch(e => console.log('Initial news fetch fail:', e.message));
 });
