@@ -1,6 +1,6 @@
 // ===============================================
 // BPT — Borneo Pro Trade
-// Server v1.24.1 — Fix Gemini Model + AI Mapping
+// Server v1.24.2 — UptimeRobot Fix + AI Mapping
 // ===============================================
 const express = require('express');
 const cors = require('cors');
@@ -22,8 +22,6 @@ const TELEGRAM_CHAT_ID = process.env.TELEGRAM_CHAT_ID || '';
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY || '';
 
 const ai = new GoogleGenAI({ apiKey: GEMINI_API_KEY });
-
-// ✅ Model baru — gemini-flash-latest (auto-update)
 const GEMINI_MODEL = 'gemini-flash-latest';
 
 const CANDLE_BODY_MIN = 0.30;
@@ -48,17 +46,11 @@ console.log('TwelveData: ' + TWELVEDATA_KEYS.length + ' keys');
 console.log('EA API Key: ' + EA_API_KEY);
 console.log('Telegram: ' + (TELEGRAM_BOT_TOKEN ? 'OK' : 'TAK SET'));
 console.log('Gemini: ' + (GEMINI_API_KEY ? 'OK' : 'TAK SET'));
-console.log('Gemini Model: ' + GEMINI_MODEL);
 
 // ===============================================
 // MAPPING STORAGE
 // ===============================================
-let aiMappings = {
-    ASIA: null,
-    LONDON: null,
-    'NEW YORK': null,
-    lastUpdate: 0
-};
+let aiMappings = { ASIA: null, LONDON: null, 'NEW YORK': null, lastUpdate: 0 };
 
 // ===============================================
 // TELEGRAM
@@ -341,13 +333,8 @@ function analyzeCandles(candles) {
     const winnerScore = Math.max(buyScore, sellScore);
 
     if (!(diff < SCORE_CHOPPY_DIFF && winnerScore >= SCORE_BOLEH)) {
-        if (winner === 'BUY' && buyScore >= SCORE_BOLEH) {
-            sig = 'BUY';
-            confidence = Math.min(buyScore, 100);
-        } else if (winner === 'SELL' && sellScore >= SCORE_BOLEH) {
-            sig = 'SELL';
-            confidence = Math.min(sellScore, 100);
-        }
+        if (winner === 'BUY' && buyScore >= SCORE_BOLEH) { sig = 'BUY'; confidence = Math.min(buyScore, 100); }
+        else if (winner === 'SELL' && sellScore >= SCORE_BOLEH) { sig = 'SELL'; confidence = Math.min(sellScore, 100); }
     }
 
     return { signal: sig, confidence: confidence, ema9: ema9, ema21: ema21, ema50: ema50, buyScore: buyScore, sellScore: sellScore };
@@ -536,9 +523,7 @@ async function generateSessionMapping(symbol, sessionName) {
         const m5Analysis = analyzeCandles(candlesM5);
         
         const h4SNR = detectSNR(candlesH4);
-        const h1SNR = detectSNR(candlesH1);
         const h4ATR = calculateATR(candlesH4, 14);
-        const h1ATR = calculateATR(candlesH1, 14);
         
         const mtf = await checkMultiTimeframe(symbol);
         const sessionStatus = getSessionStatus(sessionName);
@@ -585,10 +570,10 @@ FORMAT JAWAPAN (Bahasa Melayu, padat):
 • TP2: X.XX
 
 ⚠️ WHAT TO WATCH:
-• [3-4 pointer tentang apa nak tengok]
+• [3-4 pointer]
 
 💡 SESSION TIP:
-[1-2 ayat spesifik untuk session ni]
+[1-2 ayat]
 
 Jangan panjang. Padat & actionable. Guna emoji.`;
 
@@ -611,7 +596,7 @@ Jangan panjang. Padat & actionable. Guna emoji.`;
                     aiAnalysis + `\n\n` +
                     `━━━━━━━━━━━━━━━━\n` +
                     `📈 MTF: ${mtf.agreement} (${mtf.consensus})\n` +
-                    `⚠️ <i>Auto mapping — bukan signal. Trade guna setup sendiri.</i>`;
+                    `⚠️ <i>Auto mapping — bukan signal.</i>`;
         
         if (msg.length > 4000) {
             const parts = [];
@@ -626,7 +611,6 @@ Jangan panjang. Padat & actionable. Guna emoji.`;
                 }
             }
             if (current) parts.push(current);
-            
             for (const part of parts) {
                 await sendTelegram(part);
                 await new Promise(r => setTimeout(r, 1000));
@@ -682,17 +666,14 @@ setInterval(function() {
         lastTrigger.ASIA = today;
         generateSessionMapping('XAU/USD', 'ASIA').catch(e => console.log(e.message));
     }
-    
     if (utcHour === 7 && utcMinute < 5 && lastTrigger.LONDON !== today) {
         lastTrigger.LONDON = today;
         generateSessionMapping('XAU/USD', 'LONDON').catch(e => console.log(e.message));
     }
-    
     if (utcHour === 12 && utcMinute < 5 && lastTrigger.NY !== today) {
         lastTrigger.NY = today;
         generateSessionMapping('XAU/USD', 'NEW YORK').catch(e => console.log(e.message));
     }
-    
 }, 60000);
 
 // ===============================================
@@ -762,9 +743,7 @@ app.get('/api/signal', async function(req, res) {
                                    '📈 MTF: ' + mtf.agreement;
                     
                     await sendTelegram(msgTg);
-                } catch (e) {
-                    console.log('TG send error:', e.message);
-                }
+                } catch (e) { console.log('TG error:', e.message); }
             }
         }
 
@@ -913,6 +892,24 @@ app.get('/api/market', async function(req, res) {
 });
 
 // ===============================================
+// API: TEST TWELVEDATA (untuk UptimeRobot)
+// ===============================================
+app.get('/api/test-twelvedata', async function(req, res) {
+    try {
+        const tick = await getTick('XAU/USD');
+        res.json({ 
+            status: 'OK', 
+            keys_loaded: TWELVEDATA_KEYS.length,
+            source: tick.source,
+            harga: tick.mid,
+            timestamp: new Date().toISOString()
+        });
+    } catch (e) {
+        res.json({ status: 'FAIL', error: e.message });
+    }
+});
+
+// ===============================================
 // API: NEWS (placeholder)
 // ===============================================
 app.get('/api/news', function(req, res) {
@@ -923,7 +920,7 @@ app.get('/api/news', function(req, res) {
 // HEALTH & TEST
 // ===============================================
 app.get('/health', function(req, res) {
-    res.json({ status: 'OK', version: '1.24.1', timestamp: new Date().toISOString() });
+    res.json({ status: 'OK', version: '1.24.2', timestamp: new Date().toISOString() });
 });
 
 app.get('/api/test-ea', function(req, res) {
@@ -940,7 +937,7 @@ app.get('/api/test-ea', function(req, res) {
 
 app.get('/api/test-telegram', async function(req, res) {
     try {
-        await sendTelegram('🧪 <b>Test Telegram</b>\n\nBPT v1.24.1 ✅');
+        await sendTelegram('🧪 <b>Test Telegram</b>\n\nBPT v1.24.2 ✅');
         res.json({ status: 'OK' });
     } catch (e) {
         res.json({ status: 'FAIL', error: e.message });
@@ -956,5 +953,5 @@ app.get('/', function(req, res) {
 // ===============================================
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, function() {
-    console.log('BPT v1.24.1 running on port ' + PORT);
+    console.log('BPT v1.24.2 running on port ' + PORT);
 });
