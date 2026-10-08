@@ -1,6 +1,6 @@
 // ===============================================
 // BPT — Borneo Pro Trade
-// Server v1.24 — AI Mapping + Telegram + Harga MT4
+// Server v1.24.1 — Fix Gemini Model + AI Mapping
 // ===============================================
 const express = require('express');
 const cors = require('cors');
@@ -22,6 +22,9 @@ const TELEGRAM_CHAT_ID = process.env.TELEGRAM_CHAT_ID || '';
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY || '';
 
 const ai = new GoogleGenAI({ apiKey: GEMINI_API_KEY });
+
+// ✅ Model baru — gemini-flash-latest (auto-update)
+const GEMINI_MODEL = 'gemini-flash-latest';
 
 const CANDLE_BODY_MIN = 0.30;
 const SCORE_CUN = 90;
@@ -45,6 +48,7 @@ console.log('TwelveData: ' + TWELVEDATA_KEYS.length + ' keys');
 console.log('EA API Key: ' + EA_API_KEY);
 console.log('Telegram: ' + (TELEGRAM_BOT_TOKEN ? 'OK' : 'TAK SET'));
 console.log('Gemini: ' + (GEMINI_API_KEY ? 'OK' : 'TAK SET'));
+console.log('Gemini Model: ' + GEMINI_MODEL);
 
 // ===============================================
 // MAPPING STORAGE
@@ -544,7 +548,6 @@ async function generateSessionMapping(symbol, sessionName) {
         const timeStr = nowMYT.toTimeString().substring(0, 5);
         const dayName = ['Ahad','Isnin','Selasa','Rabu','Khamis','Jumaat','Sabtu'][nowMYT.getUTCDay()];
         
-        // Prompt Gemini
         const prompt = `Kau trader professional. Buat SESSION MAPPING untuk ${sessionName}.
 
 DATA:
@@ -590,14 +593,13 @@ FORMAT JAWAPAN (Bahasa Melayu, padat):
 Jangan panjang. Padat & actionable. Guna emoji.`;
 
         const result = await ai.models.generateContent({
-            model: 'gemini-2.0-flash',
+            model: GEMINI_MODEL,
             contents: prompt
         });
         
         const aiAnalysis = result.text;
         const sessionEmoji = sessionName === 'LONDON' ? '🇬🇧' : sessionName === 'NEW YORK' ? '🇺🇸' : sessionName === 'ASIA' ? '🇯🇵' : '🌍';
         
-        // Build message Telegram
         const msg = `${sessionEmoji} <b>SESSION ${sessionName}</b>\n` +
                     `⏰ ${timeStr} MYT | 📅 ${dayName} ${dateStr}\n` +
                     `━━━━━━━━━━━━━━━━\n\n` +
@@ -611,7 +613,6 @@ Jangan panjang. Padat & actionable. Guna emoji.`;
                     `📈 MTF: ${mtf.agreement} (${mtf.consensus})\n` +
                     `⚠️ <i>Auto mapping — bukan signal. Trade guna setup sendiri.</i>`;
         
-        // Split kalau panjang
         if (msg.length > 4000) {
             const parts = [];
             let current = '';
@@ -634,7 +635,6 @@ Jangan panjang. Padat & actionable. Guna emoji.`;
             await sendTelegram(msg);
         }
         
-        // SAVE untuk app
         aiMappings[sessionName] = {
             session: sessionName,
             time: nowMYT.toISOString(),
@@ -668,7 +668,7 @@ Jangan panjang. Padat & actionable. Guna emoji.`;
 }
 
 // ===============================================
-// SCHEDULE — SETIAP SESSION
+// SCHEDULE
 // ===============================================
 let lastTrigger = { ASIA: '', LONDON: '', NY: '' };
 
@@ -678,31 +678,25 @@ setInterval(function() {
     const utcMinute = now.getUTCMinutes();
     const today = now.toISOString().split('T')[0];
     
-    // ASIA: 7 AM MYT = 23:00 UTC
     if (utcHour === 23 && utcMinute < 5 && lastTrigger.ASIA !== today) {
         lastTrigger.ASIA = today;
-        console.log('⏰ ASIA mapping...');
         generateSessionMapping('XAU/USD', 'ASIA').catch(e => console.log(e.message));
     }
     
-    // LONDON: 3 PM MYT = 07:00 UTC
     if (utcHour === 7 && utcMinute < 5 && lastTrigger.LONDON !== today) {
         lastTrigger.LONDON = today;
-        console.log('⏰ LONDON mapping...');
         generateSessionMapping('XAU/USD', 'LONDON').catch(e => console.log(e.message));
     }
     
-    // NY: 8 PM MYT = 12:00 UTC
     if (utcHour === 12 && utcMinute < 5 && lastTrigger.NY !== today) {
         lastTrigger.NY = today;
-        console.log('⏰ NY mapping...');
         generateSessionMapping('XAU/USD', 'NEW YORK').catch(e => console.log(e.message));
     }
     
 }, 60000);
 
 // ===============================================
-// API: SIGNAL — Guna harga MT4 + Telegram
+// API: SIGNAL
 // ===============================================
 app.get('/api/signal', async function(req, res) {
     const symbol = req.query.symbol || 'XAU/USD';
@@ -750,7 +744,6 @@ app.get('/api/signal', async function(req, res) {
                 lockUntil = lockData.lockedAt + MAX_LOCK_MS;
                 isLocked = true;
                 
-                // ✅ Telegram
                 try {
                     const sltpTg = calculateSLTP(signal, harga, atr, symbol, atrProfile);
                     const emoji = emaConfidence >= 90 ? '🚀' : '⚡';
@@ -845,7 +838,7 @@ app.get('/api/signal', async function(req, res) {
 });
 
 // ===============================================
-// API: MAPPING — untuk app
+// API: MAPPING
 // ===============================================
 app.get('/api/mapping', function(req, res) {
     res.json({
@@ -920,10 +913,17 @@ app.get('/api/market', async function(req, res) {
 });
 
 // ===============================================
+// API: NEWS (placeholder)
+// ===============================================
+app.get('/api/news', function(req, res) {
+    res.json({ status: 'success', events: [], note: 'News endpoint' });
+});
+
+// ===============================================
 // HEALTH & TEST
 // ===============================================
 app.get('/health', function(req, res) {
-    res.json({ status: 'OK', version: '1.24', timestamp: new Date().toISOString() });
+    res.json({ status: 'OK', version: '1.24.1', timestamp: new Date().toISOString() });
 });
 
 app.get('/api/test-ea', function(req, res) {
@@ -933,13 +933,14 @@ app.get('/api/test-ea', function(req, res) {
         queue_length: tradeQueue.length,
         prices_count: Object.keys(eaStatus.prices || {}).length,
         telegram_set: !!TELEGRAM_BOT_TOKEN && !!TELEGRAM_CHAT_ID,
-        gemini_set: !!GEMINI_API_KEY
+        gemini_set: !!GEMINI_API_KEY,
+        gemini_model: GEMINI_MODEL
     });
 });
 
 app.get('/api/test-telegram', async function(req, res) {
     try {
-        await sendTelegram('🧪 <b>Test Telegram</b>\n\nBPT v1.24 ✅');
+        await sendTelegram('🧪 <b>Test Telegram</b>\n\nBPT v1.24.1 ✅');
         res.json({ status: 'OK' });
     } catch (e) {
         res.json({ status: 'FAIL', error: e.message });
@@ -955,5 +956,5 @@ app.get('/', function(req, res) {
 // ===============================================
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, function() {
-    console.log('BPT v1.24 running on port ' + PORT);
+    console.log('BPT v1.24.1 running on port ' + PORT);
 });
