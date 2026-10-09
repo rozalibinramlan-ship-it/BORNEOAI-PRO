@@ -1,6 +1,6 @@
 // ===============================================
-// BPT — Borneo Pro Trade v3.4 FULLCODE FINAL
-// Patch: Fix mapping 0.00 + Restore /api/signal + Fallback heartbeat field — EA TIDAK DISENTUH
+// BPT — Borneo Pro Trade v3.5 FINAL
+// Patch: Fix heartbeat middleware order — EA TIDAK DISENTUH
 // ===============================================
 const express = require('express');
 const cors = require('cors');
@@ -13,7 +13,6 @@ require('dotenv').config();
 const app = express();
 app.use(cors());
 app.use(express.static(__dirname));
-app.use(express.json({ strict: false, limit: '5mb' }));
 
 // CONFIG — JANGAN UBAH
 const TWELVEDATA_URL = 'https://api.twelvedata.com';
@@ -34,7 +33,7 @@ function getCurrentKey(){return TWELVEDATA_KEYS[currentKeyIndex]||TWELVEDATA_KEY
 function switchKey(){if(TWELVEDATA_KEYS.length>1)currentKeyIndex=(currentKeyIndex+1)%TWELVEDATA_KEYS.length}
 
 console.log('╔══════════════════════════════════════╗');
-console.log('║ BPT — BORNEO PRO TRADE v3.4 FINAL ║');
+console.log('║ BPT — BORNEO PRO TRADE v3.5 FINAL ║');
 console.log('╚══════════════════════════════════════╝');
 
 const DATA_DIR=path.join(__dirname,'data');
@@ -52,6 +51,77 @@ function loadAllData(){aiMappings=loadJSON(FILES.mappings,{ASIA:null,LONDON:null
 function saveMappings(){saveJSON(FILES.mappings,aiMappings)} function saveHistory(){saveJSON(FILES.history,messageHistory.slice(0,100))} function saveSignalHistory(){saveJSON(FILES.signalHistory,signalHistory.slice(0,200))} function saveTradeHistory(){saveJSON(FILES.trades,tradeHistory.slice(0,200))}
 loadAllData();
 
+// ===============================================
+// EA BRIDGE — MIDDLEWARE DIPERBETULKAN
+// ===============================================
+let eaStatus={online:false,lastSeen:0,balance:0,equity:0,margin:0,freeMargin:0,profit:0,positions:[],prices:{},accountNumber:'',broker:'',leverage:0,currency:'USD'};
+let tradeQueue=[];
+
+function parseEAJson(rawText){
+  try{
+    if(typeof rawText === 'object' && rawText !== null) return rawText;
+    let raw = (rawText||'').toString()
+      .replace(/\x00/g,'')
+      .replace(/^\uFEFF/,'')
+      .trim();
+    if(!raw) return {};
+    // buang apa-apa sebelum '{' pertama
+    const firstBrace = raw.indexOf('{');
+    if(firstBrace > 0) raw = raw.substring(firstBrace);
+    if(raw.includes('}{')) raw = raw.split('}{')[0] + '}';
+    let depth=0,start=-1,first=null;
+    for(let i=0;i<raw.length;i++){
+      if(raw[i]==='{'){if(depth===0)start=i;depth++;}
+      else if(raw[i]==='}'){depth--;if(depth===0&&start!==-1){first=raw.substring(start,i+1);break;}}
+    }
+    if(first)raw=first;
+    return JSON.parse(raw);
+  }catch(e){
+    console.log('❌ [PARSE] FAIL:', e.message);
+    return {};
+  }
+}
+
+// ⚠️ express.text SAHAJA — JANGAN tambah express.json sebelum ni
+app.post('/api/ea/heartbeat', express.text({type:'*/*', limit:'10mb'}), (req, res) => {
+  const b = parseEAJson(req.body);
+
+  console.log('📥 [PARSE] raw length=' + (req.body?req.body.length:0) + ' preview=' + String(req.body||'').substring(0,150));
+  console.log('📥 [PARSE] OK — Keys:', Object.keys(b).join(','));
+
+  eaStatus = {
+    online: true,
+    lastSeen: Date.now(),
+    balance: parseFloat(b.balance ?? b.Balance ?? b.bal ?? 0),
+    equity: parseFloat(b.equity ?? b.Equity ?? b.eq ?? 0),
+    margin: parseFloat(b.margin ?? b.Margin ?? 0),
+    freeMargin: parseFloat(b.freeMargin ?? b.FreeMargin ?? b.free_margin ?? 0),
+    profit: parseFloat(b.profit ?? b.Profit ?? b.floatingPL ?? b.pl ?? 0),
+    positions: b.positions || b.Positions || [],
+    prices: b.prices || b.Prices || {},
+    accountNumber: String(b.accountNumber || b.account || b.AccountNumber || b.login || ''),
+    broker: String(b.broker || b.brokerName || b.Broker || ''),
+    leverage: b.leverage || b.Leverage || 0,
+    currency: b.currency || b.Currency || 'USD'
+  };
+  console.log(`✅ [HEARTBEAT] Bal:${eaStatus.balance} Acc:${eaStatus.accountNumber} Broker:${eaStatus.broker} Pos:${eaStatus.positions.length}`);
+  res.json({status:'OK'});
+});
+
+app.get('/api/ea/status',(req,res)=>{const on=(Date.now()-eaStatus.lastSeen)<30000;res.json({...eaStatus,online:on,secondsAgo:on?Math.round((Date.now()-eaStatus.lastSeen)/1000):null})});
+app.get('/api/ea/commands',(req,res)=>{const p=tradeQueue.filter(c=>c.status==='pending');if(p.length>0){p[0].status='sent';p[0].sentAt=Date.now();res.json({command:p[0]})}else res.json({command:null})});
+app.post('/api/ea/result',express.text({type:'*/*'}),(req,res)=>{const b=parseEAJson(req.body);const c=tradeQueue.find(x=>x.id===b.id);if(c){c.status=b.success?'executed':'failed';c.ticket=b.ticket;c.error=b.error||'';tradeHistory.push({...c});if(tradeHistory.length>200)tradeHistory.shift();saveTradeHistory()}res.json({status:'OK'})});
+
+// ===============================================
+// JSON parser untuk API lain — SELEPAS heartbeat
+// ===============================================
+app.use(express.json({ strict: false, limit: '5mb' }));
+
+app.post('/api/ea/execute',(req,res)=>{const b=req.body;if(!b.symbol||!b.action||!b.lot)return res.status(400).json({error:'Missing'});const cmd={id:Date.now()+Math.floor(Math.random()*1000),symbol:b.symbol,action:b.action,lot:parseFloat(b.lot),sl:parseFloat(b.sl||0),tp:parseFloat(b.tp||0),timestamp:Date.now(),status:'pending'};tradeQueue.push(cmd);res.json({status:'OK',id:cmd.id})});
+
+// ===============================================
+// SESSION
+// ===============================================
 function getMarketSession(){
   const nowMYT=new Date(Date.now()+8*60*60*1000);
   const dayOfWeek=nowMYT.getUTCDay();
@@ -99,65 +169,9 @@ async function sendTelegram(message){
   return false;
 }
 
-// EA BRIDGE — JANGAN SENTUH
-let eaStatus={online:false,lastSeen:0,balance:0,equity:0,margin:0,freeMargin:0,profit:0,positions:[],prices:{},accountNumber:'',broker:'',leverage:0,currency:'USD'};
-let tradeQueue=[];
-
-// 🔍 parseEAJson dengan LOG SEMENTARA
-function parseEAJson(rawText){
-  try{
-    let raw=(rawText||'').toString().replace(/\x00/g,'').trim();
-    console.log('📥 [PARSE] raw length=' + raw.length + ' preview=' + raw.substring(0,150));
-    if(!raw)return{};
-    if(raw.includes('}{'))raw=raw.split('}{')[0]+'}';
-    let depth=0,start=-1,first=null;
-    for(let i=0;i<raw.length;i++){
-      if(raw[i]==='{'){if(depth===0)start=i;depth++;}
-      else if(raw[i]==='}'){depth--;if(depth===0&&start!==-1){first=raw.substring(start,i+1);break;}}
-    }
-    if(first)raw=first;
-    const parsed = JSON.parse(raw);
-    console.log('📥 [PARSE] OK — Keys: ' + Object.keys(parsed).join(','));
-    return parsed;
-  }catch(e){
-    console.log('❌ [PARSE] FAIL — ' + e.message + ' | raw first 200: ' + (rawText||'').toString().substring(0,200));
-    return {};
-  }
-}
-
-// 🔧 PATCH: heartbeat dengan fallback nama field
-app.post('/api/ea/heartbeat', express.text({type:'*/*', limit:'5mb'}), (req, res) => {
-  const b = parseEAJson(req.body);
-
-  // 🔍 LOG SEMENTARA — tengok apa EA hantar
-  console.log('📥 [HEARTBEAT] Keys:', Object.keys(b).join(','));
-  console.log('📥 [HEARTBEAT] balance=' + b.balance + ' equity=' + b.equity + ' acc=' + b.accountNumber + ' broker=' + b.broker);
-  console.log('📥 [HEARTBEAT] positions=' + (b.positions ? b.positions.length : 0) + ' prices=' + (b.prices ? Object.keys(b.prices).length : 0));
-  // 🔍 END LOG
-
-  eaStatus = {
-    online: true,
-    lastSeen: Date.now(),
-    balance: parseFloat(b.balance || b.Balance || b.bal || 0),
-    equity: parseFloat(b.equity || b.Equity || b.eq || 0),
-    margin: parseFloat(b.margin || b.Margin || 0),
-    freeMargin: parseFloat(b.freeMargin || b.FreeMargin || b.free_margin || 0),
-    profit: parseFloat(b.profit || b.Profit || b.floatingPL || b.pl || 0),
-    positions: b.positions || b.Positions || [],
-    prices: b.prices || b.Prices || {},
-    accountNumber: String(b.accountNumber || b.account || b.AccountNumber || b.login || b.Login || ''),
-    broker: String(b.broker || b.brokerName || b.Broker || b.company || ''),
-    leverage: b.leverage || b.Leverage || 0,
-    currency: b.currency || b.Currency || 'USD'
-  };
-  res.json({status:'OK'});
-});
-
-app.get('/api/ea/status',(req,res)=>{const on=(Date.now()-eaStatus.lastSeen)<30000;res.json({...eaStatus,online:on,secondsAgo:on?Math.round((Date.now()-eaStatus.lastSeen)/1000):null})});
-app.get('/api/ea/commands',(req,res)=>{const p=tradeQueue.filter(c=>c.status==='pending');if(p.length>0){p[0].status='sent';p[0].sentAt=Date.now();res.json({command:p[0]})}else res.json({command:null})});
-app.post('/api/ea/result',express.text({type:'*/*'}),(req,res)=>{const b=parseEAJson(req.body);const c=tradeQueue.find(x=>x.id===b.id);if(c){c.status=b.success?'executed':'failed';c.ticket=b.ticket;c.error=b.error||'';tradeHistory.push({...c});if(tradeHistory.length>200)tradeHistory.shift();saveTradeHistory()}res.json({status:'OK'})});
-app.post('/api/ea/execute',(req,res)=>{const b=req.body;if(!b.symbol||!b.action||!b.lot)return res.status(400).json({error:'Missing'});const cmd={id:Date.now()+Math.floor(Math.random()*1000),symbol:b.symbol,action:b.action,lot:parseFloat(b.lot),sl:parseFloat(b.sl||0),tp:parseFloat(b.tp||0),timestamp:Date.now(),status:'pending'};tradeQueue.push(cmd);res.json({status:'OK',id:cmd.id})});
-
+// ===============================================
+// HELPERS
+// ===============================================
 const symbolMap={'XAU/USD':'XAU/USD','XAG/USD':'XAG/USD','EUR/USD':'EUR/USD','GBP/USD':'GBP/USD','USD/JPY':'USD/JPY','AUD/USD':'AUD/USD','USD/CAD':'USD/CAD','USD/CHF':'USD/CHF'};
 function toTwelveData(s){return symbolMap[s]||s}
 function getDecimal(s){if(s.indexOf('JPY')>=0)return 3;if(s.indexOf('XAU')>=0||s.indexOf('XAG')>=0)return 2;return 5}
@@ -327,7 +341,7 @@ app.get('/api/generate-mapping',async(req,res)=>{const symbol=req.query.symbol||
 app.get('/api/market',async(req,res)=>{const symbol=req.query.symbol||'XAU/USD';const decimal=getDecimal(symbol);try{const tick=await getTick(symbol);const candles=await getOHLC(symbol,'5min',300);const harga=tick.mid||(candles.length?candles[candles.length-1].close:0);if(!harga)return res.status(503).json({error:'No price data'});const snr=detectSNR(candles);const liq=detectLiquidity(candles);res.json({symbol,harga:parseFloat(harga.toFixed(decimal)),harga_source:tick.source,bid:parseFloat(tick.bid.toFixed(decimal)),ask:parseFloat(tick.ask.toFixed(decimal)),spread:parseFloat(tick.spread.toFixed(decimal)),spread_ok:isSpreadOK(symbol,tick.spread),POC:snr.POC?parseFloat(snr.POC.toFixed(decimal)):null,R1:snr.R1?parseFloat(snr.R1.toFixed(decimal)):null,R2:snr.R2?parseFloat(snr.R2.toFixed(decimal)):null,R3:snr.R3?parseFloat(snr.R3.toFixed(decimal)):null,S1:snr.S1?parseFloat(snr.S1.toFixed(decimal)):null,S2:snr.S2?parseFloat(snr.S2.toFixed(decimal)):null,S3:snr.S3?parseFloat(snr.S3.toFixed(decimal)):null,liquidity:liq,session:getMarketSession()})}catch(e){res.status(500).json({error:e.message})}});
 app.get('/api/messages',(req,res)=>{const limit=parseInt(req.query.limit)||50;const type=req.query.type;let filtered=messageHistory;if(type&&type!=='all'){const types=type.split(',').map(t=>t.trim());filtered=messageHistory.filter(m=>types.includes(m.type))}const stats={signal:messageHistory.filter(m=>m.type==='signal').length,mapping:messageHistory.filter(m=>m.type==='mapping').length,asia_breakout:messageHistory.filter(m=>m.type==='asia_breakout').length,level_alert:messageHistory.filter(m=>m.type==='level_alert').length,news_alert:messageHistory.filter(m=>m.type==='news_alert').length,daily_outlook:messageHistory.filter(m=>m.type==='daily_outlook').length,pre_market:messageHistory.filter(m=>m.type==='pre_market').length,liquidity_sweep:messageHistory.filter(m=>m.type==='liquidity_sweep').length};res.json({status:'OK',messages:filtered.slice(0,limit),stats})});
 app.get('/api/news',async(req,res)=>{const events=await fetchNews();res.json({status:'success',events})});
-app.get('/api/health',(req,res)=>{res.json({status:'OK',version:'3.4',session:getMarketSession(),myt:new Date(Date.now()+8*60*60*1000).toISOString(),mappings:Object.keys(aiMappings).filter(k=>aiMappings[k]&&k!=='lastUpdate').length,ea_online:(Date.now()-eaStatus.lastSeen)<30000})});
+app.get('/api/health',(req,res)=>{res.json({status:'OK',version:'3.5',session:getMarketSession(),myt:new Date(Date.now()+8*60*60*1000).toISOString(),mappings:Object.keys(aiMappings).filter(k=>aiMappings[k]&&k!=='lastUpdate').length,ea_online:(Date.now()-eaStatus.lastSeen)<30000})});
 
 function shouldRunScheduler(){const nowMYT=new Date(Date.now()+8*60*60*1000);if(nowMYT.getUTCDay()===0||nowMYT.getUTCDay()===6)return false;return true}
 setInterval(async()=>{
@@ -341,4 +355,4 @@ setInterval(async()=>{
 },60*1000);
 
 const PORT=process.env.PORT||3000;
-app.listen(PORT,()=>{console.log(`🚀 BPT v3.4 running on ${PORT} | MYT: ${new Date(Date.now()+8*60*60*1000).toISOString()}`)});
+app.listen(PORT,()=>{console.log(`🚀 BPT v3.5 running on ${PORT} | MYT: ${new Date(Date.now()+8*60*60*1000).toISOString()}`)});
