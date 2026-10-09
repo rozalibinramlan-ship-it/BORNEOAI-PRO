@@ -1,6 +1,6 @@
 // ===============================================
-// BPT — Borneo Pro Trade v3.3 FINAL
-// Patch: Fix mapping 0.00 + RAW log — EA TIDAK DISENTUH
+// BPT — Borneo Pro Trade v3.4 FULLCODE FINAL
+// Patch: Fix mapping 0.00 + Restore /api/signal — EA TIDAK DISENTUH
 // ===============================================
 const express = require('express');
 const cors = require('cors');
@@ -34,7 +34,7 @@ function getCurrentKey(){return TWELVEDATA_KEYS[currentKeyIndex]||TWELVEDATA_KEY
 function switchKey(){if(TWELVEDATA_KEYS.length>1)currentKeyIndex=(currentKeyIndex+1)%TWELVEDATA_KEYS.length}
 
 console.log('╔══════════════════════════════════════╗');
-console.log('║ BPT — BORNEO PRO TRADE v3.3 FINAL ║');
+console.log('║ BPT — BORNEO PRO TRADE v3.4 FINAL ║');
 console.log('╚══════════════════════════════════════╝');
 
 const DATA_DIR=path.join(__dirname,'data');
@@ -52,7 +52,6 @@ function loadAllData(){aiMappings=loadJSON(FILES.mappings,{ASIA:null,LONDON:null
 function saveMappings(){saveJSON(FILES.mappings,aiMappings)} function saveHistory(){saveJSON(FILES.history,messageHistory.slice(0,100))} function saveSignalHistory(){saveJSON(FILES.signalHistory,signalHistory.slice(0,200))} function saveTradeHistory(){saveJSON(FILES.trades,tradeHistory.slice(0,200))}
 loadAllData();
 
-// SESSION MYT
 function getMarketSession(){
   const nowMYT=new Date(Date.now()+8*60*60*1000);
   const dayOfWeek=nowMYT.getUTCDay();
@@ -100,9 +99,7 @@ async function sendTelegram(message){
   return false;
 }
 
-// ===============================================
 // EA BRIDGE — JANGAN SENTUH
-// ===============================================
 let eaStatus={online:false,lastSeen:0,balance:0,equity:0,margin:0,freeMargin:0,profit:0,positions:[],prices:{},accountNumber:'',broker:'',leverage:0,currency:'USD'};
 let tradeQueue=[];
 function parseEAJson(rawText){try{let raw=(rawText||'').toString().replace(/\x00/g,'').trim();if(!raw)return{};if(raw.includes('}{'))raw=raw.split('}{')[0]+'}';let depth=0,start=-1,first=null;for(let i=0;i<raw.length;i++){if(raw[i]==='{'){if(depth===0)start=i;depth++;}else if(raw[i]==='}'){depth--;if(depth===0&&start!==-1){first=raw.substring(start,i+1);break;}}}if(first)raw=first;return JSON.parse(raw)}catch(e){return{}}}
@@ -111,9 +108,7 @@ app.get('/api/ea/status',(req,res)=>{const on=(Date.now()-eaStatus.lastSeen)<300
 app.get('/api/ea/commands',(req,res)=>{const p=tradeQueue.filter(c=>c.status==='pending');if(p.length>0){p[0].status='sent';p[0].sentAt=Date.now();res.json({command:p[0]})}else res.json({command:null})});
 app.post('/api/ea/result',express.text({type:'*/*'}),(req,res)=>{const b=parseEAJson(req.body);const c=tradeQueue.find(x=>x.id===b.id);if(c){c.status=b.success?'executed':'failed';c.ticket=b.ticket;c.error=b.error||'';tradeHistory.push({...c});if(tradeHistory.length>200)tradeHistory.shift();saveTradeHistory()}res.json({status:'OK'})});
 app.post('/api/ea/execute',(req,res)=>{const b=req.body;if(!b.symbol||!b.action||!b.lot)return res.status(400).json({error:'Missing'});const cmd={id:Date.now()+Math.floor(Math.random()*1000),symbol:b.symbol,action:b.action,lot:parseFloat(b.lot),sl:parseFloat(b.sl||0),tp:parseFloat(b.tp||0),timestamp:Date.now(),status:'pending'};tradeQueue.push(cmd);res.json({status:'OK',id:cmd.id})});
-// ===============================================
 
-// HELPERS
 const symbolMap={'XAU/USD':'XAU/USD','XAG/USD':'XAG/USD','EUR/USD':'EUR/USD','GBP/USD':'GBP/USD','USD/JPY':'USD/JPY','AUD/USD':'AUD/USD','USD/CAD':'USD/CAD','USD/CHF':'USD/CHF'};
 function toTwelveData(s){return symbolMap[s]||s}
 function getDecimal(s){if(s.indexOf('JPY')>=0)return 3;if(s.indexOf('XAU')>=0||s.indexOf('XAG')>=0)return 2;return 5}
@@ -129,7 +124,42 @@ async function checkMultiTimeframe(symbol){const tfs=[{tf:'5min',label:'M5'},{tf
 
 const tickCache=new Map();
 function toEASymbol(symbol){const base=symbol.replace('/','');const suffixes=['.vxx','.vx','','m','.','c','pro','ecn','raw'];if(eaStatus.prices){for(let s of suffixes){if(eaStatus.prices[base+s])return base+s}}return base}
-async function getTick(symbol){const isEAOnline=(Date.now()-eaStatus.lastSeen)<30000;if(isEAOnline&&eaStatus.prices){const eaSymbol=toEASymbol(symbol);const p=eaStatus.prices[eaSymbol];if(p){const bid=parseFloat(p.bid||p.price||0),ask=parseFloat(p.ask||0),mid=bid?(ask?(bid+ask)/2:bid):0;if(mid>0)return{bid,ask:ask||bid,mid,spread:ask?ask-bid:0,source:'MT4'}}}const cached=tickCache.get(symbol);if(cached&&Date.now()-cached.time<30000)return cached.data;const tdSymbol=toTwelveData(symbol);let attempts=0,maxAttempts=TWELVEDATA_KEYS.length*2||2;while(attempts<maxAttempts){attempts++;try{const url=TWELVEDATA_URL+'/quote?symbol='+encodeURIComponent(tdSymbol)+'&apikey='+getCurrentKey();const r=await axios.get(url,{timeout:10000});const d=r.data;if(d.status==='error'||d.code){if(d.code===429){switchKey();continue}throw new Error(d.message||'API error')}const bid=parseFloat(d.bid||0),ask=parseFloat(d.ask||0),price=parseFloat(d.close||d.price||0),mid=price||(bid+ask)/2||0;if(mid===0)throw new Error('Harga 0');const result={bid:bid||mid,ask:ask||mid,mid,spread:parseFloat(d.spread||(ask-bid)||0),source:'TWELVEDATA'};tickCache.set(symbol,{data:result,time:Date.now()});return result}catch(e){if(e.message&&e.message.indexOf('429')>=0){switchKey();continue}if(attempts>=maxAttempts)throw e}}throw new Error('API gagal')}
+async function getTick(symbol){
+  const isEAOnline=(Date.now()-eaStatus.lastSeen)<30000;
+  if(isEAOnline&&eaStatus.prices){
+    const eaSymbol=toEASymbol(symbol);
+    const p=eaStatus.prices[eaSymbol];
+    if(p){
+      const bid=parseFloat(p.bid||p.price||0),ask=parseFloat(p.ask||0),mid=bid?(ask?(bid+ask)/2:bid):0;
+      if(mid>0)return{bid,ask:ask||bid,mid,spread:ask?ask-bid:0,source:'MT4'}
+    }
+  }
+  const cached=tickCache.get(symbol);
+  if(cached&&Date.now()-cached.time<30000)return cached.data;
+  const tdSymbol=toTwelveData(symbol);
+  let attempts=0,maxAttempts=TWELVEDATA_KEYS.length*2||2;
+  while(attempts<maxAttempts){
+    attempts++;
+    try{
+      const url=TWELVEDATA_URL+'/quote?symbol='+encodeURIComponent(tdSymbol)+'&apikey='+getCurrentKey();
+      const r=await axios.get(url,{timeout:10000});
+      const d=r.data;
+      if(d.status==='error'||d.code){if(d.code===429){switchKey();continue}throw new Error(d.message||'API error')}
+      const bid=parseFloat(d.bid||0),ask=parseFloat(d.ask||0),price=parseFloat(d.close||d.price||0),mid=price||(bid+ask)/2||0;
+      if(mid===0)throw new Error('Harga 0');
+      const result={bid:bid||mid,ask:ask||mid,mid,spread:parseFloat(d.spread||(ask-bid)||0),source:'TWELVEDATA'};
+      tickCache.set(symbol,{data:result,time:Date.now()});
+      return result
+    }catch(e){
+      const msg = e && e.message ? e.message : String(e);
+      const isRateLimit = msg.includes('429') || msg.toLowerCase().includes('rate limit') || msg.toLowerCase().includes('too many');
+      console.log(`❌ [TICK] ${symbol} attempt ${attempts}/${maxAttempts} fail: ${msg} ${isRateLimit ? '(RATE LIMIT -> switch key)' : ''}`);
+      if(isRateLimit){ switchKey(); console.log(`🔑 [TICK] Switched to key index ${currentKeyIndex}`); continue; }
+      if(attempts>=maxAttempts) throw e;
+    }
+  }
+  throw new Error('API gagal')
+}
 const ohlcCache=new Map();
 async function getOHLC(symbol,interval,limit){interval=interval||'5min';limit=limit||300;const cacheKey=symbol+'_'+interval+'_'+limit;const cached=ohlcCache.get(cacheKey);if(cached&&Date.now()-cached.time<180000)return cached.data;const tdSymbol=toTwelveData(symbol);let attempts=0,maxAttempts=TWELVEDATA_KEYS.length*2||2;while(attempts<maxAttempts){attempts++;try{const url=TWELVEDATA_URL+'/time_series?symbol='+encodeURIComponent(tdSymbol)+'&interval='+interval+'&outputsize='+limit+'&apikey='+getCurrentKey();const r=await axios.get(url,{timeout:10000});const d=r.data;if(d.status==='error'||d.code){if(d.code===429){switchKey();continue}throw new Error(d.message)}if(!d.values||!Array.isArray(d.values))return[];const result=d.values.slice().reverse().map(c=>({open:parseFloat(c.open||0),high:parseFloat(c.high||0),low:parseFloat(c.low||0),close:parseFloat(c.close||0)})).filter(c=>c.close>0);ohlcCache.set(cacheKey,{data:result,time:Date.now()});return result}catch(e){if(e.message&&e.message.indexOf('429')>=0){switchKey();continue}if(attempts>=maxAttempts)throw e}}return[]}
 const signalLock=new Map(),signalCooldown=new Map();
@@ -138,53 +168,38 @@ function isSpreadOK(s,spread){return spread>0&&spread<=getSpreadLimit(s)}
 async function fetchNews(){if(Date.now()-newsCache.fetchedAt<NEWS_CACHE_MS&&newsCache.events.length>0)return newsCache.events;try{const r=await axios.get(BIQUOTE_URL+'/calendar',{timeout:10000}).catch(()=>({data:{events:[]}}));let events=r.data.events||r.data.data||r.data.calendar||(Array.isArray(r.data)?r.data:[]);if(!Array.isArray(events))events=[];const usdEvents=events.filter(e=>String(e.currency||e.country||'').toUpperCase()==='USD'||String(e.currency||'').toUpperCase()==='US').slice(0,30).map(e=>({time:String(e.time||e.date||''),currency:'USD',impact:String(e.impact||'medium').toLowerCase(),event:String(e.event||e.title||''),actual:String(e.actual||'-'),forecast:String(e.forecast||'-'),previous:String(e.previous||'-')}));newsCache.events=usdEvents;newsCache.fetchedAt=Date.now();return usdEvents}catch(e){return[]}}
 async function checkNewsBlock(){try{const events=await fetchNews();const now=Date.now();for(let ev of events){if(ev.impact!=='high')continue;const evTime=new Date(ev.time).getTime();if(isNaN(evTime))continue;if(Math.abs(evTime-now)<NEWS_AVOID_MS){const mins=Math.round((evTime-now)/60000);return{blocked:true,reason:'News '+ev.event+' ('+(mins>0?'in '+mins+' min':Math.abs(mins)+' min ago')+')'}}}return{blocked:false,reason:null}}catch(e){return{blocked:false,reason:null}}}
 
-// ===============================================
-// MAPPING — 🔧 FIX: guard harga=0 & ATR=0 + RAW log
-// ===============================================
+// MAPPING — FIX guard harga=0 & ATR=0
 async function generateSessionMapping(symbol,sessionName){
   try{
     const decimal=getDecimal(symbol);
     const tick=await getTick(symbol);
     const harga=tick.mid;
-
+    console.log(`[${sessionName}] RAW harga=${harga} source=${tick.source}`);
+    if(!harga||harga<=0){console.log(`❌ [${sessionName}] skip: harga=${harga} (source: ${tick.source})`);return;}
     const candlesH4=await getOHLC(symbol,'4h',100);
     const candlesH1=await getOHLC(symbol,'1h',200);
-    const h4ATR=calculateATR(candlesH4,14);
-
-    // 🔍 RAW LOG — nampak dalam Render walaupun skip
-    console.log(`[${sessionName}] RAW harga=${harga} source=${tick.source} ATR=${h4ATR} candlesH4=${candlesH4.length} candlesH1=${candlesH1.length}`);
-
-    // 🔧 FIX 1: guard harga
-    if(!harga||harga<=0){console.log('❌ '+sessionName+' skip: harga='+harga+' (source: '+tick.source+')');return;}
-
-    // 🔧 FIX 2: guard candles
-    if(candlesH4.length<50){console.log('❌ '+sessionName+' skip: candlesH4='+candlesH4.length);return;}
-
-    // 🔧 FIX 3: guard ATR
-    if(!h4ATR||h4ATR<=0){console.log('❌ '+sessionName+' skip: h4ATR='+h4ATR);return;}
-
+    console.log(`[${sessionName}] candlesH4=${candlesH4.length} H1=${candlesH1.length}`);
+    if(candlesH4.length<50){console.log(`❌ [${sessionName}] skip: candlesH4=${candlesH4.length}`);return;}
     const h4SNR=detectSNR(candlesH4);
     const h4Liq=detectLiquidity(candlesH4);
     const h4Analysis=analyzeCandles(candlesH4,symbol,h4SNR,h4Liq);
     const h1Analysis=analyzeCandles(candlesH1,symbol,null,null);
-
+    const h4ATR=calculateATR(candlesH4,14);
+    console.log(`[${sessionName}] h4ATR=${h4ATR} bias=${h4Analysis?.signal}`);
+    if(!h4ATR||h4ATR<=0){console.log(`❌ [${sessionName}] skip: h4ATR=${h4ATR}`);return;}
     const mtf=await checkMultiTimeframe(symbol);
     const sessionStatus=getSessionStatus(sessionName);
     let bias=h4Analysis?h4Analysis.signal:'WAIT';
     let confidence=h4Analysis?h4Analysis.confidence:0;
     if(bias==='WAIT'&&mtf.consensus!=='WAIT'){bias=mtf.consensus;confidence=Math.round((bias==='BUY'?mtf.buyCount:mtf.sellCount)/4*100*0.75)}
     if(bias==='WAIT'&&h1Analysis&&h1Analysis.signal!=='WAIT'){bias=h1Analysis.signal;confidence=Math.round(h1Analysis.confidence*0.8)}
-
     const entryNum=harga;
     const slDist=h4ATR*1.5;
     let slNum,tp1Num,tp2Num,tp3Num;
     if(bias==='BUY'){slNum=entryNum-slDist;tp1Num=entryNum+h4ATR*3.0;tp2Num=entryNum+h4ATR*6.0;tp3Num=entryNum+h4ATR*10.0}
     else if(bias==='SELL'){slNum=entryNum+slDist;tp1Num=entryNum-h4ATR*3.0;tp2Num=entryNum-h4ATR*6.0;tp3Num=entryNum-h4ATR*10.0}
     else{slNum=entryNum+slDist;tp1Num=entryNum-h4ATR*3.0;tp2Num=h4SNR.S1||(entryNum-h4ATR*6.0);tp3Num=entryNum-h4ATR*10.0}
-
-    // 🔧 FIX 4: guard output
-    if(!slNum||!tp1Num||slNum<=0||tp1Num<=0){console.log('❌ '+sessionName+' skip: output invalid sl='+slNum+' tp1='+tp1Num);return;}
-
+    if(!slNum||!tp1Num||slNum<=0||tp1Num<=0){console.log(`❌ [${sessionName}] skip: output invalid sl=${slNum} tp1=${tp1Num}`);return;}
     const nowMYT=new Date(Date.now()+8*60*60*1000);
     const dateStr=nowMYT.toISOString().split('T')[0],timeStr=nowMYT.toTimeString().substring(0,5),dayName=['Ahad','Isnin','Selasa','Rabu','Khamis','Jumaat','Sabtu'][nowMYT.getUTCDay()];
     const prompt=`Mapping ${sessionName} ${symbol} harga ${harga.toFixed(decimal)} bias ${bias} ${confidence}% R1 ${h4SNR.R1} S1 ${h4SNR.S1}`;
@@ -196,19 +211,75 @@ async function generateSessionMapping(symbol,sessionName){
     await sendTelegram(msg);
     aiMappings[sessionName]={session:sessionName,timeStr,dateStr,dayName,symbol,harga:parseFloat(harga.toFixed(decimal)),harga_source:tick.source,session_status:sessionStatus,ai_analysis:aiAnalysis,mtf_agreement:mtf.agreement,mtf_consensus:mtf.consensus,bias,confidence,entry:parseFloat(entryNum.toFixed(decimal)),sl:parseFloat(slNum.toFixed(decimal)),tp1:parseFloat(tp1Num.toFixed(decimal)),tp2:parseFloat(tp2Num.toFixed(decimal)),tp3:parseFloat(tp3Num.toFixed(decimal)),levels:{r1:h4SNR.R1?parseFloat(h4SNR.R1.toFixed(decimal)):null,r2:h4SNR.R2?parseFloat(h4SNR.R2.toFixed(decimal)):null,s1:h4SNR.S1?parseFloat(h4SNR.S1.toFixed(decimal)):null,s2:h4SNR.S2?parseFloat(h4SNR.S2.toFixed(decimal)):null}};
     aiMappings.lastUpdate=Date.now();saveMappings();
-    messageHistory.unshift({id:Date.now(),type:'mapping',timestamp:Date.now(),data:{session:sessionName,symbol,telegram_msg:msg,harga:parseFloat(harga.toFixed(decimal)),bias,confidence,entry:parseFloat(entryNum.toFixed(decimal)),sl:parseFloat(slNum.toFixed(decimal)),tp1:parseFloat(tp1Num.toFixed(decimal)),tp2:parseFloat(tp2Num.toFixed(decimal)),tp3:parseFloat(tp3Num.toFixed(decimal)),ai_analysis:aiAnalysis,mtf_agreement:mtf.agreement},telegram_sent:true});
-    console.log('✅ '+sessionName+' mapping '+bias+' '+confidence+'% | Entry '+entryNum.toFixed(decimal)+' SL '+slNum.toFixed(decimal)+' TP1 '+tp1Num.toFixed(decimal));
-  }catch(e){console.log('❌ '+sessionName+' error:',e.message)}
+    messageHistory.unshift({id:Date.now(),type:'mapping',timestamp:Date.now(),data:{session:sessionName,symbol,harga,source:tick.source,bias,confidence,entry:entryNum,sl:slNum,tp1:tp1Num,tp2:tp2Num,telegram_msg:msg}});
+    if(messageHistory.length>100)messageHistory.pop();saveHistory();
+    console.log(`✅ [${sessionName}] mapping ${bias} ${confidence}% | Entry ${entryNum.toFixed(decimal)} SL ${slNum.toFixed(decimal)} TP1 ${tp1Num.toFixed(decimal)}`);
+  }catch(e){console.log(`❌ [${sessionName}] error:`,e.message)}
 }
 
-// API
+// ===================== API ROUTES =====================
+
+app.get('/api/signal', async (req,res)=>{
+  const symbol=req.query.symbol||'XAU/USD';
+  const decimal=getDecimal(symbol);
+  try{
+    const tick=await getTick(symbol);
+    const harga=tick.mid;
+    console.log(`[SIGNAL] ${symbol} harga=${harga} source=${tick.source}`);
+    if(!harga||harga<=0){
+      console.log(`❌ [SIGNAL] ${symbol} harga invalid: ${harga}`);
+      return res.status(503).json({error:'No price data', signal:'WAIT', score:0});
+    }
+    const candles=await getOHLC(symbol,'5min',300);
+    if(candles.length<50){
+      console.log(`❌ [SIGNAL] ${symbol} candles insufficient: ${candles.length}`);
+      return res.json({symbol,harga:parseFloat(harga.toFixed(decimal)),harga_source:tick.source,signal:'WAIT',score:0,session:getMarketSession(),entry:null,sl:null,tp1:null,tp2:null,tp3:null});
+    }
+    const snr=detectSNR(candles);
+    const liq=detectLiquidity(candles);
+    const analysis=analyzeCandles(candles,symbol,snr,liq);
+    const mtf=await checkMultiTimeframe(symbol);
+    const atr=calculateATR(candles,14);
+    const atrProfile=getATRProfile(candles);
+    let sltp=null;
+    if(analysis&&analysis.signal!=='WAIT'&&atr>0){
+      sltp=calculateSLTP(analysis.signal,harga,atr,symbol,atrProfile);
+    }
+    console.log(`[SIGNAL] ${symbol} ${analysis?.signal} ${analysis?.score}% ATR=${atr}`);
+    res.json({
+      symbol,
+      harga:parseFloat(harga.toFixed(decimal)),
+      harga_source:tick.source,
+      bid:parseFloat(tick.bid.toFixed(decimal)),
+      ask:parseFloat(tick.ask.toFixed(decimal)),
+      spread:parseFloat(tick.spread.toFixed(decimal)),
+      signal:analysis?analysis.signal:'WAIT',
+      score:analysis?analysis.score:0,
+      confidence:analysis?analysis.confidence:0,
+      buyScore:analysis?analysis.buyScore:0,
+      sellScore:analysis?analysis.sellScore:0,
+      entry:parseFloat(harga.toFixed(decimal)),
+      sl:sltp?parseFloat(sltp.sl):null,
+      tp1:sltp?parseFloat(sltp.tp1):null,
+      tp2:sltp?parseFloat(sltp.tp2):null,
+      tp3:sltp?parseFloat(sltp.tp3):null,
+      session:getMarketSession(),
+      mtf,
+      snr
+    });
+  }catch(e){
+    console.log(`❌ [SIGNAL] ${symbol} error:`, e.message);
+    res.status(500).json({error:e.message, signal:'WAIT', score:0});
+  }
+});
+
 app.get('/api/mapping',(req,res)=>{res.json({status:'OK',mappings:aiMappings,current_session:getMarketSession(),timestamp:Date.now()})});
 app.get('/api/generate-mapping',async(req,res)=>{const symbol=req.query.symbol||'XAU/USD';const session=(req.query.session||'LONDON').toUpperCase();try{await generateSessionMapping(symbol,session);res.json({status:'OK',message:session+' sent'})}catch(e){res.json({status:'FAIL',error:e.message})}});
-app.get('/api/market',async(req,res)=>{const symbol=req.query.symbol||'XAU/USD';const decimal=getDecimal(symbol);try{const tick=await getTick(symbol);const candles=await getOHLC(symbol,'5min',300);const harga=tick.mid||(candles.length?candles[candles.length-1].close:0);if(!harga)return res.status(503).json({error:'No price data'});const snr=detectSNR(candles);res.json({symbol,harga:parseFloat(harga.toFixed(decimal)),harga_source:tick.source,bid:parseFloat(tick.bid.toFixed(decimal)),ask:parseFloat(tick.ask.toFixed(decimal)),spread:parseFloat(tick.spread.toFixed(decimal)),spread_ok:isSpreadOK(symbol,tick.spread),POC:snr.POC?parseFloat(snr.POC.toFixed(decimal)):null,R1:snr.R1?parseFloat(snr.R1.toFixed(decimal)):null,R2:snr.R2?parseFloat(snr.R2.toFixed(decimal)):null,R3:snr.R3?parseFloat(snr.R3.toFixed(decimal)):null,S1:snr.S1?parseFloat(snr.S1.toFixed(decimal)):null,S2:snr.S2?parseFloat(snr.S2.toFixed(decimal)):null,S3:snr.S3?parseFloat(snr.S3.toFixed(decimal)):null,session:getMarketSession()})}catch(e){res.status(500).json({error:e.message})}});
+app.get('/api/market',async(req,res)=>{const symbol=req.query.symbol||'XAU/USD';const decimal=getDecimal(symbol);try{const tick=await getTick(symbol);const candles=await getOHLC(symbol,'5min',300);const harga=tick.mid||(candles.length?candles[candles.length-1].close:0);if(!harga)return res.status(503).json({error:'No price data'});const snr=detectSNR(candles);const liq=detectLiquidity(candles);res.json({symbol,harga:parseFloat(harga.toFixed(decimal)),harga_source:tick.source,bid:parseFloat(tick.bid.toFixed(decimal)),ask:parseFloat(tick.ask.toFixed(decimal)),spread:parseFloat(tick.spread.toFixed(decimal)),spread_ok:isSpreadOK(symbol,tick.spread),POC:snr.POC?parseFloat(snr.POC.toFixed(decimal)):null,R1:snr.R1?parseFloat(snr.R1.toFixed(decimal)):null,R2:snr.R2?parseFloat(snr.R2.toFixed(decimal)):null,R3:snr.R3?parseFloat(snr.R3.toFixed(decimal)):null,S1:snr.S1?parseFloat(snr.S1.toFixed(decimal)):null,S2:snr.S2?parseFloat(snr.S2.toFixed(decimal)):null,S3:snr.S3?parseFloat(snr.S3.toFixed(decimal)):null,liquidity:liq,session:getMarketSession()})}catch(e){res.status(500).json({error:e.message})}});
 app.get('/api/messages',(req,res)=>{const limit=parseInt(req.query.limit)||50;const type=req.query.type;let filtered=messageHistory;if(type&&type!=='all'){const types=type.split(',').map(t=>t.trim());filtered=messageHistory.filter(m=>types.includes(m.type))}const stats={signal:messageHistory.filter(m=>m.type==='signal').length,mapping:messageHistory.filter(m=>m.type==='mapping').length,asia_breakout:messageHistory.filter(m=>m.type==='asia_breakout').length,level_alert:messageHistory.filter(m=>m.type==='level_alert').length,news_alert:messageHistory.filter(m=>m.type==='news_alert').length,daily_outlook:messageHistory.filter(m=>m.type==='daily_outlook').length,pre_market:messageHistory.filter(m=>m.type==='pre_market').length,liquidity_sweep:messageHistory.filter(m=>m.type==='liquidity_sweep').length};res.json({status:'OK',messages:filtered.slice(0,limit),stats})});
-app.get('/api/health',(req,res)=>{res.json({status:'OK',version:'3.3',session:getMarketSession(),myt:new Date(Date.now()+8*60*60*1000).toISOString(),mappings:Object.keys(aiMappings).filter(k=>aiMappings[k]&&k!=='lastUpdate').length})});
+app.get('/api/news',async(req,res)=>{const events=await fetchNews();res.json({status:'success',events})});
+app.get('/api/health',(req,res)=>{res.json({status:'OK',version:'3.4',session:getMarketSession(),myt:new Date(Date.now()+8*60*60*1000).toISOString(),mappings:Object.keys(aiMappings).filter(k=>aiMappings[k]&&k!=='lastUpdate').length,ea_online:(Date.now()-eaStatus.lastSeen)<30000})});
 
-// SCHEDULER — JANGAN UBAH
 function shouldRunScheduler(){const nowMYT=new Date(Date.now()+8*60*60*1000);if(nowMYT.getUTCDay()===0||nowMYT.getUTCDay()===6)return false;return true}
 setInterval(async()=>{
   if(!shouldRunScheduler())return;
@@ -221,4 +292,4 @@ setInterval(async()=>{
 },60*1000);
 
 const PORT=process.env.PORT||3000;
-app.listen(PORT,()=>{console.log(`🚀 BPT v3.3 running on ${PORT} | MYT: ${new Date(Date.now()+8*60*60*1000).toISOString()}`)});
+app.listen(PORT,()=>{console.log(`🚀 BPT v3.4 running on ${PORT} | MYT: ${new Date(Date.now()+8*60*60*1000).toISOString()}`)});

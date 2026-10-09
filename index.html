@@ -6,1012 +6,6 @@
 <title>BPT — Borneo Pro Trade</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Bangers&family=Fredoka:wght@400;500;600;700&display=swap" rel="stylesheet">
-<style>
-* { box-sizing: border-box; margin: 0; padding: 0; }
-:root {
-  --bg-dark: #000000;
-  --bg-card: #0a0a0a;
-  --bg-card-2: #111111;
-  --border: #1a1a1a;
-  --border-gold: rgba(251,191,36,0.15);
-  
-  --gold: #fbbf24;
-  --gold-dim: #d97706;
-  --gold-bright: #fcd34d;
-  --cream: #fef3c7;
-  --white: #f1f5f9;
-  --gray: #6b7280;
-  --gray-dim: #4b5563;
-  
-  --green: #22c55e;
-  --green-neon: #00ff88;
-  --red: #ef4444;
-  --red-neon: #ff2e5b;
-}
-body {
-  background: var(--bg-dark);
-  color: var(--cream);
-  font-family: 'Fredoka', -apple-system, BlinkMacSystemFont, sans-serif;
-  padding-bottom: 95px;
-  min-height: 100vh;
-  font-weight: 500;
-}
-
-/* ===== FONT CLASSES ===== */
-.font-bangers { font-family: 'Bangers', cursive; letter-spacing: 2px; }
-.font-fredoka { font-family: 'Fredoka', sans-serif; }
-
-/* ===== HEADER ===== */
-.header { padding: 14px 15px; background: #000; border-bottom: 1px solid var(--border); position: relative; }
-.header-top { position: relative; padding-top: 4px; }
-.header-brand {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 12px;
-}
-.brand-left {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-.brand-logo {
-  width: 44px;
-  height: 44px;
-  border-radius: 10px;
-  object-fit: cover;
-  border: 1px solid var(--border-gold);
-  box-shadow: 0 0 15px rgba(251,191,36,0.4);
-  display: block;
-}
-.brand-icon {
-  width: 44px;
-  height: 44px;
-  border-radius: 10px;
-  background: linear-gradient(135deg, #1a1a1a, #0a0a0a);
-  border: 1px solid var(--border-gold);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 22px;
-  box-shadow: 0 0 15px rgba(251,191,36,0.2);
-}
-.brand-name {
-  font-family: 'Bangers', cursive;
-  font-size: 26px;
-  font-weight: 400;
-  color: var(--gold);
-  letter-spacing: 3px;
-  line-height: 1;
-  text-shadow: 0 0 15px rgba(251,191,36,0.5);
-}
-.brand-sub {
-  font-family: 'Fredoka', sans-serif;
-  font-size: 10px;
-  color: var(--gray);
-  letter-spacing: 2px;
-  margin-top: 3px;
-  font-weight: 600;
-  text-transform: uppercase;
-}
-
-/* ===== MT4 BADGE ===== */
-.mt4-badge {
-  position: absolute;
-  top: 4px;
-  right: 15px;
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  padding: 4px 9px;
-  border-radius: 6px;
-  font-size: 9px;
-  font-weight: 700;
-  letter-spacing: 1px;
-  font-family: 'Fredoka', sans-serif;
-}
-.mt4-badge.online {
-  background: rgba(34,197,94,0.15);
-  border: 1px solid var(--green);
-  color: var(--green);
-}
-.mt4-badge.offline {
-  background: rgba(239,68,68,0.15);
-  border: 1px solid var(--red);
-  color: var(--red);
-}
-.mt4-badge .dot {
-  width: 5px; height: 5px;
-  border-radius: 50%;
-  display: inline-block;
-}
-.mt4-badge.online .dot {
-  background: var(--green);
-  box-shadow: 0 0 6px var(--green);
-  animation: blink 1.5s infinite;
-}
-.mt4-badge.offline .dot { background: var(--red); }
-@keyframes blink { 0%,100% { opacity: 1; } 50% { opacity: 0.3; } }
-
-/* ===== MYT CLOCK ===== */
-.clock-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 6px 0;
-  font-size: 11px;
-  color: var(--gray);
-  font-weight: 600;
-  font-family: 'Fredoka', sans-serif;
-}
-.clock-row .time { color: var(--gold); font-weight: 700; }
-
-/* ===== MT4 STATUS BAR ===== */
-.mt4-status-bar {
-  padding: 8px 12px;
-  background: linear-gradient(90deg, transparent, rgba(251,191,36,0.04), transparent);
-  border-bottom: 1px solid var(--border);
-  font-size: 10px;
-  font-weight: 600;
-  letter-spacing: 0.5px;
-  text-align: center;
-  font-family: 'Fredoka', sans-serif;
-}
-.mt4-status-bar.online { color: var(--green); }
-.mt4-status-bar.offline { color: var(--red); }
-.mt4-status-bar .row { display: flex; justify-content: center; gap: 8px; flex-wrap: wrap; margin: 2px 0; }
-.mt4-status-bar .sep { color: var(--gray-dim); }
-.mt4-status-bar .label { color: var(--gray); font-weight: 500; }
-
-/* ===== SELECT ===== */
-select {
-  margin-top: 10px;
-  padding: 11px 14px;
-  border-radius: 10px;
-  background: #0a0a0a;
-  color: var(--gold);
-  border: 1px solid var(--border-gold);
-  font-weight: 700;
-  width: 100%;
-  font-size: 13px;
-  font-family: 'Fredoka', sans-serif;
-  outline: none;
-  letter-spacing: 1px;
-}
-
-/* ===== SCREEN ===== */
-.screen { display: none; padding: 14px; }
-.screen.active { display: block; }
-
-/* ===== CARD ===== */
-.card {
-  background: var(--bg-card);
-  border: 1px solid var(--border);
-  border-radius: 14px;
-  padding: 14px;
-  margin-bottom: 12px;
-  position: relative;
-}
-.card-title {
-  font-family: 'Bangers', cursive;
-  font-size: 17px;
-  font-weight: 400;
-  color: var(--gold);
-  margin-bottom: 12px;
-  letter-spacing: 3px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  text-shadow: 0 0 10px rgba(251,191,36,0.4);
-}
-.card-title::after {
-  content: '';
-  flex: 1;
-  height: 1px;
-  background: linear-gradient(90deg, var(--border-gold), transparent);
-  margin-left: 12px;
-}
-
-/* ===== PAIR HEADER ===== */
-.pair-header {
-  background: #000;
-  border: 1px solid var(--border);
-  border-radius: 14px;
-  padding: 18px;
-  margin-bottom: 12px;
-}
-.pair-row-1 {
-  display: flex;
-  justify-content: space-between;
-  align-items: baseline;
-  margin-bottom: 6px;
-}
-.pair-name {
-  font-family: 'Bangers', cursive;
-  font-size: 40px;
-  font-weight: 400;
-  color: var(--gold);
-  letter-spacing: 2px;
-  line-height: 1;
-  text-shadow: 0 0 25px rgba(251,191,36,0.6);
-}
-.pair-price {
-  font-family: 'Bangers', cursive;
-  font-size: 40px;
-  font-weight: 400;
-  color: var(--gold-bright);
-  letter-spacing: 2px;
-  line-height: 1;
-  text-shadow: 0 0 25px rgba(251,191,36,0.7);
-}
-.pair-row-2 {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  font-size: 11px;
-  color: var(--gray);
-  font-weight: 600;
-  letter-spacing: 1px;
-  font-family: 'Fredoka', sans-serif;
-}
-.pair-change { display: flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 700; }
-.pair-change.down { color: var(--red-neon); }
-.pair-change.up { color: var(--green-neon); }
-.live-dot {
-  width: 6px; height: 6px;
-  border-radius: 50%;
-  background: var(--green);
-  box-shadow: 0 0 8px var(--green);
-  animation: blink 1.5s infinite;
-  display: inline-block;
-  margin-right: 4px;
-}
-
-/* ===== SIGNAL BOX ===== */
-.signal-box {
-  padding: 35px 20px;
-  border-radius: 20px;
-  text-align: center;
-  margin: 12px 0;
-  border: 1px solid var(--border);
-  background: #000;
-  position: relative;
-  overflow: hidden;
-}
-.signal-box.wait { color: var(--gray); }
-.signal-box.buy {
-  background: linear-gradient(135deg, #052e1a, #0a0a0a);
-  border: 1px solid rgba(0,255,136,0.3);
-  box-shadow: inset 0 0 40px rgba(0,255,136,0.1);
-}
-.signal-box.sell {
-  background: linear-gradient(135deg, #2e0512, #0a0a0a);
-  border: 1px solid rgba(255,46,91,0.3);
-  box-shadow: inset 0 0 40px rgba(255,46,91,0.1);
-}
-.signal-main {
-  font-family: 'Bangers', cursive;
-  font-size: 72px;
-  font-weight: 400;
-  letter-spacing: 6px;
-  line-height: 1;
-}
-.signal-box.buy .signal-main {
-  color: var(--green-neon);
-  text-shadow: 0 0 30px var(--green-neon), 0 0 60px rgba(0,255,136,0.4);
-}
-.signal-box.sell .signal-main {
-  color: var(--red-neon);
-  text-shadow: 0 0 30px var(--red-neon), 0 0 60px rgba(255,46,91,0.4);
-}
-.signal-box.wait .signal-main { color: var(--gray); }
-.signal-conf {
-  font-family: 'Fredoka', sans-serif;
-  font-size: 14px;
-  margin-top: 10px;
-  letter-spacing: 2px;
-  color: var(--cream);
-  opacity: 0.8;
-  font-weight: 600;
-}
-
-/* ===== DATA GRID ===== */
-.grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
-.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-
-.data-box {
-  background: var(--bg-card-2);
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  padding: 12px 8px;
-  text-align: center;
-}
-.data-label {
-  font-family: 'Fredoka', sans-serif;
-  font-size: 9px;
-  color: var(--gray);
-  font-weight: 600;
-  margin-bottom: 6px;
-  letter-spacing: 1.5px;
-  text-transform: uppercase;
-}
-.data-value {
-  font-family: 'Bangers', cursive;
-  font-size: 20px;
-  font-weight: 400;
-  letter-spacing: 1px;
-}
-.data-value.gold { color: var(--gold); text-shadow: 0 0 12px rgba(251,191,36,0.5); }
-.data-value.green { color: var(--green-neon); text-shadow: 0 0 12px rgba(0,255,136,0.4); }
-.data-value.red { color: var(--red-neon); text-shadow: 0 0 12px rgba(255,46,91,0.4); }
-.data-value.cream { color: var(--cream); }
-.data-value.blue { color: #38bdf8; text-shadow: 0 0 12px rgba(56,189,248,0.4); }
-
-/* ===== ENTRY CARD ===== */
-.entry-card {
-  background: var(--bg-card);
-  border: 1px solid var(--border-gold);
-  border-radius: 14px;
-  padding: 20px;
-  text-align: center;
-  margin-bottom: 12px;
-}
-.entry-label {
-  font-family: 'Fredoka', sans-serif;
-  font-size: 10px;
-  color: var(--gray);
-  letter-spacing: 3px;
-  font-weight: 600;
-  margin-bottom: 8px;
-  text-transform: uppercase;
-}
-.entry-value {
-  font-family: 'Bangers', cursive;
-  font-size: 48px;
-  font-weight: 400;
-  color: var(--gold);
-  letter-spacing: 3px;
-  text-shadow: 0 0 30px rgba(251,191,36,0.7);
-}
-.entry-source {
-  font-family: 'Fredoka', sans-serif;
-  font-size: 10px;
-  color: var(--gray);
-  margin-top: 6px;
-  letter-spacing: 1px;
-  font-weight: 600;
-}
-
-/* ===== CONFIRMATION ===== */
-.conf-box {
-  text-align: center;
-  padding: 18px;
-}
-.conf-label {
-  font-family: 'Fredoka', sans-serif;
-  font-size: 10px;
-  color: var(--gray);
-  letter-spacing: 3px;
-  font-weight: 600;
-  margin-bottom: 8px;
-  text-transform: uppercase;
-}
-.conf-value {
-  font-family: 'Bangers', cursive;
-  font-size: 60px;
-  font-weight: 400;
-  color: var(--green-neon);
-  text-shadow: 0 0 30px rgba(0,255,136,0.7);
-  letter-spacing: 4px;
-}
-.conf-value.high { color: var(--green-neon); text-shadow: 0 0 30px rgba(0,255,136,0.7); }
-.conf-value.mid { color: var(--gold); text-shadow: 0 0 30px rgba(251,191,36,0.7); }
-.conf-value.low { color: var(--red-neon); text-shadow: 0 0 30px rgba(255,46,91,0.7); }
-
-/* ===== SESSION ROW ===== */
-.session-row {
-  display: flex;
-  justify-content: space-between;
-  padding: 14px;
-  background: var(--bg-card);
-  border: 1px solid var(--border);
-  border-radius: 14px;
-  margin-bottom: 12px;
-}
-.session-item { text-align: center; flex: 1; }
-.session-label {
-  font-family: 'Fredoka', sans-serif;
-  font-size: 9px;
-  color: var(--gray);
-  letter-spacing: 2px;
-  margin-bottom: 6px;
-  font-weight: 600;
-  text-transform: uppercase;
-}
-.session-value {
-  font-family: 'Bangers', cursive;
-  font-size: 22px;
-  font-weight: 400;
-  color: var(--gold);
-  letter-spacing: 2px;
-}
-
-/* ===== POC BANNER ===== */
-.poc-banner {
-  background: linear-gradient(135deg, var(--gold), var(--gold-dim));
-  color: #000;
-  font-family: 'Bangers', cursive;
-  font-weight: 400;
-  text-align: center;
-  padding: 14px;
-  border-radius: 12px;
-  margin-bottom: 12px;
-  font-size: 22px;
-  letter-spacing: 3px;
-  box-shadow: 0 0 25px rgba(251,191,36,0.4);
-}
-
-/* ===== SNR GRID ===== */
-.snr-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-bottom: 10px; }
-.snr-box {
-  background: var(--bg-card-2);
-  padding: 12px 6px;
-  border-radius: 10px;
-  text-align: center;
-  border: 1px solid var(--border);
-}
-.snr-label {
-  font-family: 'Fredoka', sans-serif;
-  font-size: 10px;
-  margin-bottom: 6px;
-  font-weight: 700;
-  letter-spacing: 1px;
-}
-.snr-value {
-  font-family: 'Bangers', cursive;
-  font-size: 17px;
-  font-weight: 400;
-  color: var(--cream);
-  letter-spacing: 1px;
-}
-.snr-box.red { border-color: rgba(255,46,91,0.3); }
-.snr-box.red .snr-label { color: var(--red-neon); }
-.snr-box.red .snr-value { color: var(--red-neon); }
-.snr-box.green { border-color: rgba(0,255,136,0.3); }
-.snr-box.green .snr-label { color: var(--green-neon); }
-.snr-box.green .snr-value { color: var(--green-neon); }
-.snr-box.blue { border-color: rgba(56,189,248,0.3); }
-.snr-box.blue .snr-label { color: #38bdf8; }
-.snr-box.blue .snr-value { color: #38bdf8; }
-.snr-box.yellow {
-  background: linear-gradient(135deg, var(--gold), var(--gold-dim));
-  border: none;
-  box-shadow: 0 0 15px rgba(251,191,36,0.4);
-}
-.snr-box.yellow .snr-label,
-.snr-box.yellow .snr-value { color: #000; }
-
-/* ===== MAPPING TABS ===== */
-.mapping-tab {
-  padding: 12px 8px;
-  background: var(--bg-card-2);
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  color: var(--gray);
-  font-family: 'Bangers', cursive;
-  font-size: 15px;
-  font-weight: 400;
-  cursor: pointer;
-  transition: all 0.3s;
-  letter-spacing: 2px;
-}
-.mapping-tab.active {
-  background: linear-gradient(135deg, var(--gold), var(--gold-dim));
-  color: #000;
-  border-color: var(--gold);
-  box-shadow: 0 0 20px rgba(251,191,36,0.5);
-}
-
-/* ===== MAPPING CARD ===== */
-.mapping-card {
-  background: var(--bg-card);
-  border: 1px solid var(--border);
-  border-radius: 14px;
-  padding: 16px;
-  margin-bottom: 12px;
-}
-.mapping-ai-text {
-  font-family: 'Fredoka', sans-serif;
-  font-size: 13px;
-  line-height: 1.7;
-  color: var(--cream);
-  white-space: pre-wrap;
-  word-break: break-word;
-  font-weight: 500;
-}
-.mapping-badge {
-  display: inline-block;
-  padding: 4px 10px;
-  border-radius: 6px;
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 1px;
-  font-family: 'Fredoka', sans-serif;
-}
-.badge-prime { background: rgba(0,255,136,0.15); color: var(--green-neon); border: 1px solid var(--green-neon); }
-.badge-slow { background: rgba(251,191,36,0.15); color: var(--gold); border: 1px solid var(--gold); }
-.badge-closed { background: rgba(255,46,91,0.15); color: var(--red-neon); border: 1px solid var(--red-neon); }
-
-/* ===== MESSAGES ===== */
-.msg-filter {
-  padding: 8px 14px;
-  background: var(--bg-card-2);
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  color: var(--gray);
-  font-family: 'Bangers', cursive;
-  font-size: 14px;
-  font-weight: 400;
-  cursor: pointer;
-  transition: all 0.3s;
-  letter-spacing: 2px;
-}
-.msg-filter.active {
-  background: linear-gradient(135deg, var(--gold), var(--gold-dim));
-  color: #000;
-  border-color: var(--gold);
-  box-shadow: 0 0 15px rgba(251,191,36,0.4);
-}
-.msg-card {
-  background: var(--bg-card);
-  border: 1px solid var(--border);
-  border-left: 3px solid var(--gold);
-  border-radius: 10px;
-  padding: 12px;
-  margin-bottom: 10px;
-}
-.msg-card.signal { border-left-color: var(--green-neon); }
-.msg-card.mapping { border-left-color: #38bdf8; }
-.msg-card.asia_breakout { border-left-color: #a78bfa; }
-.msg-card.daily_outlook { border-left-color: var(--gold); }
-.msg-card.pre_market { border-left-color: #f97316; }
-.msg-card.level_alert { border-left-color: #ec4899; }
-.msg-card.news_alert { border-left-color: var(--red-neon); }
-.msg-card.liquidity_sweep { border-left-color: #06b6d4; }
-.msg-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 8px;
-  padding-bottom: 8px;
-  border-bottom: 1px solid var(--border);
-}
-.msg-type {
-  font-family: 'Bangers', cursive;
-  font-size: 14px;
-  font-weight: 400;
-  color: var(--gold);
-  letter-spacing: 2px;
-}
-.msg-time {
-  font-family: 'Fredoka', sans-serif;
-  font-size: 10px;
-  color: var(--gray);
-  font-weight: 600;
-}
-.msg-body {
-  font-family: 'Fredoka', sans-serif;
-  font-size: 12px;
-  color: var(--cream);
-  white-space: pre-wrap;
-  line-height: 1.6;
-  word-break: break-word;
-  font-weight: 500;
-}
-
-/* ===== MT4 SCREEN ===== */
-.mt4-status {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 10px;
-  padding: 14px;
-  border-radius: 12px;
-  margin-bottom: 14px;
-  font-family: 'Bangers', cursive;
-  font-size: 22px;
-  font-weight: 400;
-  letter-spacing: 4px;
-}
-.mt4-status.online {
-  background: linear-gradient(135deg, rgba(0,255,136,0.1), rgba(0,0,0,0));
-  border: 1px solid var(--green-neon);
-  color: var(--green-neon);
-  text-shadow: 0 0 15px rgba(0,255,136,0.6);
-  box-shadow: 0 0 25px rgba(0,255,136,0.2);
-}
-.mt4-status.offline {
-  background: linear-gradient(135deg, rgba(255,46,91,0.1), rgba(0,0,0,0));
-  border: 1px solid var(--red-neon);
-  color: var(--red-neon);
-}
-
-.mt4-btn {
-  padding: 16px;
-  border: none;
-  border-radius: 12px;
-  font-family: 'Bangers', cursive;
-  font-weight: 400;
-  font-size: 18px;
-  cursor: pointer;
-  letter-spacing: 3px;
-  transition: all 0.3s;
-  width: 100%;
-}
-.mt4-btn.buy {
-  background: linear-gradient(135deg, var(--green-neon), #059669);
-  color: #000;
-  box-shadow: 0 0 25px rgba(0,255,136,0.4);
-}
-.mt4-btn.sell {
-  background: linear-gradient(135deg, var(--red-neon), #be123c);
-  color: #fff;
-  box-shadow: 0 0 25px rgba(255,46,91,0.4);
-}
-.mt4-btn.close {
-  background: linear-gradient(135deg, var(--gold), var(--gold-dim));
-  color: #000;
-  box-shadow: 0 0 25px rgba(251,191,36,0.4);
-}
-.mt4-btn:active { transform: scale(0.97); }
-.mt4-input {
-  flex: 1;
-  padding: 12px;
-  background: var(--bg-card-2);
-  border: 1px solid var(--border-gold);
-  border-radius: 10px;
-  color: var(--gold);
-  font-family: 'Bangers', cursive;
-  font-weight: 400;
-  text-align: center;
-  outline: none;
-  font-size: 22px;
-  letter-spacing: 2px;
-}
-
-.position-card {
-  background: var(--bg-card-2);
-  border-left: 3px solid var(--gold);
-  border-radius: 8px;
-  padding: 10px 12px;
-  margin-bottom: 8px;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  font-family: 'Fredoka', sans-serif;
-  font-size: 12px;
-  font-weight: 600;
-}
-
-/* ===== NEWS ===== */
-.news-item {
-  background: var(--bg-card);
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  padding: 14px;
-  margin-bottom: 10px;
-  border-left: 3px solid var(--gold);
-  font-family: 'Fredoka', sans-serif;
-}
-
-/* ===== BOTTOM NAV ===== */
-#bottom-nav {
-  position: fixed;
-  bottom: 0; left: 0; width: 100%;
-  background: linear-gradient(180deg, #0a0a0a, #000);
-  border-top: 1px solid var(--border);
-  padding: 8px 0 12px;
-  z-index: 100;
-}
-.nav-grid {
-  display: flex;
-  justify-content: space-around;
-  margin-bottom: 6px;
-}
-.nav-item {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  color: var(--gray);
-  font-family: 'Bangers', cursive;
-  font-size: 12px;
-  cursor: pointer;
-  background: none;
-  border: none;
-  width: 13.5%;
-  letter-spacing: 1px;
-  font-weight: 400;
-  padding: 4px 0;
-  position: relative;
-}
-.nav-item.active { color: var(--gold); }
-.nav-item.active span { color: var(--gold); }
-.nav-item span { margin-top: 4px; }
-.nav-item .nav-icon {
-  font-size: 18px;
-  line-height: 1;
-  filter: drop-shadow(0 0 4px rgba(251,191,36,0.4));
-}
-.nav-badge-dot {
-  position: absolute;
-  top: 2px; right: 12px;
-  width: 7px; height: 7px;
-  border-radius: 50%;
-  display: none;
-}
-.nav-badge-dot.online {
-  background: var(--green-neon);
-  box-shadow: 0 0 8px var(--green-neon);
-  animation: blink 1.5s infinite;
-  display: block;
-}
-.nav-badge-dot.offline { background: var(--red-neon); display: block; }
-
-/* ===== TIER FOOTER ===== */
-.tier-footer {
-  text-align: center;
-  font-family: 'Bangers', cursive;
-  font-size: 14px;
-  color: var(--gold);
-  letter-spacing: 4px;
-  padding: 8px;
-  border: 1px solid var(--border-gold);
-  border-radius: 20px;
-  margin: 0 30px;
-  font-weight: 400;
-  text-shadow: 0 0 10px rgba(251,191,36,0.4);
-}
-
-/* ===== LOADING ===== */
-.loading {
-  text-align: center;
-  padding: 40px;
-  color: var(--gray);
-  font-family: 'Fredoka', sans-serif;
-}
-.loading .spinner {
-  font-size: 42px;
-  margin-bottom: 15px;
-  animation: spin 2s linear infinite;
-  display: inline-block;
-}
-@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-</style>
-</head>
-<body>
-
-<div class="header">
-  <div class="header-top">
-    <!-- MT4 BADGE -->
-    <div class="mt4-badge offline" id="mt4-badge">
-      <span class="dot"></span>
-      <span id="mt4-badge-text">OFFLINE</span>
-    </div>
-
-    <div class="header-brand">
-      <div class="brand-left">
-        <img src="logo.png" alt="BPT Logo" class="brand-logo" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
-        <div class="brand-icon" style="display:none;">👑</div>
-        <div>
-          <div class="brand-name">BPT</div>
-          <div class="brand-sub">BORNEO PRO TRADE</div>
-        </div>
-      </div>
-    </div>
-
-    <div class="clock-row">
-      <span>⏰ <span class="time" id="utc-clock">--:--:--</span> MYT</span>
-      <span>📅 <span id="utc-date">--</span></span>
-    </div>
-  </div>
-  <select id="market-selector" onchange="tukarMarket()">
-    <option value="XAU/USD">XAU/USD (Gold)</option>
-    <option value="XAG/USD">XAG/USD (Silver)</option>
-    <option value="EUR/USD">EUR/USD (Euro)</option>
-    <option value="GBP/USD">GBP/USD (Pound)</option>
-    <option value="USD/JPY">USD/JPY (Yen)</option>
-    <option value="AUD/USD">AUD/USD (Aussie)</option>
-  </select>
-</div>
-
-<!-- MT4 STATUS BAR -->
-<div class="mt4-status-bar offline" id="mt4-status-bar">
-  💼 MT4 OFFLINE · Menunggu EA connect...
-</div>
-
-<!-- ===== SCREEN: SIGNAL ===== -->
-<div id="screen-signal" class="screen active">
-
-  <!-- PAIR HEADER -->
-  <div class="pair-header">
-    <div class="pair-row-1">
-      <div class="pair-name" id="pair-name">XAUUSD</div>
-      <div class="pair-price" id="pair-price">-</div>
-    </div>
-    <div class="pair-row-2">
-      <div id="pair-sub">GOLD / US DOLLAR — SPOT</div>
-      <div class="pair-change down" id="pair-change">
-        <span class="live-dot"></span> LIVE
-      </div>
-    </div>
-  </div>
-
-  <!-- SIGNAL BOX -->
-  <div id="signal-box" class="signal-box wait">
-    <div class="signal-main">WAIT</div>
-    <div class="signal-conf">Menunggu setup</div>
-  </div>
-
-  <!-- ENTRY CARD -->
-  <div class="entry-card">
-    <div class="entry-label">🎯 ENTRY</div>
-    <div class="entry-value" id="signal-entry">-</div>
-    <div class="entry-source" id="signal-source">💼 MT4</div>
-  </div>
-
-  <!-- SL/TP -->
-  <div class="card">
-    <div class="grid-3" style="margin-bottom:8px;">
-      <div class="data-box" style="border-color:rgba(255,46,91,0.3);">
-        <div class="data-label">🛑 SL</div>
-        <div class="data-value red" id="sig-sl">-</div>
-      </div>
-      <div class="data-box" style="border-color:rgba(0,255,136,0.3);">
-        <div class="data-label">✅ TP1</div>
-        <div class="data-value green" id="sig-tp1">-</div>
-      </div>
-      <div class="data-box" style="border-color:rgba(0,255,136,0.3);">
-        <div class="data-label">✅ TP2</div>
-        <div class="data-value green" id="sig-tp2">-</div>
-      </div>
-    </div>
-    <div class="data-box" style="border-color:rgba(0,255,136,0.3);">
-      <div class="data-label">✅ TP3</div>
-      <div class="data-value green" id="sig-tp3">-</div>
-    </div>
-  </div>
-
-  <!-- CONFIRMATION -->
-  <div class="card conf-box">
-    <div class="conf-label">📊 CONFIRMATION</div>
-    <div class="conf-value" id="conf-percent">-</div>
-  </div>
-
-  <!-- SESSION -->
-  <div class="session-row">
-    <div class="session-item">
-      <div class="session-label">⏰ SESSION</div>
-      <div class="session-value" id="sig-session">-</div>
-    </div>
-    <div class="session-item">
-      <div class="session-label">📈 MTF</div>
-      <div class="session-value" id="sig-mtf">-</div>
-    </div>
-  </div>
-
-</div>
-
-<!-- ===== SCREEN: LEVELS ===== -->
-<div id="screen-levels" class="screen">
-  <div class="poc-banner">POC <span id="poc-val">-</span></div>
-
-  <div class="card">
-    <div class="card-title">⭐ AUTO SNR LEVELS</div>
-    <div class="snr-grid">
-      <div class="snr-box red"><div class="snr-label">R3</div><div class="snr-value" id="r3">-</div></div>
-      <div class="snr-box red"><div class="snr-label">R2</div><div class="snr-value" id="r2">-</div></div>
-      <div class="snr-box red"><div class="snr-label">R1</div><div class="snr-value" id="r1">-</div></div>
-      <div class="snr-box yellow"><div class="snr-label">POC</div><div class="snr-value" id="poc-box">-</div></div>
-      <div class="snr-box blue"><div class="snr-label">VAH</div><div class="snr-value" id="vah">-</div></div>
-      <div class="snr-box blue"><div class="snr-label">VAL</div><div class="snr-value" id="val">-</div></div>
-      <div class="snr-box green"><div class="snr-label">S1</div><div class="snr-value" id="s1">-</div></div>
-      <div class="snr-box green"><div class="snr-label">S2</div><div class="snr-value" id="s2">-</div></div>
-      <div class="snr-box green"><div class="snr-label">S3</div><div class="snr-value" id="s3">-</div></div>
-    </div>
-  </div>
-
-  <div class="card">
-    <div class="card-title">💧 LIQUIDITY LEVELS</div>
-    <div id="liquidity-content" style="font-family:'Fredoka',sans-serif; font-size:12px; color:var(--cream); line-height:1.8;">
-      <div style="text-align:center; color:var(--gray);">Loading...</div>
-    </div>
-  </div>
-</div>
-
-<!-- ===== SCREEN: MAPPING ===== -->
-<div id="screen-mapping" class="screen">
-  <div style="display:grid; grid-template-columns:repeat(3,1fr); gap:6px; margin-bottom:12px;">
-    <button onclick="showMapping('ASIA')" class="mapping-tab" id="tab-asia">ASIA</button>
-    <button onclick="showMapping('LONDON')" class="mapping-tab" id="tab-london">LONDON</button>
-    <button onclick="showMapping('NEW YORK')" class="mapping-tab" id="tab-ny">NY</button>
-  </div>
-  <div id="mapping-content">
-    <div class="loading">
-      <div class="spinner">⏳</div>
-      <div>Loading mapping...</div>
-    </div>
-  </div>
-  <button onclick="refreshMapping()" style="width:100%; padding:14px; background:linear-gradient(135deg, var(--gold), var(--gold-dim)); color:#000; border:none; border-radius:12px; font-family:'Bangers',cursive; font-size:18px; letter-spacing:3px; margin-top:12px; cursor:pointer;">
-    REFRESH MAPPING
-  </button>
-</div>
-
-<!-- ===== SCREEN: ASIA ===== -->
-<div id="screen-asia" class="screen">
-  <div class="card" style="text-align:center; padding:14px;">
-    <div style="font-family:'Fredoka',sans-serif; font-size:10px; color:var(--gray); letter-spacing:2px; margin-bottom:6px;">🔺 ASIA BREAKOUT STATUS</div>
-    <div id="asia-status" style="font-family:'Bangers',cursive; font-size:26px; font-weight:400; color:var(--gray); letter-spacing:2px;">-</div>
-    <div id="asia-last" style="font-family:'Fredoka',sans-serif; font-size:11px; color:var(--gray); margin-top:6px;">Terakhir: -</div>
-  </div>
-  <button onclick="loadAsiaBreakout()" style="width:100%; padding:12px; background:linear-gradient(135deg, var(--gold), var(--gold-dim)); color:#000; border:none; border-radius:12px; font-family:'Bangers',cursive; font-size:16px; letter-spacing:3px; cursor:pointer; margin-bottom:12px;">
-    REFRESH ASIA
-  </button>
-  <div id="asia-content">
-    <div class="loading"><div class="spinner">⏳</div><div>Loading...</div></div>
-  </div>
-</div>
-
-<!-- ===== SCREEN: NEWS ===== -->
-<div id="screen-news" class="screen">
-  <div class="card">
-    <div class="card-title">📰 ECONOMIC NEWS (USD)</div>
-    <div id="news-list">
-      <div class="loading"><div class="spinner">⏳</div><div>Memuatkan...</div></div>
-    </div>
-  </div>
-</div>
-
-<!-- ===== SCREEN: MESSAGES ===== -->
-<div id="screen-messages" class="screen">
-  <div class="card">
-    <div class="card-title">📨 NOTIFICATION HISTORY</div>
-    <div style="display:flex; gap:6px; margin-bottom:12px; flex-wrap:wrap;">
-      <button onclick="loadMessages('all')" class="msg-filter active" id="filter-all">ALL</button>
-      <button onclick="loadMessages('signal')" class="msg-filter" id="filter-signal">SIGNAL</button>
-      <button onclick="loadMessages('mapping')" class="msg-filter" id="filter-mapping">MAPPING</button>
-      <button onclick="loadMessages('alert')" class="msg-filter" id="filter-alert">ALERT</button>
-      <button onclick="loadMessages('asia_breakout')" class="msg-filter" id="filter-asia">ASIA</button>
-      <button onclick="loadMessages('daily_outlook,pre_market')" class="msg-filter" id="filter-daily">DAILY</button>
-      <button onclick="loadMessages('liquidity_sweep')" class="msg-filter" id="filter-sweep">SWEEP</button>
-    </div>
-    <div id="messages-content">
-      <div class="loading"><div class="spinner">⏳</div><div>Loading...</div></div>
-    </div>
-  </div>
-</div>
-
-<!-- ===== SCREEN: MT4 ===== -->
-<div id="screen-mt4" class="screen">
-  <div class="mt4-status offline" id="mt4-screen-status">🔴 OFFLINE</div>
-
-  <div class="card">
-    <div class="card-title">💼 ACCOUNT INFO</div>
-    <div class="grid-2">
-      <div class="data-box"><div class="data-label">Account</div><div class="data-value gold" id="mt4-account" style="font-size:16px;">-</div></div>
-      <div class="data-box"><div class="data-label">Broker</div><div class="data-value cream" id="mt4-broker" style="font-size:16px;">-</div></div>
-      <div class="data-box"><div class="data-label">Balance</div><div class="data-value gold" id="mt4-balance">-</div></div>
-      <div class="data-box"><div class="data-label">Equity</div><div class="data-value cream" id="mt4-equity">-</div></div>
-      <div class="data-box"><div class="data-label">Floating P/L</div><div class="data-value green" id="mt4-profit">-</div></div>
-      <div class="data-box"><div class="data-label">Spread</div><div class="data-value blue" id="mt4-spread">-</div></div>
-      <div class="data-box"><div class="data-label">Margin</div><div class="data-value gold" id="mt4-margin" style="font-<!DOCTYPE html>
-<html lang="ms">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>BPT — Borneo Pro Trade</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Luckiest+Guy&family=Baloo+2:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
 * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -1021,7 +15,6 @@ select {
   --bg-card-2: #111111;
   --border: #1a1a1a;
   --border-gold: rgba(251,191,36,0.15);
-  
   --gold: #fbbf24;
   --gold-dim: #d97706;
   --gold-bright: #fcd34d;
@@ -1029,7 +22,6 @@ select {
   --white: #f1f5f9;
   --gray: #6b7280;
   --gray-dim: #4b5563;
-  
   --green: #22c55e;
   --green-neon: #00ff88;
   --red: #ef4444;
@@ -1043,113 +35,59 @@ body {
   min-height: 100vh;
   font-weight: 500;
 }
-
-/* ===== FONT CLASSES ===== */
 .font-bangers { font-family: 'Luckiest Guy', cursive; letter-spacing: 1px; }
 .font-fredoka { font-family: 'Baloo 2', sans-serif; }
 
 /* ===== HEADER ===== */
 .header { padding: 14px 15px; background: #000; border-bottom: 1px solid var(--border); position: relative; }
 .header-top { position: relative; padding-top: 4px; }
-.header-brand {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 12px;
-}
-.brand-left {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
+.header-brand { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+.brand-left { display: flex; align-items: center; gap: 12px; }
 .brand-logo {
-  width: 44px;
-  height: 44px;
-  border-radius: 10px;
-  object-fit: cover;
+  width: 44px; height: 44px; border-radius: 10px; object-fit: cover;
   border: 1px solid var(--border-gold);
   box-shadow: 0 0 15px rgba(251,191,36,0.4);
   display: block;
 }
 .brand-icon {
-  width: 44px;
-  height: 44px;
-  border-radius: 10px;
+  width: 44px; height: 44px; border-radius: 10px;
   background: linear-gradient(135deg, #1a1a1a, #0a0a0a);
   border: 1px solid var(--border-gold);
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  display: flex; align-items: center; justify-content: center;
   font-size: 22px;
   box-shadow: 0 0 15px rgba(251,191,36,0.2);
 }
 .brand-name {
   font-family: 'Luckiest Guy', cursive;
-  font-size: 26px;
-  font-weight: 400;
-  color: var(--gold);
-  letter-spacing: 1.5px;
-  line-height: 1;
+  font-size: 26px; font-weight: 400; color: var(--gold);
+  letter-spacing: 1.5px; line-height: 1;
   text-shadow: 0 0 15px rgba(251,191,36,0.5);
 }
 .brand-sub {
-  font-family: 'Baloo 2', sans-serif;
-  font-size: 10px;
-  color: var(--gray);
-  letter-spacing: 2px;
-  margin-top: 3px;
-  font-weight: 700;
-  text-transform: uppercase;
+  font-family: 'Baloo 2', sans-serif; font-size: 10px; color: var(--gray);
+  letter-spacing: 2px; margin-top: 3px; font-weight: 700; text-transform: uppercase;
 }
 
 /* ===== MT4 BADGE ===== */
 .mt4-badge {
-  position: absolute;
-  top: 4px;
-  right: 15px;
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  padding: 4px 9px;
-  border-radius: 6px;
-  font-size: 9px;
-  font-weight: 800;
-  letter-spacing: 1px;
+  position: absolute; top: 4px; right: 15px;
+  display: flex; align-items: center; gap: 5px;
+  padding: 4px 9px; border-radius: 6px;
+  font-size: 9px; font-weight: 800; letter-spacing: 1px;
   font-family: 'Baloo 2', sans-serif;
 }
-.mt4-badge.online {
-  background: rgba(34,197,94,0.15);
-  border: 1px solid var(--green);
-  color: var(--green);
-}
-.mt4-badge.offline {
-  background: rgba(239,68,68,0.15);
-  border: 1px solid var(--red);
-  color: var(--red);
-}
-.mt4-badge .dot {
-  width: 5px; height: 5px;
-  border-radius: 50%;
-  display: inline-block;
-}
-.mt4-badge.online .dot {
-  background: var(--green);
-  box-shadow: 0 0 6px var(--green);
-  animation: blink 1.5s infinite;
-}
+.mt4-badge.online { background: rgba(34,197,94,0.15); border: 1px solid var(--green); color: var(--green); }
+.mt4-badge.offline { background: rgba(239,68,68,0.15); border: 1px solid var(--red); color: var(--red); }
+.mt4-badge .dot { width: 5px; height: 5px; border-radius: 50%; display: inline-block; }
+.mt4-badge.online .dot { background: var(--green); box-shadow: 0 0 6px var(--green); animation: blink 1.5s infinite; }
 .mt4-badge.offline .dot { background: var(--red); }
 @keyframes blink { 0%,100% { opacity: 1; } 50% { opacity: 0.3; } }
 
 /* ===== MYT CLOCK ===== */
 .clock-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 6px 0;
-  font-size: 11px;
-  color: var(--gray);
-  font-weight: 700;
-  font-family: 'Baloo 2', sans-serif;
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 6px 0; font-size: 11px; color: var(--gray);
+  font-weight: 700; font-family: 'Baloo 2', sans-serif;
 }
 .clock-row .time { color: var(--gold); font-weight: 800; }
 
@@ -1158,11 +96,8 @@ body {
   padding: 8px 12px;
   background: linear-gradient(90deg, transparent, rgba(251,191,36,0.04), transparent);
   border-bottom: 1px solid var(--border);
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.5px;
-  text-align: center;
-  font-family: 'Baloo 2', sans-serif;
+  font-size: 10px; font-weight: 700; letter-spacing: 0.5px;
+  text-align: center; font-family: 'Baloo 2', sans-serif;
 }
 .mt4-status-bar.online { color: var(--green); }
 .mt4-status-bar.offline { color: var(--red); }
@@ -1172,18 +107,11 @@ body {
 
 /* ===== SELECT ===== */
 select {
-  margin-top: 10px;
-  padding: 11px 14px;
-  border-radius: 10px;
-  background: #0a0a0a;
-  color: var(--gold);
+  margin-top: 10px; padding: 11px 14px; border-radius: 10px;
+  background: #0a0a0a; color: var(--gold);
   border: 1px solid var(--border-gold);
-  font-weight: 700;
-  width: 100%;
-  font-size: 13px;
-  font-family: 'Baloo 2', sans-serif;
-  outline: none;
-  letter-spacing: 1px;
+  font-weight: 700; width: 100%; font-size: 13px;
+  font-family: 'Baloo 2', sans-serif; outline: none; letter-spacing: 1px;
 }
 
 /* ===== SCREEN ===== */
@@ -1192,73 +120,37 @@ select {
 
 /* ===== CARD ===== */
 .card {
-  background: var(--bg-card);
-  border: 1px solid var(--border);
-  border-radius: 14px;
-  padding: 14px;
-  margin-bottom: 12px;
-  position: relative;
+  background: var(--bg-card); border: 1px solid var(--border);
+  border-radius: 14px; padding: 14px; margin-bottom: 12px; position: relative;
 }
 .card-title {
-  font-family: 'Luckiest Guy', cursive;
-  font-size: 17px;
-  font-weight: 400;
-  color: var(--gold);
-  margin-bottom: 12px;
-  letter-spacing: 1.5px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
+  font-family: 'Luckiest Guy', cursive; font-size: 17px; font-weight: 400;
+  color: var(--gold); margin-bottom: 12px; letter-spacing: 1.5px;
+  display: flex; align-items: center; justify-content: space-between;
   text-shadow: 0 0 10px rgba(251,191,36,0.4);
 }
 .card-title::after {
-  content: '';
-  flex: 1;
-  height: 1px;
+  content: ''; flex: 1; height: 1px;
   background: linear-gradient(90deg, var(--border-gold), transparent);
   margin-left: 12px;
 }
 
 /* ===== PAIR HEADER ===== */
-.pair-header {
-  background: #000;
-  border: 1px solid var(--border);
-  border-radius: 14px;
-  padding: 18px;
-  margin-bottom: 12px;
-}
-.pair-row-1 {
-  display: flex;
-  justify-content: space-between;
-  align-items: baseline;
-  margin-bottom: 6px;
-}
+.pair-header { background: #000; border: 1px solid var(--border); border-radius: 14px; padding: 18px; margin-bottom: 12px; }
+.pair-row-1 { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 6px; }
 .pair-name {
-  font-family: 'Luckiest Guy', cursive;
-  font-size: 32px;
-  font-weight: 400;
-  color: var(--gold);
-  letter-spacing: 1px;
-  line-height: 1;
+  font-family: 'Luckiest Guy', cursive; font-size: 32px; font-weight: 400;
+  color: var(--gold); letter-spacing: 1px; line-height: 1;
   text-shadow: 0 0 25px rgba(251,191,36,0.6);
 }
 .pair-price {
-  font-family: 'Luckiest Guy', cursive;
-  font-size: 32px;
-  font-weight: 400;
-  color: var(--gold-bright);
-  letter-spacing: 1px;
-  line-height: 1;
+  font-family: 'Luckiest Guy', cursive; font-size: 32px; font-weight: 400;
+  color: var(--gold-bright); letter-spacing: 1px; line-height: 1;
   text-shadow: 0 0 25px rgba(251,191,36,0.7);
 }
 .pair-row-2 {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  font-size: 11px;
-  color: var(--gray);
-  font-weight: 700;
-  letter-spacing: 1px;
+  display: flex; justify-content: space-between; align-items: center;
+  font-size: 11px; color: var(--gray); font-weight: 700; letter-spacing: 1px;
   font-family: 'Baloo 2', sans-serif;
 }
 .pair-change { display: flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 800; }
@@ -1266,25 +158,16 @@ select {
 .pair-change.up { color: var(--green-neon); }
 .pair-change.live { color: var(--gold); }
 .live-dot {
-  width: 6px; height: 6px;
-  border-radius: 50%;
-  background: var(--green);
-  box-shadow: 0 0 8px var(--green);
-  animation: blink 1.5s infinite;
-  display: inline-block;
-  margin-right: 4px;
+  width: 6px; height: 6px; border-radius: 50%;
+  background: var(--green); box-shadow: 0 0 8px var(--green);
+  animation: blink 1.5s infinite; display: inline-block; margin-right: 4px;
 }
 
 /* ===== SIGNAL BOX ===== */
 .signal-box {
-  padding: 35px 20px;
-  border-radius: 20px;
-  text-align: center;
-  margin: 12px 0;
-  border: 1px solid var(--border);
-  background: #000;
-  position: relative;
-  overflow: hidden;
+  padding: 35px 20px; border-radius: 20px; text-align: center;
+  margin: 12px 0; border: 1px solid var(--border); background: #000;
+  position: relative; overflow: hidden;
 }
 .signal-box.wait { color: var(--gray); }
 .signal-box.buy {
@@ -1297,58 +180,18 @@ select {
   border: 1px solid rgba(255,46,91,0.3);
   box-shadow: inset 0 0 40px rgba(255,46,91,0.1);
 }
-.signal-main {
-  font-family: 'Luckiest Guy', cursive;
-  font-size: 64px;
-  font-weight: 400;
-  letter-spacing: 3px;
-  line-height: 1;
-}
-.signal-box.buy .signal-main {
-  color: var(--green-neon);
-  text-shadow: 0 0 30px var(--green-neon), 0 0 60px rgba(0,255,136,0.4);
-}
-.signal-box.sell .signal-main {
-  color: var(--red-neon);
-  text-shadow: 0 0 30px var(--red-neon), 0 0 60px rgba(255,46,91,0.4);
-}
+.signal-main { font-family: 'Luckiest Guy', cursive; font-size: 64px; font-weight: 400; letter-spacing: 3px; line-height: 1; }
+.signal-box.buy .signal-main { color: var(--green-neon); text-shadow: 0 0 30px var(--green-neon), 0 0 60px rgba(0,255,136,0.4); }
+.signal-box.sell .signal-main { color: var(--red-neon); text-shadow: 0 0 30px var(--red-neon), 0 0 60px rgba(255,46,91,0.4); }
 .signal-box.wait .signal-main { color: var(--gray); }
-.signal-conf {
-  font-family: 'Baloo 2', sans-serif;
-  font-size: 14px;
-  margin-top: 10px;
-  letter-spacing: 2px;
-  color: var(--cream);
-  opacity: 0.8;
-  font-weight: 700;
-}
+.signal-conf { font-family: 'Baloo 2', sans-serif; font-size: 14px; margin-top: 10px; letter-spacing: 2px; color: var(--cream); opacity: 0.8; font-weight: 700; }
 
 /* ===== DATA GRID ===== */
 .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
 .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-
-.data-box {
-  background: var(--bg-card-2);
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  padding: 12px 8px;
-  text-align: center;
-}
-.data-label {
-  font-family: 'Baloo 2', sans-serif;
-  font-size: 9px;
-  color: var(--gray);
-  font-weight: 700;
-  margin-bottom: 6px;
-  letter-spacing: 1.5px;
-  text-transform: uppercase;
-}
-.data-value {
-  font-family: 'Luckiest Guy', cursive;
-  font-size: 18px;
-  font-weight: 400;
-  letter-spacing: 0.5px;
-}
+.data-box { background: var(--bg-card-2); border: 1px solid var(--border); border-radius: 10px; padding: 12px 8px; text-align: center; }
+.data-label { font-family: 'Baloo 2', sans-serif; font-size: 9px; color: var(--gray); font-weight: 700; margin-bottom: 6px; letter-spacing: 1.5px; text-transform: uppercase; }
+.data-value { font-family: 'Luckiest Guy', cursive; font-size: 18px; font-weight: 400; letter-spacing: 0.5px; }
 .data-value.gold { color: var(--gold); text-shadow: 0 0 12px rgba(251,191,36,0.5); }
 .data-value.green { color: var(--green-neon); text-shadow: 0 0 12px rgba(0,255,136,0.4); }
 .data-value.red { color: var(--red-neon); text-shadow: 0 0 12px rgba(255,46,91,0.4); }
@@ -1357,133 +200,40 @@ select {
 .data-value.gray { color: var(--gray); }
 
 /* ===== ENTRY CARD ===== */
-.entry-card {
-  background: var(--bg-card);
-  border: 1px solid var(--border-gold);
-  border-radius: 14px;
-  padding: 20px;
-  text-align: center;
-  margin-bottom: 12px;
-}
-.entry-label {
-  font-family: 'Baloo 2', sans-serif;
-  font-size: 10px;
-  color: var(--gray);
-  letter-spacing: 3px;
-  font-weight: 700;
-  margin-bottom: 8px;
-  text-transform: uppercase;
-}
-.entry-value {
-  font-family: 'Luckiest Guy', cursive;
-  font-size: 42px;
-  font-weight: 400;
-  color: var(--gold);
-  letter-spacing: 1.5px;
-  text-shadow: 0 0 30px rgba(251,191,36,0.7);
-}
-.entry-source {
-  font-family: 'Baloo 2', sans-serif;
-  font-size: 10px;
-  color: var(--gray);
-  margin-top: 6px;
-  letter-spacing: 1px;
-  font-weight: 700;
-}
+.entry-card { background: var(--bg-card); border: 1px solid var(--border-gold); border-radius: 14px; padding: 20px; text-align: center; margin-bottom: 12px; }
+.entry-label { font-family: 'Baloo 2', sans-serif; font-size: 10px; color: var(--gray); letter-spacing: 3px; font-weight: 700; margin-bottom: 8px; text-transform: uppercase; }
+.entry-value { font-family: 'Luckiest Guy', cursive; font-size: 42px; font-weight: 400; color: var(--gold); letter-spacing: 1.5px; text-shadow: 0 0 30px rgba(251,191,36,0.7); }
+.entry-source { font-family: 'Baloo 2', sans-serif; font-size: 10px; color: var(--gray); margin-top: 6px; letter-spacing: 1px; font-weight: 700; }
 
 /* ===== CONFIRMATION ===== */
-.conf-box {
-  text-align: center;
-  padding: 18px;
-}
-.conf-label {
-  font-family: 'Baloo 2', sans-serif;
-  font-size: 10px;
-  color: var(--gray);
-  letter-spacing: 3px;
-  font-weight: 700;
-  margin-bottom: 8px;
-  text-transform: uppercase;
-}
-.conf-value {
-  font-family: 'Luckiest Guy', cursive;
-  font-size: 52px;
-  font-weight: 400;
-  color: var(--green-neon);
-  text-shadow: 0 0 30px rgba(0,255,136,0.7);
-  letter-spacing: 2px;
-}
+.conf-box { text-align: center; padding: 18px; }
+.conf-label { font-family: 'Baloo 2', sans-serif; font-size: 10px; color: var(--gray); letter-spacing: 3px; font-weight: 700; margin-bottom: 8px; text-transform: uppercase; }
+.conf-value { font-family: 'Luckiest Guy', cursive; font-size: 52px; font-weight: 400; color: var(--green-neon); text-shadow: 0 0 30px rgba(0,255,136,0.7); letter-spacing: 2px; }
 .conf-value.high { color: var(--green-neon); text-shadow: 0 0 30px rgba(0,255,136,0.7); }
 .conf-value.mid { color: var(--gold); text-shadow: 0 0 30px rgba(251,191,36,0.7); }
 .conf-value.low { color: var(--red-neon); text-shadow: 0 0 30px rgba(255,46,91,0.7); }
 .conf-value.gray { color: var(--gray); text-shadow: none; }
 
 /* ===== SESSION ROW ===== */
-.session-row {
-  display: flex;
-  justify-content: space-between;
-  padding: 14px;
-  background: var(--bg-card);
-  border: 1px solid var(--border);
-  border-radius: 14px;
-  margin-bottom: 12px;
-}
+.session-row { display: flex; justify-content: space-between; padding: 14px; background: var(--bg-card); border: 1px solid var(--border); border-radius: 14px; margin-bottom: 12px; }
 .session-item { text-align: center; flex: 1; }
-.session-label {
-  font-family: 'Baloo 2', sans-serif;
-  font-size: 9px;
-  color: var(--gray);
-  letter-spacing: 2px;
-  margin-bottom: 6px;
-  font-weight: 700;
-  text-transform: uppercase;
-}
-.session-value {
-  font-family: 'Luckiest Guy', cursive;
-  font-size: 20px;
-  font-weight: 400;
-  color: var(--gold);
-  letter-spacing: 1px;
-}
+.session-label { font-family: 'Baloo 2', sans-serif; font-size: 9px; color: var(--gray); letter-spacing: 2px; margin-bottom: 6px; font-weight: 700; text-transform: uppercase; }
+.session-value { font-family: 'Luckiest Guy', cursive; font-size: 20px; font-weight: 400; color: var(--gold); letter-spacing: 1px; }
 
 /* ===== POC BANNER ===== */
 .poc-banner {
   background: linear-gradient(135deg, var(--gold), var(--gold-dim));
-  color: #000;
-  font-family: 'Luckiest Guy', cursive;
-  font-weight: 400;
-  text-align: center;
-  padding: 14px;
-  border-radius: 12px;
-  margin-bottom: 12px;
-  font-size: 20px;
-  letter-spacing: 2px;
+  color: #000; font-family: 'Luckiest Guy', cursive; font-weight: 400;
+  text-align: center; padding: 14px; border-radius: 12px; margin-bottom: 12px;
+  font-size: 20px; letter-spacing: 2px;
   box-shadow: 0 0 25px rgba(251,191,36,0.4);
 }
 
 /* ===== SNR GRID ===== */
 .snr-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-bottom: 10px; }
-.snr-box {
-  background: var(--bg-card-2);
-  padding: 12px 6px;
-  border-radius: 10px;
-  text-align: center;
-  border: 1px solid var(--border);
-}
-.snr-label {
-  font-family: 'Baloo 2', sans-serif;
-  font-size: 10px;
-  margin-bottom: 6px;
-  font-weight: 800;
-  letter-spacing: 1px;
-}
-.snr-value {
-  font-family: 'Luckiest Guy', cursive;
-  font-size: 15px;
-  font-weight: 400;
-  color: var(--cream);
-  letter-spacing: 0.5px;
-}
+.snr-box { background: var(--bg-card-2); padding: 12px 6px; border-radius: 10px; text-align: center; border: 1px solid var(--border); }
+.snr-label { font-family: 'Baloo 2', sans-serif; font-size: 10px; margin-bottom: 6px; font-weight: 800; letter-spacing: 1px; }
+.snr-value { font-family: 'Luckiest Guy', cursive; font-size: 15px; font-weight: 400; color: var(--cream); letter-spacing: 0.5px; }
 .snr-box.red { border-color: rgba(255,46,91,0.3); }
 .snr-box.red .snr-label { color: var(--red-neon); }
 .snr-box.red .snr-value { color: var(--red-neon); }
@@ -1493,93 +243,45 @@ select {
 .snr-box.blue { border-color: rgba(56,189,248,0.3); }
 .snr-box.blue .snr-label { color: #38bdf8; }
 .snr-box.blue .snr-value { color: #38bdf8; }
-.snr-box.yellow {
-  background: linear-gradient(135deg, var(--gold), var(--gold-dim));
-  border: none;
-  box-shadow: 0 0 15px rgba(251,191,36,0.4);
-}
-.snr-box.yellow .snr-label,
-.snr-box.yellow .snr-value { color: #000; }
+.snr-box.yellow { background: linear-gradient(135deg, var(--gold), var(--gold-dim)); border: none; box-shadow: 0 0 15px rgba(251,191,36,0.4); }
+.snr-box.yellow .snr-label, .snr-box.yellow .snr-value { color: #000; }
 
 /* ===== MAPPING TABS ===== */
 .mapping-tab {
-  padding: 12px 8px;
-  background: var(--bg-card-2);
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  color: var(--gray);
-  font-family: 'Luckiest Guy', cursive;
-  font-size: 14px;
-  font-weight: 400;
-  cursor: pointer;
-  transition: all 0.3s;
-  letter-spacing: 1px;
+  padding: 12px 8px; background: var(--bg-card-2);
+  border: 1px solid var(--border); border-radius: 10px;
+  color: var(--gray); font-family: 'Luckiest Guy', cursive;
+  font-size: 14px; font-weight: 400; cursor: pointer;
+  transition: all 0.3s; letter-spacing: 1px;
 }
 .mapping-tab.active {
   background: linear-gradient(135deg, var(--gold), var(--gold-dim));
-  color: #000;
-  border-color: var(--gold);
+  color: #000; border-color: var(--gold);
   box-shadow: 0 0 20px rgba(251,191,36,0.5);
 }
 
 /* ===== MAPPING CARD ===== */
-.mapping-card {
-  background: var(--bg-card);
-  border: 1px solid var(--border);
-  border-radius: 14px;
-  padding: 16px;
-  margin-bottom: 12px;
-}
-.mapping-ai-text {
-  font-family: 'Baloo 2', sans-serif;
-  font-size: 13px;
-  line-height: 1.7;
-  color: var(--cream);
-  white-space: pre-wrap;
-  word-break: break-word;
-  font-weight: 600;
-}
-.mapping-badge {
-  display: inline-block;
-  padding: 4px 10px;
-  border-radius: 6px;
-  font-size: 10px;
-  font-weight: 800;
-  letter-spacing: 1px;
-  font-family: 'Baloo 2', sans-serif;
-}
+.mapping-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 14px; padding: 16px; margin-bottom: 12px; }
+.mapping-ai-text { font-family: 'Baloo 2', sans-serif; font-size: 13px; line-height: 1.7; color: var(--cream); white-space: pre-wrap; word-break: break-word; font-weight: 600; }
+.mapping-badge { display: inline-block; padding: 4px 10px; border-radius: 6px; font-size: 10px; font-weight: 800; letter-spacing: 1px; font-family: 'Baloo 2', sans-serif; }
 .badge-prime { background: rgba(0,255,136,0.15); color: var(--green-neon); border: 1px solid var(--green-neon); }
 .badge-slow { background: rgba(251,191,36,0.15); color: var(--gold); border: 1px solid var(--gold); }
 .badge-closed { background: rgba(255,46,91,0.15); color: var(--red-neon); border: 1px solid var(--red-neon); }
 
 /* ===== MESSAGES ===== */
 .msg-filter {
-  padding: 8px 14px;
-  background: var(--bg-card-2);
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  color: var(--gray);
-  font-family: 'Luckiest Guy', cursive;
-  font-size: 13px;
-  font-weight: 400;
-  cursor: pointer;
-  transition: all 0.3s;
-  letter-spacing: 1px;
+  padding: 8px 14px; background: var(--bg-card-2);
+  border: 1px solid var(--border); border-radius: 8px;
+  color: var(--gray); font-family: 'Luckiest Guy', cursive;
+  font-size: 13px; font-weight: 400; cursor: pointer;
+  transition: all 0.3s; letter-spacing: 1px;
 }
 .msg-filter.active {
   background: linear-gradient(135deg, var(--gold), var(--gold-dim));
-  color: #000;
-  border-color: var(--gold);
+  color: #000; border-color: var(--gold);
   box-shadow: 0 0 15px rgba(251,191,36,0.4);
 }
-.msg-card {
-  background: var(--bg-card);
-  border: 1px solid var(--border);
-  border-left: 3px solid var(--gold);
-  border-radius: 10px;
-  padding: 12px;
-  margin-bottom: 10px;
-}
+.msg-card { background: var(--bg-card); border: 1px solid var(--border); border-left: 3px solid var(--gold); border-radius: 10px; padding: 12px; margin-bottom: 10px; }
 .msg-card.signal { border-left-color: var(--green-neon); }
 .msg-card.mapping { border-left-color: #38bdf8; }
 .msg-card.asia_breakout { border-left-color: #a78bfa; }
@@ -1588,213 +290,93 @@ select {
 .msg-card.level_alert { border-left-color: #ec4899; }
 .msg-card.news_alert { border-left-color: var(--red-neon); }
 .msg-card.liquidity_sweep { border-left-color: #06b6d4; }
-.msg-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 8px;
-  padding-bottom: 8px;
-  border-bottom: 1px solid var(--border);
-}
-.msg-type {
-  font-family: 'Luckiest Guy', cursive;
-  font-size: 13px;
-  font-weight: 400;
-  color: var(--gold);
-  letter-spacing: 1px;
-}
-.msg-time {
-  font-family: 'Baloo 2', sans-serif;
-  font-size: 10px;
-  color: var(--gray);
-  font-weight: 700;
-}
-.msg-body {
-  font-family: 'Baloo 2', sans-serif;
-  font-size: 12px;
-  color: var(--cream);
-  white-space: pre-wrap;
-  line-height: 1.6;
-  word-break: break-word;
-  font-weight: 600;
-}
+.msg-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; padding-bottom: 8px; border-bottom: 1px solid var(--border); }
+.msg-type { font-family: 'Luckiest Guy', cursive; font-size: 13px; font-weight: 400; color: var(--gold); letter-spacing: 1px; }
+.msg-time { font-family: 'Baloo 2', sans-serif; font-size: 10px; color: var(--gray); font-weight: 700; }
+.msg-body { font-family: 'Baloo 2', sans-serif; font-size: 12px; color: var(--cream); white-space: pre-wrap; line-height: 1.6; word-break: break-word; font-weight: 600; }
 
 /* ===== MT4 SCREEN ===== */
 .mt4-status {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 10px;
-  padding: 14px;
-  border-radius: 12px;
-  margin-bottom: 14px;
-  font-family: 'Luckiest Guy', cursive;
-  font-size: 20px;
-  font-weight: 400;
-  letter-spacing: 2px;
+  display: flex; align-items: center; justify-content: center; gap: 10px;
+  padding: 14px; border-radius: 12px; margin-bottom: 14px;
+  font-family: 'Luckiest Guy', cursive; font-size: 20px; font-weight: 400; letter-spacing: 2px;
 }
 .mt4-status.online {
   background: linear-gradient(135deg, rgba(0,255,136,0.1), rgba(0,0,0,0));
-  border: 1px solid var(--green-neon);
-  color: var(--green-neon);
+  border: 1px solid var(--green-neon); color: var(--green-neon);
   text-shadow: 0 0 15px rgba(0,255,136,0.6);
   box-shadow: 0 0 25px rgba(0,255,136,0.2);
 }
 .mt4-status.offline {
   background: linear-gradient(135deg, rgba(255,46,91,0.1), rgba(0,0,0,0));
-  border: 1px solid var(--red-neon);
-  color: var(--red-neon);
+  border: 1px solid var(--red-neon); color: var(--red-neon);
 }
-
 .mt4-btn {
-  padding: 16px;
-  border: none;
-  border-radius: 12px;
-  font-family: 'Luckiest Guy', cursive;
-  font-weight: 400;
-  font-size: 16px;
-  cursor: pointer;
-  letter-spacing: 1.5px;
-  transition: all 0.3s;
-  width: 100%;
+  padding: 16px; border: none; border-radius: 12px;
+  font-family: 'Luckiest Guy', cursive; font-weight: 400;
+  font-size: 16px; cursor: pointer; letter-spacing: 1.5px;
+  transition: all 0.3s; width: 100%;
 }
-.mt4-btn.buy {
-  background: linear-gradient(135deg, var(--green-neon), #059669);
-  color: #000;
-  box-shadow: 0 0 25px rgba(0,255,136,0.4);
-}
-.mt4-btn.sell {
-  background: linear-gradient(135deg, var(--red-neon), #be123c);
-  color: #fff;
-  box-shadow: 0 0 25px rgba(255,46,91,0.4);
-}
-.mt4-btn.close {
-  background: linear-gradient(135deg, var(--gold), var(--gold-dim));
-  color: #000;
-  box-shadow: 0 0 25px rgba(251,191,36,0.4);
-}
+.mt4-btn.buy { background: linear-gradient(135deg, var(--green-neon), #059669); color: #000; box-shadow: 0 0 25px rgba(0,255,136,0.4); }
+.mt4-btn.sell { background: linear-gradient(135deg, var(--red-neon), #be123c); color: #fff; box-shadow: 0 0 25px rgba(255,46,91,0.4); }
+.mt4-btn.close { background: linear-gradient(135deg, var(--gold), var(--gold-dim)); color: #000; box-shadow: 0 0 25px rgba(251,191,36,0.4); }
 .mt4-btn:active { transform: scale(0.97); }
 .mt4-input {
-  flex: 1;
-  padding: 12px;
-  background: var(--bg-card-2);
-  border: 1px solid var(--border-gold);
-  border-radius: 10px;
-  color: var(--gold);
-  font-family: 'Luckiest Guy', cursive;
-  font-weight: 400;
-  text-align: center;
-  outline: none;
-  font-size: 20px;
-  letter-spacing: 1px;
+  flex: 1; padding: 12px; background: var(--bg-card-2);
+  border: 1px solid var(--border-gold); border-radius: 10px;
+  color: var(--gold); font-family: 'Luckiest Guy', cursive; font-weight: 400;
+  text-align: center; outline: none; font-size: 20px; letter-spacing: 1px;
 }
-
 .position-card {
-  background: var(--bg-card-2);
-  border-left: 3px solid var(--gold);
-  border-radius: 8px;
-  padding: 10px 12px;
-  margin-bottom: 8px;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  font-family: 'Baloo 2', sans-serif;
-  font-size: 12px;
-  font-weight: 700;
+  background: var(--bg-card-2); border-left: 3px solid var(--gold);
+  border-radius: 8px; padding: 10px 12px; margin-bottom: 8px;
+  display: flex; justify-content: space-between; align-items: center;
+  font-family: 'Baloo 2', sans-serif; font-size: 12px; font-weight: 700;
 }
 
 /* ===== NEWS ===== */
 .news-item {
-  background: var(--bg-card);
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  padding: 14px;
-  margin-bottom: 10px;
+  background: var(--bg-card); border: 1px solid var(--border);
+  border-radius: 12px; padding: 14px; margin-bottom: 10px;
   border-left: 3px solid var(--gold);
   font-family: 'Baloo 2', sans-serif;
 }
 
 /* ===== BOTTOM NAV ===== */
 #bottom-nav {
-  position: fixed;
-  bottom: 0; left: 0; width: 100%;
+  position: fixed; bottom: 0; left: 0; width: 100%;
   background: linear-gradient(180deg, #0a0a0a, #000);
   border-top: 1px solid var(--border);
-  padding: 8px 0 12px;
-  z-index: 100;
+  padding: 8px 0 12px; z-index: 100;
 }
-.nav-grid {
-  display: flex;
-  justify-content: space-around;
-  margin-bottom: 6px;
-}
+.nav-grid { display: flex; justify-content: space-around; margin-bottom: 6px; }
 .nav-item {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  color: var(--gray);
-  font-family: 'Luckiest Guy', cursive;
-  font-size: 11px;
-  cursor: pointer;
-  background: none;
-  border: none;
-  width: 13.5%;
-  letter-spacing: 0.5px;
-  font-weight: 400;
-  padding: 4px 0;
-  position: relative;
+  display: flex; flex-direction: column; align-items: center;
+  color: var(--gray); font-family: 'Luckiest Guy', cursive;
+  font-size: 11px; cursor: pointer; background: none; border: none;
+  width: 13.5%; letter-spacing: 0.5px; font-weight: 400;
+  padding: 4px 0; position: relative;
 }
 .nav-item.active { color: var(--gold); }
 .nav-item.active span { color: var(--gold); }
 .nav-item span { margin-top: 4px; }
-.nav-item .nav-icon {
-  font-size: 18px;
-  line-height: 1;
-  filter: drop-shadow(0 0 4px rgba(251,191,36,0.4));
-}
-.nav-badge-dot {
-  position: absolute;
-  top: 2px; right: 12px;
-  width: 7px; height: 7px;
-  border-radius: 50%;
-  display: none;
-}
-.nav-badge-dot.online {
-  background: var(--green-neon);
-  box-shadow: 0 0 8px var(--green-neon);
-  animation: blink 1.5s infinite;
-  display: block;
-}
+.nav-item .nav-icon { font-size: 18px; line-height: 1; filter: drop-shadow(0 0 4px rgba(251,191,36,0.4)); }
+.nav-badge-dot { position: absolute; top: 2px; right: 12px; width: 7px; height: 7px; border-radius: 50%; display: none; }
+.nav-badge-dot.online { background: var(--green-neon); box-shadow: 0 0 8px var(--green-neon); animation: blink 1.5s infinite; display: block; }
 .nav-badge-dot.offline { background: var(--red-neon); display: block; }
 
 /* ===== TIER FOOTER ===== */
 .tier-footer {
-  text-align: center;
-  font-family: 'Luckiest Guy', cursive;
-  font-size: 13px;
-  color: var(--gold);
-  letter-spacing: 2px;
-  padding: 8px;
-  border: 1px solid var(--border-gold);
-  border-radius: 20px;
-  margin: 0 30px;
-  font-weight: 400;
+  text-align: center; font-family: 'Luckiest Guy', cursive;
+  font-size: 13px; color: var(--gold); letter-spacing: 2px;
+  padding: 8px; border: 1px solid var(--border-gold); border-radius: 20px;
+  margin: 0 30px; font-weight: 400;
   text-shadow: 0 0 10px rgba(251,191,36,0.4);
 }
 
 /* ===== LOADING ===== */
-.loading {
-  text-align: center;
-  padding: 40px;
-  color: var(--gray);
-  font-family: 'Baloo 2', sans-serif;
-}
-.loading .spinner {
-  font-size: 42px;
-  margin-bottom: 15px;
-  animation: spin 2s linear infinite;
-  display: inline-block;
-}
+.loading { text-align: center; padding: 40px; color: var(--gray); font-family: 'Baloo 2', sans-serif; }
+.loading .spinner { font-size: 42px; margin-bottom: 15px; animation: spin 2s linear infinite; display: inline-block; }
 @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
 </style>
 </head>
@@ -1802,12 +384,10 @@ select {
 
 <div class="header">
   <div class="header-top">
-    <!-- MT4 BADGE -->
     <div class="mt4-badge offline" id="mt4-badge">
       <span class="dot"></span>
       <span id="mt4-badge-text">OFFLINE</span>
     </div>
-
     <div class="header-brand">
       <div class="brand-left">
         <img src="logo.png" alt="BPT Logo" class="brand-logo" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
@@ -1818,7 +398,6 @@ select {
         </div>
       </div>
     </div>
-
     <div class="clock-row">
       <span>⏰ <span class="time" id="utc-clock">--:--:--</span> MYT</span>
       <span>📅 <span id="utc-date">--</span></span>
@@ -1834,15 +413,11 @@ select {
   </select>
 </div>
 
-<!-- MT4 STATUS BAR -->
 <div class="mt4-status-bar offline" id="mt4-status-bar">
   💼 MT4 OFFLINE · Menunggu EA connect...
 </div>
 
-<!-- ===== SCREEN: SIGNAL ===== -->
 <div id="screen-signal" class="screen active">
-
-  <!-- PAIR HEADER -->
   <div class="pair-header">
     <div class="pair-row-1">
       <div class="pair-name" id="pair-name">XAUUSD</div>
@@ -1856,20 +431,17 @@ select {
     </div>
   </div>
 
-  <!-- SIGNAL BOX -->
   <div id="signal-box" class="signal-box wait">
     <div class="signal-main">WAIT</div>
     <div class="signal-conf">Menunggu setup</div>
   </div>
 
-  <!-- ENTRY CARD -->
   <div class="entry-card">
     <div class="entry-label">🎯 ENTRY</div>
     <div class="entry-value" id="signal-entry">-</div>
     <div class="entry-source" id="signal-source">💼 MT4</div>
   </div>
 
-  <!-- SL/TP -->
   <div class="card">
     <div class="grid-3" style="margin-bottom:8px;">
       <div class="data-box" style="border-color:rgba(255,46,91,0.3);">
@@ -1891,13 +463,11 @@ select {
     </div>
   </div>
 
-  <!-- CONFIRMATION -->
   <div class="card conf-box">
     <div class="conf-label">📊 CONFIRMATION</div>
     <div class="conf-value" id="conf-percent">-</div>
   </div>
 
-  <!-- SESSION -->
   <div class="session-row">
     <div class="session-item">
       <div class="session-label">⏰ SESSION</div>
@@ -1908,10 +478,8 @@ select {
       <div class="session-value" id="sig-mtf">-</div>
     </div>
   </div>
-
 </div>
 
-<!-- ===== SCREEN: LEVELS ===== -->
 <div id="screen-levels" class="screen">
   <div class="poc-banner">POC <span id="poc-val">-</span></div>
 
@@ -1938,7 +506,6 @@ select {
   </div>
 </div>
 
-<!-- ===== SCREEN: MAPPING ===== -->
 <div id="screen-mapping" class="screen">
   <div style="display:grid; grid-template-columns:repeat(3,1fr); gap:6px; margin-bottom:12px;">
     <button onclick="showMapping('ASIA')" class="mapping-tab" id="tab-asia">ASIA</button>
@@ -1956,7 +523,6 @@ select {
   </button>
 </div>
 
-<!-- ===== SCREEN: ASIA ===== -->
 <div id="screen-asia" class="screen">
   <div class="card" style="text-align:center; padding:14px;">
     <div style="font-family:'Baloo 2',sans-serif; font-size:10px; color:var(--gray); letter-spacing:2px; margin-bottom:6px;">🔺 ASIA BREAKOUT STATUS</div>
@@ -1971,7 +537,6 @@ select {
   </div>
 </div>
 
-<!-- ===== SCREEN: NEWS ===== -->
 <div id="screen-news" class="screen">
   <div class="card">
     <div class="card-title">📰 ECONOMIC NEWS (USD)</div>
@@ -1981,7 +546,6 @@ select {
   </div>
 </div>
 
-<!-- ===== SCREEN: MESSAGES ===== -->
 <div id="screen-messages" class="screen">
   <div class="card">
     <div class="card-title">📨 NOTIFICATION HISTORY</div>
@@ -2000,7 +564,6 @@ select {
   </div>
 </div>
 
-<!-- ===== SCREEN: MT4 ===== -->
 <div id="screen-mt4" class="screen">
   <div class="mt4-status offline" id="mt4-screen-status">🔴 OFFLINE</div>
 
@@ -2041,7 +604,6 @@ select {
   </div>
 </div>
 
-<!-- ===== BOTTOM NAV ===== -->
 <nav id="bottom-nav">
   <div class="nav-grid">
     <button class="nav-item active" onclick="switchTab('signal', this)"><span class="nav-icon">📈</span><span>SIGNAL</span></button>
@@ -2074,7 +636,6 @@ setInterval(updateUTCClock, 1000);
 updateUTCClock();
 
 // ===== TAB SWITCH =====
-// 🔧 FIX: guard element undefined
 function switchTab(tabName, element) {
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
   document.getElementById('screen-' + tabName).classList.add('active');
@@ -2094,7 +655,7 @@ function tukarMarket() {
   dapatkanMarketData();
 }
 
-// 🔧 FIX: helper — format nilai, elak papar 0.00 kalau kosong
+// 🔧 Helper — elak papar 0.00
 function fmtVal(v, fallback) {
   fallback = fallback || '-';
   if (v === null || v === undefined || v === '') return fallback;
@@ -2122,7 +683,6 @@ async function dapatkanSignal() {
     document.getElementById('pair-price').innerText = data.harga || '-';
     document.getElementById('pair-sub').innerText = data.symbol ? data.symbol.replace('/', ' / ') + ' — SPOT' : 'GOLD / US DOLLAR — SPOT';
 
-    // 🔧 FIX: pair-change jangan hardcode DOWN
     const changeEl = document.getElementById('pair-change');
     changeEl.className = 'pair-change live';
     changeEl.innerHTML = '<span class="live-dot"></span> ● LIVE';
@@ -2145,7 +705,6 @@ async function dapatkanSignal() {
     document.getElementById('signal-entry').innerText = fmtValRaw(data.entry, '-');
     document.getElementById('signal-source').innerText = '💼 ' + (data.harga_source || 'MT4');
 
-    // 🔧 FIX: SL/TP guna fmtVal — elak papar 0.00
     document.getElementById('sig-sl').innerText = fmtVal(data.sl);
     document.getElementById('sig-tp1').innerText = fmtVal(data.tp1);
     document.getElementById('sig-tp2').innerText = fmtVal(data.tp2);
@@ -2242,7 +801,6 @@ function showMapping(sessionName) {
   let aiText = (map.ai_analysis || 'No analysis').replace(/\*\*(.+?)\*\*/gs, '<strong style="color:var(--gold);">$1</strong>');
   const lv = map.levels || {};
 
-  // 🔧 FIX: guard — elak papar 0.00 kalau server skip
   const entryDisplay = fmtVal(map.entry, '—');
   const slDisplay    = fmtVal(map.sl, '—');
   const tp1Display   = fmtVal(map.tp1, '—');
@@ -2271,7 +829,7 @@ function showMapping(sessionName) {
       </div>
       <div style="background:rgba(255,255,255,0.02); border-radius:12px; padding:14px; margin-bottom:14px; border:1px solid var(--border);">
         <div style="font-family:'Luckiest Guy',cursive; font-size:15px; color:var(--gold); margin-bottom:10px; letter-spacing:1px;">🎯 PLAN ENTRY</div>
-        ${planIncomplete ? `<div style="text-align:center; padding:14px; background:rgba(255,46,91,0.1); border-radius:8px; border:1px solid var(--red-neon); font-family:'Baloo 2',sans-serif; font-size:12px; color:var(--red-neon); font-weight:700;">⚠️ PLAN INCOMPLETE — SL/TP tiada. Tunggu mapping seterusnya.</div>` : ''}
+        ${planIncomplete ? `<div style="text-align:center; padding:14px; background:rgba(255,46,91,0.1); border-radius:8px; border:1px solid var(--red-neon); font-family:'Baloo 2',sans-serif; font-size:12px; color:var(--red-neon); font-weight:700; margin-bottom:10px;">⚠️ PLAN INCOMPLETE — SL/TP tiada. Tunggu mapping seterusnya.</div>` : ''}
         <div style="display:flex; justify-content:space-between; align-items:center; padding:9px 0; border-bottom:1px solid var(--border);">
           <span style="font-family:'Baloo 2',sans-serif; font-size:12px; color:var(--gray); font-weight:700;">📍 ENTRY</span>
           <span style="font-family:'Luckiest Guy',cursive; font-size:20px; color:var(--gold); letter-spacing:0.5px;">${entryDisplay}</span>
@@ -2330,7 +888,6 @@ async function loadNews() {
 }
 
 // ===== MESSAGES =====
-// 🔧 FIX: guard m.type undefined + guna data.messages
 async function loadMessages(filter) {
   messagesLoaded = true;
   currentFilter = filter;
@@ -2382,7 +939,6 @@ async function loadMessages(filter) {
           level_alert: '🚨 LEVEL', news_alert: '📰 NEWS', liquidity_sweep: '💧 SWEEP'
         };
 
-        // 🔧 FIX: guard m.type undefined
         const typeLabel = typeLabels[mtype] || mtype.toUpperCase();
 
         card.innerHTML = `
