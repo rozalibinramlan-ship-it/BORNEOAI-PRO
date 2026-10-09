@@ -6,7 +6,7 @@
 <title>BPT — Borneo Pro Trade</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=Orbitron:wght@700;900&family=Playfair+Display:wght@700;900&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Bangers&family=Fredoka:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
 * { box-sizing: border-box; margin: 0; padding: 0; }
 :root {
@@ -25,19 +25,22 @@
   --gray-dim: #4b5563;
   
   --green: #22c55e;
-  --green-dark: #166534;
   --green-neon: #00ff88;
   --red: #ef4444;
-  --red-dark: #8b1a1a;
   --red-neon: #ff2e5b;
 }
 body {
   background: var(--bg-dark);
   color: var(--cream);
-  font-family: 'Rajdhani', -apple-system, BlinkMacSystemFont, Arial, sans-serif;
+  font-family: 'Fredoka', -apple-system, BlinkMacSystemFont, sans-serif;
   padding-bottom: 95px;
   min-height: 100vh;
+  font-weight: 500;
 }
+
+/* ===== FONT CLASSES ===== */
+.font-bangers { font-family: 'Bangers', cursive; letter-spacing: 2px; }
+.font-fredoka { font-family: 'Fredoka', sans-serif; }
 
 /* ===== HEADER ===== */
 .header { padding: 14px 15px; background: #000; border-bottom: 1px solid var(--border); position: relative; }
@@ -51,48 +54,49 @@ body {
 .brand-left {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
+}
+.brand-logo {
+  width: 44px;
+  height: 44px;
+  border-radius: 10px;
+  object-fit: cover;
+  border: 1px solid var(--border-gold);
+  box-shadow: 0 0 15px rgba(251,191,36,0.4);
+  display: block;
 }
 .brand-icon {
-  width: 34px;
-  height: 34px;
-  border-radius: 8px;
+  width: 44px;
+  height: 44px;
+  border-radius: 10px;
   background: linear-gradient(135deg, #1a1a1a, #0a0a0a);
   border: 1px solid var(--border-gold);
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 18px;
+  font-size: 22px;
   box-shadow: 0 0 15px rgba(251,191,36,0.2);
 }
 .brand-name {
-  font-family: 'Rajdhani', sans-serif;
-  font-size: 13px;
-  font-weight: 700;
+  font-family: 'Bangers', cursive;
+  font-size: 26px;
+  font-weight: 400;
   color: var(--gold);
-  letter-spacing: 2px;
-  text-shadow: 0 0 10px rgba(251,191,36,0.4);
+  letter-spacing: 3px;
+  line-height: 1;
+  text-shadow: 0 0 15px rgba(251,191,36,0.5);
 }
 .brand-sub {
-  font-size: 8px;
+  font-family: 'Fredoka', sans-serif;
+  font-size: 10px;
   color: var(--gray);
-  letter-spacing: 1.5px;
-  margin-top: 2px;
+  letter-spacing: 2px;
+  margin-top: 3px;
   font-weight: 600;
-}
-.pro-badge {
-  background: transparent;
-  border: 1px solid var(--gold);
-  padding: 4px 10px;
-  border-radius: 20px;
-  color: var(--gold);
-  font-size: 9px;
-  font-weight: 700;
-  letter-spacing: 1.5px;
-  font-family: 'Rajdhani', sans-serif;
+  text-transform: uppercase;
 }
 
-/* ===== MT4 BADGE (Header) ===== */
+/* ===== MT4 BADGE ===== */
 .mt4-badge {
   position: absolute;
   top: 4px;
@@ -100,18 +104,17 @@ body {
   display: flex;
   align-items: center;
   gap: 5px;
-  padding: 3px 8px;
+  padding: 4px 9px;
   border-radius: 6px;
   font-size: 9px;
   font-weight: 700;
   letter-spacing: 1px;
-  font-family: 'Rajdhani', sans-serif;
+  font-family: 'Fredoka', sans-serif;
 }
 .mt4-badge.online {
   background: rgba(34,197,94,0.15);
   border: 1px solid var(--green);
   color: var(--green);
-  text-shadow: 0 0 8px rgba(34,197,94,0.6);
 }
 .mt4-badge.offline {
   background: rgba(239,68,68,0.15);
@@ -137,22 +140,23 @@ body {
   justify-content: space-between;
   align-items: center;
   padding: 6px 0;
-  font-size: 10px;
+  font-size: 11px;
   color: var(--gray);
   font-weight: 600;
-  letter-spacing: 0.5px;
+  font-family: 'Fredoka', sans-serif;
 }
-.clock-row .time { color: var(--gold); font-family: 'Rajdhani', sans-serif; }
+.clock-row .time { color: var(--gold); font-weight: 700; }
 
 /* ===== MT4 STATUS BAR ===== */
 .mt4-status-bar {
-  padding: 7px 12px;
+  padding: 8px 12px;
   background: linear-gradient(90deg, transparent, rgba(251,191,36,0.04), transparent);
   border-bottom: 1px solid var(--border);
   font-size: 10px;
   font-weight: 600;
   letter-spacing: 0.5px;
   text-align: center;
+  font-family: 'Fredoka', sans-serif;
 }
 .mt4-status-bar.online { color: var(--green); }
 .mt4-status-bar.offline { color: var(--red); }
@@ -163,7 +167,7 @@ body {
 /* ===== SELECT ===== */
 select {
   margin-top: 10px;
-  padding: 10px 14px;
+  padding: 11px 14px;
   border-radius: 10px;
   background: #0a0a0a;
   color: var(--gold);
@@ -171,7 +175,7 @@ select {
   font-weight: 700;
   width: 100%;
   font-size: 13px;
-  font-family: 'Rajdhani', sans-serif;
+  font-family: 'Fredoka', sans-serif;
   outline: none;
   letter-spacing: 1px;
 }
@@ -190,16 +194,16 @@ select {
   position: relative;
 }
 .card-title {
-  font-size: 11px;
-  font-weight: 700;
+  font-family: 'Bangers', cursive;
+  font-size: 17px;
+  font-weight: 400;
   color: var(--gold);
   margin-bottom: 12px;
-  letter-spacing: 2px;
-  text-transform: uppercase;
+  letter-spacing: 3px;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  font-family: 'Rajdhani', sans-serif;
+  text-shadow: 0 0 10px rgba(251,191,36,0.4);
 }
 .card-title::after {
   content: '';
@@ -209,7 +213,7 @@ select {
   margin-left: 12px;
 }
 
-/* ===== MAIN PAIR HEADER (Big XAUUSD style) ===== */
+/* ===== PAIR HEADER ===== */
 .pair-header {
   background: #000;
   border: 1px solid var(--border);
@@ -221,25 +225,25 @@ select {
   display: flex;
   justify-content: space-between;
   align-items: baseline;
-  margin-bottom: 4px;
+  margin-bottom: 6px;
 }
 .pair-name {
-  font-family: 'Playfair Display', serif;
-  font-size: 34px;
-  font-weight: 900;
+  font-family: 'Bangers', cursive;
+  font-size: 40px;
+  font-weight: 400;
   color: var(--gold);
-  letter-spacing: 1px;
-  line-height: 1;
-  text-shadow: 0 0 25px rgba(251,191,36,0.5);
-}
-.pair-price {
-  font-family: 'Playfair Display', serif;
-  font-size: 34px;
-  font-weight: 900;
-  color: var(--gold-bright);
-  letter-spacing: 1px;
+  letter-spacing: 2px;
   line-height: 1;
   text-shadow: 0 0 25px rgba(251,191,36,0.6);
+}
+.pair-price {
+  font-family: 'Bangers', cursive;
+  font-size: 40px;
+  font-weight: 400;
+  color: var(--gold-bright);
+  letter-spacing: 2px;
+  line-height: 1;
+  text-shadow: 0 0 25px rgba(251,191,36,0.7);
 }
 .pair-row-2 {
   display: flex;
@@ -249,6 +253,7 @@ select {
   color: var(--gray);
   font-weight: 600;
   letter-spacing: 1px;
+  font-family: 'Fredoka', sans-serif;
 }
 .pair-change { display: flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 700; }
 .pair-change.down { color: var(--red-neon); }
@@ -263,7 +268,7 @@ select {
   margin-right: 4px;
 }
 
-/* ===== SIGNAL BIG BOX ===== */
+/* ===== SIGNAL BOX ===== */
 .signal-box {
   padding: 35px 20px;
   border-radius: 20px;
@@ -286,10 +291,10 @@ select {
   box-shadow: inset 0 0 40px rgba(255,46,91,0.1);
 }
 .signal-main {
-  font-family: 'Playfair Display', serif;
-  font-size: 60px;
-  font-weight: 900;
-  letter-spacing: 4px;
+  font-family: 'Bangers', cursive;
+  font-size: 72px;
+  font-weight: 400;
+  letter-spacing: 6px;
   line-height: 1;
 }
 .signal-box.buy .signal-main {
@@ -302,11 +307,12 @@ select {
 }
 .signal-box.wait .signal-main { color: var(--gray); }
 .signal-conf {
-  font-size: 13px;
+  font-family: 'Fredoka', sans-serif;
+  font-size: 14px;
   margin-top: 10px;
   letter-spacing: 2px;
   color: var(--cream);
-  opacity: 0.7;
+  opacity: 0.8;
   font-weight: 600;
 }
 
@@ -322,6 +328,7 @@ select {
   text-align: center;
 }
 .data-label {
+  font-family: 'Fredoka', sans-serif;
   font-size: 9px;
   color: var(--gray);
   font-weight: 600;
@@ -330,10 +337,10 @@ select {
   text-transform: uppercase;
 }
 .data-value {
-  font-family: 'Playfair Display', serif;
-  font-size: 16px;
-  font-weight: 900;
-  letter-spacing: 0.5px;
+  font-family: 'Bangers', cursive;
+  font-size: 20px;
+  font-weight: 400;
+  letter-spacing: 1px;
 }
 .data-value.gold { color: var(--gold); text-shadow: 0 0 12px rgba(251,191,36,0.5); }
 .data-value.green { color: var(--green-neon); text-shadow: 0 0 12px rgba(0,255,136,0.4); }
@@ -341,7 +348,7 @@ select {
 .data-value.cream { color: var(--cream); }
 .data-value.blue { color: #38bdf8; text-shadow: 0 0 12px rgba(56,189,248,0.4); }
 
-/* ===== ENTRY CARD (Big highlight) ===== */
+/* ===== ENTRY CARD ===== */
 .entry-card {
   background: var(--bg-card);
   border: 1px solid var(--border-gold);
@@ -351,6 +358,7 @@ select {
   margin-bottom: 12px;
 }
 .entry-label {
+  font-family: 'Fredoka', sans-serif;
   font-size: 10px;
   color: var(--gray);
   letter-spacing: 3px;
@@ -359,18 +367,20 @@ select {
   text-transform: uppercase;
 }
 .entry-value {
-  font-family: 'Playfair Display', serif;
-  font-size: 38px;
-  font-weight: 900;
+  font-family: 'Bangers', cursive;
+  font-size: 48px;
+  font-weight: 400;
   color: var(--gold);
-  letter-spacing: 1px;
-  text-shadow: 0 0 30px rgba(251,191,36,0.6);
+  letter-spacing: 3px;
+  text-shadow: 0 0 30px rgba(251,191,36,0.7);
 }
 .entry-source {
+  font-family: 'Fredoka', sans-serif;
   font-size: 10px;
   color: var(--gray);
   margin-top: 6px;
   letter-spacing: 1px;
+  font-weight: 600;
 }
 
 /* ===== CONFIRMATION ===== */
@@ -379,22 +389,25 @@ select {
   padding: 18px;
 }
 .conf-label {
+  font-family: 'Fredoka', sans-serif;
   font-size: 10px;
   color: var(--gray);
   letter-spacing: 3px;
   font-weight: 600;
   margin-bottom: 8px;
+  text-transform: uppercase;
 }
 .conf-value {
-  font-family: 'Playfair Display', serif;
-  font-size: 44px;
-  font-weight: 900;
+  font-family: 'Bangers', cursive;
+  font-size: 60px;
+  font-weight: 400;
   color: var(--green-neon);
-  text-shadow: 0 0 25px rgba(0,255,136,0.6);
+  text-shadow: 0 0 30px rgba(0,255,136,0.7);
+  letter-spacing: 4px;
 }
-.conf-value.high { color: var(--green-neon); text-shadow: 0 0 25px rgba(0,255,136,0.6); }
-.conf-value.mid { color: var(--gold); text-shadow: 0 0 25px rgba(251,191,36,0.6); }
-.conf-value.low { color: var(--red-neon); text-shadow: 0 0 25px rgba(255,46,91,0.6); }
+.conf-value.high { color: var(--green-neon); text-shadow: 0 0 30px rgba(0,255,136,0.7); }
+.conf-value.mid { color: var(--gold); text-shadow: 0 0 30px rgba(251,191,36,0.7); }
+.conf-value.low { color: var(--red-neon); text-shadow: 0 0 30px rgba(255,46,91,0.7); }
 
 /* ===== SESSION ROW ===== */
 .session-row {
@@ -408,6 +421,7 @@ select {
 }
 .session-item { text-align: center; flex: 1; }
 .session-label {
+  font-family: 'Fredoka', sans-serif;
   font-size: 9px;
   color: var(--gray);
   letter-spacing: 2px;
@@ -416,25 +430,25 @@ select {
   text-transform: uppercase;
 }
 .session-value {
-  font-family: 'Playfair Display', serif;
-  font-size: 18px;
-  font-weight: 900;
+  font-family: 'Bangers', cursive;
+  font-size: 22px;
+  font-weight: 400;
   color: var(--gold);
-  letter-spacing: 1px;
+  letter-spacing: 2px;
 }
 
 /* ===== POC BANNER ===== */
 .poc-banner {
   background: linear-gradient(135deg, var(--gold), var(--gold-dim));
   color: #000;
-  font-weight: 900;
+  font-family: 'Bangers', cursive;
+  font-weight: 400;
   text-align: center;
   padding: 14px;
   border-radius: 12px;
   margin-bottom: 12px;
-  font-size: 16px;
-  font-family: 'Playfair Display', serif;
-  letter-spacing: 1px;
+  font-size: 22px;
+  letter-spacing: 3px;
   box-shadow: 0 0 25px rgba(251,191,36,0.4);
 }
 
@@ -448,17 +462,18 @@ select {
   border: 1px solid var(--border);
 }
 .snr-label {
+  font-family: 'Fredoka', sans-serif;
   font-size: 10px;
   margin-bottom: 6px;
   font-weight: 700;
   letter-spacing: 1px;
-  font-family: 'Rajdhani', sans-serif;
 }
 .snr-value {
-  font-family: 'Playfair Display', serif;
-  font-size: 14px;
-  font-weight: 900;
+  font-family: 'Bangers', cursive;
+  font-size: 17px;
+  font-weight: 400;
   color: var(--cream);
+  letter-spacing: 1px;
 }
 .snr-box.red { border-color: rgba(255,46,91,0.3); }
 .snr-box.red .snr-label { color: var(--red-neon); }
@@ -484,12 +499,12 @@ select {
   border: 1px solid var(--border);
   border-radius: 10px;
   color: var(--gray);
-  font-weight: 700;
-  font-family: 'Rajdhani', sans-serif;
-  font-size: 12px;
+  font-family: 'Bangers', cursive;
+  font-size: 15px;
+  font-weight: 400;
   cursor: pointer;
   transition: all 0.3s;
-  letter-spacing: 1px;
+  letter-spacing: 2px;
 }
 .mapping-tab.active {
   background: linear-gradient(135deg, var(--gold), var(--gold-dim));
@@ -507,11 +522,13 @@ select {
   margin-bottom: 12px;
 }
 .mapping-ai-text {
+  font-family: 'Fredoka', sans-serif;
   font-size: 13px;
   line-height: 1.7;
   color: var(--cream);
   white-space: pre-wrap;
   word-break: break-word;
+  font-weight: 500;
 }
 .mapping-badge {
   display: inline-block;
@@ -520,6 +537,7 @@ select {
   font-size: 10px;
   font-weight: 700;
   letter-spacing: 1px;
+  font-family: 'Fredoka', sans-serif;
 }
 .badge-prime { background: rgba(0,255,136,0.15); color: var(--green-neon); border: 1px solid var(--green-neon); }
 .badge-slow { background: rgba(251,191,36,0.15); color: var(--gold); border: 1px solid var(--gold); }
@@ -527,17 +545,17 @@ select {
 
 /* ===== MESSAGES ===== */
 .msg-filter {
-  padding: 7px 12px;
+  padding: 8px 14px;
   background: var(--bg-card-2);
   border: 1px solid var(--border);
   border-radius: 8px;
   color: var(--gray);
-  font-weight: 700;
-  font-size: 10px;
+  font-family: 'Bangers', cursive;
+  font-size: 14px;
+  font-weight: 400;
   cursor: pointer;
   transition: all 0.3s;
-  font-family: 'Rajdhani', sans-serif;
-  letter-spacing: 1px;
+  letter-spacing: 2px;
 }
 .msg-filter.active {
   background: linear-gradient(135deg, var(--gold), var(--gold-dim));
@@ -570,19 +588,26 @@ select {
   border-bottom: 1px solid var(--border);
 }
 .msg-type {
-  font-size: 10px;
-  font-weight: 700;
+  font-family: 'Bangers', cursive;
+  font-size: 14px;
+  font-weight: 400;
   color: var(--gold);
-  letter-spacing: 1.5px;
-  font-family: 'Rajdhani', sans-serif;
+  letter-spacing: 2px;
 }
-.msg-time { font-size: 10px; color: var(--gray); }
+.msg-time {
+  font-family: 'Fredoka', sans-serif;
+  font-size: 10px;
+  color: var(--gray);
+  font-weight: 600;
+}
 .msg-body {
+  font-family: 'Fredoka', sans-serif;
   font-size: 12px;
   color: var(--cream);
   white-space: pre-wrap;
   line-height: 1.6;
   word-break: break-word;
+  font-weight: 500;
 }
 
 /* ===== MT4 SCREEN ===== */
@@ -594,10 +619,10 @@ select {
   padding: 14px;
   border-radius: 12px;
   margin-bottom: 14px;
-  font-family: 'Rajdhani', sans-serif;
-  font-size: 15px;
-  font-weight: 900;
-  letter-spacing: 3px;
+  font-family: 'Bangers', cursive;
+  font-size: 22px;
+  font-weight: 400;
+  letter-spacing: 4px;
 }
 .mt4-status.online {
   background: linear-gradient(135deg, rgba(0,255,136,0.1), rgba(0,0,0,0));
@@ -616,11 +641,11 @@ select {
   padding: 16px;
   border: none;
   border-radius: 12px;
-  font-family: 'Rajdhani', sans-serif;
-  font-weight: 900;
-  font-size: 14px;
+  font-family: 'Bangers', cursive;
+  font-weight: 400;
+  font-size: 18px;
   cursor: pointer;
-  letter-spacing: 2px;
+  letter-spacing: 3px;
   transition: all 0.3s;
   width: 100%;
 }
@@ -647,11 +672,12 @@ select {
   border: 1px solid var(--border-gold);
   border-radius: 10px;
   color: var(--gold);
-  font-family: 'Playfair Display', serif;
-  font-weight: 900;
+  font-family: 'Bangers', cursive;
+  font-weight: 400;
   text-align: center;
   outline: none;
-  font-size: 16px;
+  font-size: 22px;
+  letter-spacing: 2px;
 }
 
 .position-card {
@@ -663,7 +689,9 @@ select {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  font-family: 'Fredoka', sans-serif;
   font-size: 12px;
+  font-weight: 600;
 }
 
 /* ===== NEWS ===== */
@@ -674,6 +702,7 @@ select {
   padding: 14px;
   margin-bottom: 10px;
   border-left: 3px solid var(--gold);
+  font-family: 'Fredoka', sans-serif;
 }
 
 /* ===== BOTTOM NAV ===== */
@@ -695,17 +724,16 @@ select {
   flex-direction: column;
   align-items: center;
   color: var(--gray);
-  font-size: 9px;
+  font-family: 'Bangers', cursive;
+  font-size: 12px;
   cursor: pointer;
   background: none;
   border: none;
   width: 13.5%;
-  letter-spacing: 0.5px;
-  font-weight: 600;
-  font-family: 'Rajdhani', sans-serif;
+  letter-spacing: 1px;
+  font-weight: 400;
   padding: 4px 0;
   position: relative;
-  text-transform: uppercase;
 }
 .nav-item.active { color: var(--gold); }
 .nav-item.active span { color: var(--gold); }
@@ -733,20 +761,25 @@ select {
 /* ===== TIER FOOTER ===== */
 .tier-footer {
   text-align: center;
-  font-size: 9px;
+  font-family: 'Bangers', cursive;
+  font-size: 14px;
   color: var(--gold);
-  letter-spacing: 3px;
+  letter-spacing: 4px;
   padding: 8px;
   border: 1px solid var(--border-gold);
   border-radius: 20px;
   margin: 0 30px;
-  font-weight: 700;
-  text-transform: uppercase;
-  font-family: 'Rajdhani', sans-serif;
+  font-weight: 400;
+  text-shadow: 0 0 10px rgba(251,191,36,0.4);
 }
 
 /* ===== LOADING ===== */
-.loading { text-align: center; padding: 40px; color: var(--gray); }
+.loading {
+  text-align: center;
+  padding: 40px;
+  color: var(--gray);
+  font-family: 'Fredoka', sans-serif;
+}
 .loading .spinner {
   font-size: 42px;
   margin-bottom: 15px;
@@ -754,27 +787,6 @@ select {
   display: inline-block;
 }
 @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-
-/* ===== TOP TITLE BAR ===== */
-.top-title {
-  font-family: 'Rajdhani', sans-serif;
-  font-size: 11px;
-  font-weight: 700;
-  color: var(--gold);
-  letter-spacing: 2px;
-  margin: 12px 0 8px;
-  text-transform: uppercase;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-.top-title::after {
-  content: '';
-  flex: 1;
-  height: 1px;
-  background: linear-gradient(90deg, var(--border-gold), transparent);
-  margin-left: 12px;
-}
 </style>
 </head>
 <body>
@@ -789,13 +801,13 @@ select {
 
     <div class="header-brand">
       <div class="brand-left">
-        <div class="brand-icon">👑</div>
+        <img src="logo.png" alt="BPT Logo" class="brand-logo" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+        <div class="brand-icon" style="display:none;">👑</div>
         <div>
           <div class="brand-name">BPT</div>
           <div class="brand-sub">BORNEO PRO TRADE</div>
         </div>
       </div>
-      <div class="pro-badge">PRO • ACTIVE</div>
     </div>
 
     <div class="clock-row">
@@ -821,7 +833,7 @@ select {
 <!-- ===== SCREEN: SIGNAL ===== -->
 <div id="screen-signal" class="screen active">
 
-  <!-- PAIR HEADER (Big XAUUSD style) -->
+  <!-- PAIR HEADER -->
   <div class="pair-header">
     <div class="pair-row-1">
       <div class="pair-name" id="pair-name">XAUUSD</div>
@@ -911,7 +923,7 @@ select {
 
   <div class="card">
     <div class="card-title">💧 LIQUIDITY LEVELS</div>
-    <div id="liquidity-content" style="font-size:12px; color:var(--cream); line-height:1.8;">
+    <div id="liquidity-content" style="font-family:'Fredoka',sans-serif; font-size:12px; color:var(--cream); line-height:1.8;">
       <div style="text-align:center; color:var(--gray);">Loading...</div>
     </div>
   </div>
@@ -920,9 +932,9 @@ select {
 <!-- ===== SCREEN: MAPPING ===== -->
 <div id="screen-mapping" class="screen">
   <div style="display:grid; grid-template-columns:repeat(3,1fr); gap:6px; margin-bottom:12px;">
-    <button onclick="showMapping('ASIA')" class="mapping-tab" id="tab-asia">🇯🇵 ASIA</button>
-    <button onclick="showMapping('LONDON')" class="mapping-tab" id="tab-london">🇬🇧 LONDON</button>
-    <button onclick="showMapping('NEW YORK')" class="mapping-tab" id="tab-ny">🇺🇸 NY</button>
+    <button onclick="showMapping('ASIA')" class="mapping-tab" id="tab-asia">ASIA</button>
+    <button onclick="showMapping('LONDON')" class="mapping-tab" id="tab-london">LONDON</button>
+    <button onclick="showMapping('NEW YORK')" class="mapping-tab" id="tab-ny">NY</button>
   </div>
   <div id="mapping-content">
     <div class="loading">
@@ -930,20 +942,20 @@ select {
       <div>Loading mapping...</div>
     </div>
   </div>
-  <button onclick="refreshMapping()" style="width:100%; padding:14px; background:linear-gradient(135deg, var(--gold), var(--gold-dim)); color:#000; border:none; border-radius:12px; font-weight:900; margin-top:12px; cursor:pointer; font-family:'Rajdhani',sans-serif; font-size:14px; letter-spacing:2px;">
-    🔄 REFRESH MAPPING
+  <button onclick="refreshMapping()" style="width:100%; padding:14px; background:linear-gradient(135deg, var(--gold), var(--gold-dim)); color:#000; border:none; border-radius:12px; font-family:'Bangers',cursive; font-size:18px; letter-spacing:3px; margin-top:12px; cursor:pointer;">
+    REFRESH MAPPING
   </button>
 </div>
 
 <!-- ===== SCREEN: ASIA ===== -->
 <div id="screen-asia" class="screen">
   <div class="card" style="text-align:center; padding:14px;">
-    <div style="font-size:10px; color:var(--gray); letter-spacing:2px; margin-bottom:6px;">🔺 ASIA BREAKOUT STATUS</div>
-    <div id="asia-status" style="font-family:'Playfair Display',serif; font-size:18px; font-weight:900; color:var(--gray);">-</div>
-    <div id="asia-last" style="font-size:11px; color:var(--gray); margin-top:6px;">Terakhir: -</div>
+    <div style="font-family:'Fredoka',sans-serif; font-size:10px; color:var(--gray); letter-spacing:2px; margin-bottom:6px;">🔺 ASIA BREAKOUT STATUS</div>
+    <div id="asia-status" style="font-family:'Bangers',cursive; font-size:26px; font-weight:400; color:var(--gray); letter-spacing:2px;">-</div>
+    <div id="asia-last" style="font-family:'Fredoka',sans-serif; font-size:11px; color:var(--gray); margin-top:6px;">Terakhir: -</div>
   </div>
-  <button onclick="loadAsiaBreakout()" style="width:100%; padding:12px; background:linear-gradient(135deg, var(--gold), var(--gold-dim)); color:#000; border:none; border-radius:12px; font-weight:900; font-size:13px; cursor:pointer; font-family:'Rajdhani',sans-serif; letter-spacing:2px; margin-bottom:12px;">
-    🔄 REFRESH ASIA
+  <button onclick="loadAsiaBreakout()" style="width:100%; padding:12px; background:linear-gradient(135deg, var(--gold), var(--gold-dim)); color:#000; border:none; border-radius:12px; font-family:'Bangers',cursive; font-size:16px; letter-spacing:3px; cursor:pointer; margin-bottom:12px;">
+    REFRESH ASIA
   </button>
   <div id="asia-content">
     <div class="loading"><div class="spinner">⏳</div><div>Loading...</div></div>
@@ -986,16 +998,1025 @@ select {
   <div class="card">
     <div class="card-title">💼 ACCOUNT INFO</div>
     <div class="grid-2">
-      <div class="data-box"><div class="data-label">Account</div><div class="data-value gold" id="mt4-account" style="font-size:12px;">-</div></div>
-      <div class="data-box"><div class="data-label">Broker</div><div class="data-value cream" id="mt4-broker" style="font-size:12px;">-</div></div>
+      <div class="data-box"><div class="data-label">Account</div><div class="data-value gold" id="mt4-account" style="font-size:16px;">-</div></div>
+      <div class="data-box"><div class="data-label">Broker</div><div class="data-value cream" id="mt4-broker" style="font-size:16px;">-</div></div>
       <div class="data-box"><div class="data-label">Balance</div><div class="data-value gold" id="mt4-balance">-</div></div>
       <div class="data-box"><div class="data-label">Equity</div><div class="data-value cream" id="mt4-equity">-</div></div>
       <div class="data-box"><div class="data-label">Floating P/L</div><div class="data-value green" id="mt4-profit">-</div></div>
       <div class="data-box"><div class="data-label">Spread</div><div class="data-value blue" id="mt4-spread">-</div></div>
-      <div class="data-box"><div class="data-label">Margin</div><div class="data-value gold" id="mt4-margin" style="font-size:13px;">-</div></div>
-      <div class="data-box"><div class="data-label">Free Margin</div><div class="data-value green" id="mt4-freemargin" style="font-size:13px;">-</div></div>
-      <div class="data-box"><div class="data-label">Leverage</div><div class="data-value cream" id="mt4-leverage" style="font-size:13px;">-</div></div>
-      <div class="data-box"><div class="data-label">Currency</div><div class="data-value cream" id="mt4-currency" style="font-size:13px;">-</div></div>
+      <div class="data-box"><div class="data-label">Margin</div><div class="data-value gold" id="mt4-margin" style="font-<!DOCTYPE html>
+<html lang="ms">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BPT — Borneo Pro Trade</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Luckiest+Guy&family=Baloo+2:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg-dark: #000000;
+  --bg-card: #0a0a0a;
+  --bg-card-2: #111111;
+  --border: #1a1a1a;
+  --border-gold: rgba(251,191,36,0.15);
+  
+  --gold: #fbbf24;
+  --gold-dim: #d97706;
+  --gold-bright: #fcd34d;
+  --cream: #fef3c7;
+  --white: #f1f5f9;
+  --gray: #6b7280;
+  --gray-dim: #4b5563;
+  
+  --green: #22c55e;
+  --green-neon: #00ff88;
+  --red: #ef4444;
+  --red-neon: #ff2e5b;
+}
+body {
+  background: var(--bg-dark);
+  color: var(--cream);
+  font-family: 'Baloo 2', -apple-system, BlinkMacSystemFont, sans-serif;
+  padding-bottom: 95px;
+  min-height: 100vh;
+  font-weight: 500;
+}
+
+/* ===== FONT CLASSES ===== */
+.font-bangers { font-family: 'Luckiest Guy', cursive; letter-spacing: 1px; }
+.font-fredoka { font-family: 'Baloo 2', sans-serif; }
+
+/* ===== HEADER ===== */
+.header { padding: 14px 15px; background: #000; border-bottom: 1px solid var(--border); position: relative; }
+.header-top { position: relative; padding-top: 4px; }
+.header-brand {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+.brand-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.brand-logo {
+  width: 44px;
+  height: 44px;
+  border-radius: 10px;
+  object-fit: cover;
+  border: 1px solid var(--border-gold);
+  box-shadow: 0 0 15px rgba(251,191,36,0.4);
+  display: block;
+}
+.brand-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 10px;
+  background: linear-gradient(135deg, #1a1a1a, #0a0a0a);
+  border: 1px solid var(--border-gold);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
+  box-shadow: 0 0 15px rgba(251,191,36,0.2);
+}
+.brand-name {
+  font-family: 'Luckiest Guy', cursive;
+  font-size: 26px;
+  font-weight: 400;
+  color: var(--gold);
+  letter-spacing: 1.5px;
+  line-height: 1;
+  text-shadow: 0 0 15px rgba(251,191,36,0.5);
+}
+.brand-sub {
+  font-family: 'Baloo 2', sans-serif;
+  font-size: 10px;
+  color: var(--gray);
+  letter-spacing: 2px;
+  margin-top: 3px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+/* ===== MT4 BADGE ===== */
+.mt4-badge {
+  position: absolute;
+  top: 4px;
+  right: 15px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 9px;
+  border-radius: 6px;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 1px;
+  font-family: 'Baloo 2', sans-serif;
+}
+.mt4-badge.online {
+  background: rgba(34,197,94,0.15);
+  border: 1px solid var(--green);
+  color: var(--green);
+}
+.mt4-badge.offline {
+  background: rgba(239,68,68,0.15);
+  border: 1px solid var(--red);
+  color: var(--red);
+}
+.mt4-badge .dot {
+  width: 5px; height: 5px;
+  border-radius: 50%;
+  display: inline-block;
+}
+.mt4-badge.online .dot {
+  background: var(--green);
+  box-shadow: 0 0 6px var(--green);
+  animation: blink 1.5s infinite;
+}
+.mt4-badge.offline .dot { background: var(--red); }
+@keyframes blink { 0%,100% { opacity: 1; } 50% { opacity: 0.3; } }
+
+/* ===== MYT CLOCK ===== */
+.clock-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 0;
+  font-size: 11px;
+  color: var(--gray);
+  font-weight: 700;
+  font-family: 'Baloo 2', sans-serif;
+}
+.clock-row .time { color: var(--gold); font-weight: 800; }
+
+/* ===== MT4 STATUS BAR ===== */
+.mt4-status-bar {
+  padding: 8px 12px;
+  background: linear-gradient(90deg, transparent, rgba(251,191,36,0.04), transparent);
+  border-bottom: 1px solid var(--border);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  text-align: center;
+  font-family: 'Baloo 2', sans-serif;
+}
+.mt4-status-bar.online { color: var(--green); }
+.mt4-status-bar.offline { color: var(--red); }
+.mt4-status-bar .row { display: flex; justify-content: center; gap: 8px; flex-wrap: wrap; margin: 2px 0; }
+.mt4-status-bar .sep { color: var(--gray-dim); }
+.mt4-status-bar .label { color: var(--gray); font-weight: 600; }
+
+/* ===== SELECT ===== */
+select {
+  margin-top: 10px;
+  padding: 11px 14px;
+  border-radius: 10px;
+  background: #0a0a0a;
+  color: var(--gold);
+  border: 1px solid var(--border-gold);
+  font-weight: 700;
+  width: 100%;
+  font-size: 13px;
+  font-family: 'Baloo 2', sans-serif;
+  outline: none;
+  letter-spacing: 1px;
+}
+
+/* ===== SCREEN ===== */
+.screen { display: none; padding: 14px; }
+.screen.active { display: block; }
+
+/* ===== CARD ===== */
+.card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 14px;
+  margin-bottom: 12px;
+  position: relative;
+}
+.card-title {
+  font-family: 'Luckiest Guy', cursive;
+  font-size: 17px;
+  font-weight: 400;
+  color: var(--gold);
+  margin-bottom: 12px;
+  letter-spacing: 1.5px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  text-shadow: 0 0 10px rgba(251,191,36,0.4);
+}
+.card-title::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(90deg, var(--border-gold), transparent);
+  margin-left: 12px;
+}
+
+/* ===== PAIR HEADER ===== */
+.pair-header {
+  background: #000;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 18px;
+  margin-bottom: 12px;
+}
+.pair-row-1 {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 6px;
+}
+.pair-name {
+  font-family: 'Luckiest Guy', cursive;
+  font-size: 32px;
+  font-weight: 400;
+  color: var(--gold);
+  letter-spacing: 1px;
+  line-height: 1;
+  text-shadow: 0 0 25px rgba(251,191,36,0.6);
+}
+.pair-price {
+  font-family: 'Luckiest Guy', cursive;
+  font-size: 32px;
+  font-weight: 400;
+  color: var(--gold-bright);
+  letter-spacing: 1px;
+  line-height: 1;
+  text-shadow: 0 0 25px rgba(251,191,36,0.7);
+}
+.pair-row-2 {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 11px;
+  color: var(--gray);
+  font-weight: 700;
+  letter-spacing: 1px;
+  font-family: 'Baloo 2', sans-serif;
+}
+.pair-change { display: flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 800; }
+.pair-change.down { color: var(--red-neon); }
+.pair-change.up { color: var(--green-neon); }
+.pair-change.live { color: var(--gold); }
+.live-dot {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: var(--green);
+  box-shadow: 0 0 8px var(--green);
+  animation: blink 1.5s infinite;
+  display: inline-block;
+  margin-right: 4px;
+}
+
+/* ===== SIGNAL BOX ===== */
+.signal-box {
+  padding: 35px 20px;
+  border-radius: 20px;
+  text-align: center;
+  margin: 12px 0;
+  border: 1px solid var(--border);
+  background: #000;
+  position: relative;
+  overflow: hidden;
+}
+.signal-box.wait { color: var(--gray); }
+.signal-box.buy {
+  background: linear-gradient(135deg, #052e1a, #0a0a0a);
+  border: 1px solid rgba(0,255,136,0.3);
+  box-shadow: inset 0 0 40px rgba(0,255,136,0.1);
+}
+.signal-box.sell {
+  background: linear-gradient(135deg, #2e0512, #0a0a0a);
+  border: 1px solid rgba(255,46,91,0.3);
+  box-shadow: inset 0 0 40px rgba(255,46,91,0.1);
+}
+.signal-main {
+  font-family: 'Luckiest Guy', cursive;
+  font-size: 64px;
+  font-weight: 400;
+  letter-spacing: 3px;
+  line-height: 1;
+}
+.signal-box.buy .signal-main {
+  color: var(--green-neon);
+  text-shadow: 0 0 30px var(--green-neon), 0 0 60px rgba(0,255,136,0.4);
+}
+.signal-box.sell .signal-main {
+  color: var(--red-neon);
+  text-shadow: 0 0 30px var(--red-neon), 0 0 60px rgba(255,46,91,0.4);
+}
+.signal-box.wait .signal-main { color: var(--gray); }
+.signal-conf {
+  font-family: 'Baloo 2', sans-serif;
+  font-size: 14px;
+  margin-top: 10px;
+  letter-spacing: 2px;
+  color: var(--cream);
+  opacity: 0.8;
+  font-weight: 700;
+}
+
+/* ===== DATA GRID ===== */
+.grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
+.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+
+.data-box {
+  background: var(--bg-card-2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 12px 8px;
+  text-align: center;
+}
+.data-label {
+  font-family: 'Baloo 2', sans-serif;
+  font-size: 9px;
+  color: var(--gray);
+  font-weight: 700;
+  margin-bottom: 6px;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+}
+.data-value {
+  font-family: 'Luckiest Guy', cursive;
+  font-size: 18px;
+  font-weight: 400;
+  letter-spacing: 0.5px;
+}
+.data-value.gold { color: var(--gold); text-shadow: 0 0 12px rgba(251,191,36,0.5); }
+.data-value.green { color: var(--green-neon); text-shadow: 0 0 12px rgba(0,255,136,0.4); }
+.data-value.red { color: var(--red-neon); text-shadow: 0 0 12px rgba(255,46,91,0.4); }
+.data-value.cream { color: var(--cream); }
+.data-value.blue { color: #38bdf8; text-shadow: 0 0 12px rgba(56,189,248,0.4); }
+.data-value.gray { color: var(--gray); }
+
+/* ===== ENTRY CARD ===== */
+.entry-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-gold);
+  border-radius: 14px;
+  padding: 20px;
+  text-align: center;
+  margin-bottom: 12px;
+}
+.entry-label {
+  font-family: 'Baloo 2', sans-serif;
+  font-size: 10px;
+  color: var(--gray);
+  letter-spacing: 3px;
+  font-weight: 700;
+  margin-bottom: 8px;
+  text-transform: uppercase;
+}
+.entry-value {
+  font-family: 'Luckiest Guy', cursive;
+  font-size: 42px;
+  font-weight: 400;
+  color: var(--gold);
+  letter-spacing: 1.5px;
+  text-shadow: 0 0 30px rgba(251,191,36,0.7);
+}
+.entry-source {
+  font-family: 'Baloo 2', sans-serif;
+  font-size: 10px;
+  color: var(--gray);
+  margin-top: 6px;
+  letter-spacing: 1px;
+  font-weight: 700;
+}
+
+/* ===== CONFIRMATION ===== */
+.conf-box {
+  text-align: center;
+  padding: 18px;
+}
+.conf-label {
+  font-family: 'Baloo 2', sans-serif;
+  font-size: 10px;
+  color: var(--gray);
+  letter-spacing: 3px;
+  font-weight: 700;
+  margin-bottom: 8px;
+  text-transform: uppercase;
+}
+.conf-value {
+  font-family: 'Luckiest Guy', cursive;
+  font-size: 52px;
+  font-weight: 400;
+  color: var(--green-neon);
+  text-shadow: 0 0 30px rgba(0,255,136,0.7);
+  letter-spacing: 2px;
+}
+.conf-value.high { color: var(--green-neon); text-shadow: 0 0 30px rgba(0,255,136,0.7); }
+.conf-value.mid { color: var(--gold); text-shadow: 0 0 30px rgba(251,191,36,0.7); }
+.conf-value.low { color: var(--red-neon); text-shadow: 0 0 30px rgba(255,46,91,0.7); }
+.conf-value.gray { color: var(--gray); text-shadow: none; }
+
+/* ===== SESSION ROW ===== */
+.session-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 14px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  margin-bottom: 12px;
+}
+.session-item { text-align: center; flex: 1; }
+.session-label {
+  font-family: 'Baloo 2', sans-serif;
+  font-size: 9px;
+  color: var(--gray);
+  letter-spacing: 2px;
+  margin-bottom: 6px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+.session-value {
+  font-family: 'Luckiest Guy', cursive;
+  font-size: 20px;
+  font-weight: 400;
+  color: var(--gold);
+  letter-spacing: 1px;
+}
+
+/* ===== POC BANNER ===== */
+.poc-banner {
+  background: linear-gradient(135deg, var(--gold), var(--gold-dim));
+  color: #000;
+  font-family: 'Luckiest Guy', cursive;
+  font-weight: 400;
+  text-align: center;
+  padding: 14px;
+  border-radius: 12px;
+  margin-bottom: 12px;
+  font-size: 20px;
+  letter-spacing: 2px;
+  box-shadow: 0 0 25px rgba(251,191,36,0.4);
+}
+
+/* ===== SNR GRID ===== */
+.snr-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-bottom: 10px; }
+.snr-box {
+  background: var(--bg-card-2);
+  padding: 12px 6px;
+  border-radius: 10px;
+  text-align: center;
+  border: 1px solid var(--border);
+}
+.snr-label {
+  font-family: 'Baloo 2', sans-serif;
+  font-size: 10px;
+  margin-bottom: 6px;
+  font-weight: 800;
+  letter-spacing: 1px;
+}
+.snr-value {
+  font-family: 'Luckiest Guy', cursive;
+  font-size: 15px;
+  font-weight: 400;
+  color: var(--cream);
+  letter-spacing: 0.5px;
+}
+.snr-box.red { border-color: rgba(255,46,91,0.3); }
+.snr-box.red .snr-label { color: var(--red-neon); }
+.snr-box.red .snr-value { color: var(--red-neon); }
+.snr-box.green { border-color: rgba(0,255,136,0.3); }
+.snr-box.green .snr-label { color: var(--green-neon); }
+.snr-box.green .snr-value { color: var(--green-neon); }
+.snr-box.blue { border-color: rgba(56,189,248,0.3); }
+.snr-box.blue .snr-label { color: #38bdf8; }
+.snr-box.blue .snr-value { color: #38bdf8; }
+.snr-box.yellow {
+  background: linear-gradient(135deg, var(--gold), var(--gold-dim));
+  border: none;
+  box-shadow: 0 0 15px rgba(251,191,36,0.4);
+}
+.snr-box.yellow .snr-label,
+.snr-box.yellow .snr-value { color: #000; }
+
+/* ===== MAPPING TABS ===== */
+.mapping-tab {
+  padding: 12px 8px;
+  background: var(--bg-card-2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  color: var(--gray);
+  font-family: 'Luckiest Guy', cursive;
+  font-size: 14px;
+  font-weight: 400;
+  cursor: pointer;
+  transition: all 0.3s;
+  letter-spacing: 1px;
+}
+.mapping-tab.active {
+  background: linear-gradient(135deg, var(--gold), var(--gold-dim));
+  color: #000;
+  border-color: var(--gold);
+  box-shadow: 0 0 20px rgba(251,191,36,0.5);
+}
+
+/* ===== MAPPING CARD ===== */
+.mapping-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 16px;
+  margin-bottom: 12px;
+}
+.mapping-ai-text {
+  font-family: 'Baloo 2', sans-serif;
+  font-size: 13px;
+  line-height: 1.7;
+  color: var(--cream);
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-weight: 600;
+}
+.mapping-badge {
+  display: inline-block;
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 1px;
+  font-family: 'Baloo 2', sans-serif;
+}
+.badge-prime { background: rgba(0,255,136,0.15); color: var(--green-neon); border: 1px solid var(--green-neon); }
+.badge-slow { background: rgba(251,191,36,0.15); color: var(--gold); border: 1px solid var(--gold); }
+.badge-closed { background: rgba(255,46,91,0.15); color: var(--red-neon); border: 1px solid var(--red-neon); }
+
+/* ===== MESSAGES ===== */
+.msg-filter {
+  padding: 8px 14px;
+  background: var(--bg-card-2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--gray);
+  font-family: 'Luckiest Guy', cursive;
+  font-size: 13px;
+  font-weight: 400;
+  cursor: pointer;
+  transition: all 0.3s;
+  letter-spacing: 1px;
+}
+.msg-filter.active {
+  background: linear-gradient(135deg, var(--gold), var(--gold-dim));
+  color: #000;
+  border-color: var(--gold);
+  box-shadow: 0 0 15px rgba(251,191,36,0.4);
+}
+.msg-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--gold);
+  border-radius: 10px;
+  padding: 12px;
+  margin-bottom: 10px;
+}
+.msg-card.signal { border-left-color: var(--green-neon); }
+.msg-card.mapping { border-left-color: #38bdf8; }
+.msg-card.asia_breakout { border-left-color: #a78bfa; }
+.msg-card.daily_outlook { border-left-color: var(--gold); }
+.msg-card.pre_market { border-left-color: #f97316; }
+.msg-card.level_alert { border-left-color: #ec4899; }
+.msg-card.news_alert { border-left-color: var(--red-neon); }
+.msg-card.liquidity_sweep { border-left-color: #06b6d4; }
+.msg-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border);
+}
+.msg-type {
+  font-family: 'Luckiest Guy', cursive;
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--gold);
+  letter-spacing: 1px;
+}
+.msg-time {
+  font-family: 'Baloo 2', sans-serif;
+  font-size: 10px;
+  color: var(--gray);
+  font-weight: 700;
+}
+.msg-body {
+  font-family: 'Baloo 2', sans-serif;
+  font-size: 12px;
+  color: var(--cream);
+  white-space: pre-wrap;
+  line-height: 1.6;
+  word-break: break-word;
+  font-weight: 600;
+}
+
+/* ===== MT4 SCREEN ===== */
+.mt4-status {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 14px;
+  border-radius: 12px;
+  margin-bottom: 14px;
+  font-family: 'Luckiest Guy', cursive;
+  font-size: 20px;
+  font-weight: 400;
+  letter-spacing: 2px;
+}
+.mt4-status.online {
+  background: linear-gradient(135deg, rgba(0,255,136,0.1), rgba(0,0,0,0));
+  border: 1px solid var(--green-neon);
+  color: var(--green-neon);
+  text-shadow: 0 0 15px rgba(0,255,136,0.6);
+  box-shadow: 0 0 25px rgba(0,255,136,0.2);
+}
+.mt4-status.offline {
+  background: linear-gradient(135deg, rgba(255,46,91,0.1), rgba(0,0,0,0));
+  border: 1px solid var(--red-neon);
+  color: var(--red-neon);
+}
+
+.mt4-btn {
+  padding: 16px;
+  border: none;
+  border-radius: 12px;
+  font-family: 'Luckiest Guy', cursive;
+  font-weight: 400;
+  font-size: 16px;
+  cursor: pointer;
+  letter-spacing: 1.5px;
+  transition: all 0.3s;
+  width: 100%;
+}
+.mt4-btn.buy {
+  background: linear-gradient(135deg, var(--green-neon), #059669);
+  color: #000;
+  box-shadow: 0 0 25px rgba(0,255,136,0.4);
+}
+.mt4-btn.sell {
+  background: linear-gradient(135deg, var(--red-neon), #be123c);
+  color: #fff;
+  box-shadow: 0 0 25px rgba(255,46,91,0.4);
+}
+.mt4-btn.close {
+  background: linear-gradient(135deg, var(--gold), var(--gold-dim));
+  color: #000;
+  box-shadow: 0 0 25px rgba(251,191,36,0.4);
+}
+.mt4-btn:active { transform: scale(0.97); }
+.mt4-input {
+  flex: 1;
+  padding: 12px;
+  background: var(--bg-card-2);
+  border: 1px solid var(--border-gold);
+  border-radius: 10px;
+  color: var(--gold);
+  font-family: 'Luckiest Guy', cursive;
+  font-weight: 400;
+  text-align: center;
+  outline: none;
+  font-size: 20px;
+  letter-spacing: 1px;
+}
+
+.position-card {
+  background: var(--bg-card-2);
+  border-left: 3px solid var(--gold);
+  border-radius: 8px;
+  padding: 10px 12px;
+  margin-bottom: 8px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-family: 'Baloo 2', sans-serif;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+/* ===== NEWS ===== */
+.news-item {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 14px;
+  margin-bottom: 10px;
+  border-left: 3px solid var(--gold);
+  font-family: 'Baloo 2', sans-serif;
+}
+
+/* ===== BOTTOM NAV ===== */
+#bottom-nav {
+  position: fixed;
+  bottom: 0; left: 0; width: 100%;
+  background: linear-gradient(180deg, #0a0a0a, #000);
+  border-top: 1px solid var(--border);
+  padding: 8px 0 12px;
+  z-index: 100;
+}
+.nav-grid {
+  display: flex;
+  justify-content: space-around;
+  margin-bottom: 6px;
+}
+.nav-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  color: var(--gray);
+  font-family: 'Luckiest Guy', cursive;
+  font-size: 11px;
+  cursor: pointer;
+  background: none;
+  border: none;
+  width: 13.5%;
+  letter-spacing: 0.5px;
+  font-weight: 400;
+  padding: 4px 0;
+  position: relative;
+}
+.nav-item.active { color: var(--gold); }
+.nav-item.active span { color: var(--gold); }
+.nav-item span { margin-top: 4px; }
+.nav-item .nav-icon {
+  font-size: 18px;
+  line-height: 1;
+  filter: drop-shadow(0 0 4px rgba(251,191,36,0.4));
+}
+.nav-badge-dot {
+  position: absolute;
+  top: 2px; right: 12px;
+  width: 7px; height: 7px;
+  border-radius: 50%;
+  display: none;
+}
+.nav-badge-dot.online {
+  background: var(--green-neon);
+  box-shadow: 0 0 8px var(--green-neon);
+  animation: blink 1.5s infinite;
+  display: block;
+}
+.nav-badge-dot.offline { background: var(--red-neon); display: block; }
+
+/* ===== TIER FOOTER ===== */
+.tier-footer {
+  text-align: center;
+  font-family: 'Luckiest Guy', cursive;
+  font-size: 13px;
+  color: var(--gold);
+  letter-spacing: 2px;
+  padding: 8px;
+  border: 1px solid var(--border-gold);
+  border-radius: 20px;
+  margin: 0 30px;
+  font-weight: 400;
+  text-shadow: 0 0 10px rgba(251,191,36,0.4);
+}
+
+/* ===== LOADING ===== */
+.loading {
+  text-align: center;
+  padding: 40px;
+  color: var(--gray);
+  font-family: 'Baloo 2', sans-serif;
+}
+.loading .spinner {
+  font-size: 42px;
+  margin-bottom: 15px;
+  animation: spin 2s linear infinite;
+  display: inline-block;
+}
+@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-top">
+    <!-- MT4 BADGE -->
+    <div class="mt4-badge offline" id="mt4-badge">
+      <span class="dot"></span>
+      <span id="mt4-badge-text">OFFLINE</span>
+    </div>
+
+    <div class="header-brand">
+      <div class="brand-left">
+        <img src="logo.png" alt="BPT Logo" class="brand-logo" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+        <div class="brand-icon" style="display:none;">👑</div>
+        <div>
+          <div class="brand-name">BPT</div>
+          <div class="brand-sub">BORNEO PRO TRADE</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="clock-row">
+      <span>⏰ <span class="time" id="utc-clock">--:--:--</span> MYT</span>
+      <span>📅 <span id="utc-date">--</span></span>
+    </div>
+  </div>
+  <select id="market-selector" onchange="tukarMarket()">
+    <option value="XAU/USD">XAU/USD (Gold)</option>
+    <option value="XAG/USD">XAG/USD (Silver)</option>
+    <option value="EUR/USD">EUR/USD (Euro)</option>
+    <option value="GBP/USD">GBP/USD (Pound)</option>
+    <option value="USD/JPY">USD/JPY (Yen)</option>
+    <option value="AUD/USD">AUD/USD (Aussie)</option>
+  </select>
+</div>
+
+<!-- MT4 STATUS BAR -->
+<div class="mt4-status-bar offline" id="mt4-status-bar">
+  💼 MT4 OFFLINE · Menunggu EA connect...
+</div>
+
+<!-- ===== SCREEN: SIGNAL ===== -->
+<div id="screen-signal" class="screen active">
+
+  <!-- PAIR HEADER -->
+  <div class="pair-header">
+    <div class="pair-row-1">
+      <div class="pair-name" id="pair-name">XAUUSD</div>
+      <div class="pair-price" id="pair-price">-</div>
+    </div>
+    <div class="pair-row-2">
+      <div id="pair-sub">GOLD / US DOLLAR — SPOT</div>
+      <div class="pair-change live" id="pair-change">
+        <span class="live-dot"></span> LIVE
+      </div>
+    </div>
+  </div>
+
+  <!-- SIGNAL BOX -->
+  <div id="signal-box" class="signal-box wait">
+    <div class="signal-main">WAIT</div>
+    <div class="signal-conf">Menunggu setup</div>
+  </div>
+
+  <!-- ENTRY CARD -->
+  <div class="entry-card">
+    <div class="entry-label">🎯 ENTRY</div>
+    <div class="entry-value" id="signal-entry">-</div>
+    <div class="entry-source" id="signal-source">💼 MT4</div>
+  </div>
+
+  <!-- SL/TP -->
+  <div class="card">
+    <div class="grid-3" style="margin-bottom:8px;">
+      <div class="data-box" style="border-color:rgba(255,46,91,0.3);">
+        <div class="data-label">🛑 SL</div>
+        <div class="data-value red" id="sig-sl">-</div>
+      </div>
+      <div class="data-box" style="border-color:rgba(0,255,136,0.3);">
+        <div class="data-label">✅ TP1</div>
+        <div class="data-value green" id="sig-tp1">-</div>
+      </div>
+      <div class="data-box" style="border-color:rgba(0,255,136,0.3);">
+        <div class="data-label">✅ TP2</div>
+        <div class="data-value green" id="sig-tp2">-</div>
+      </div>
+    </div>
+    <div class="data-box" style="border-color:rgba(0,255,136,0.3);">
+      <div class="data-label">✅ TP3</div>
+      <div class="data-value green" id="sig-tp3">-</div>
+    </div>
+  </div>
+
+  <!-- CONFIRMATION -->
+  <div class="card conf-box">
+    <div class="conf-label">📊 CONFIRMATION</div>
+    <div class="conf-value" id="conf-percent">-</div>
+  </div>
+
+  <!-- SESSION -->
+  <div class="session-row">
+    <div class="session-item">
+      <div class="session-label">⏰ SESSION</div>
+      <div class="session-value" id="sig-session">-</div>
+    </div>
+    <div class="session-item">
+      <div class="session-label">📈 MTF</div>
+      <div class="session-value" id="sig-mtf">-</div>
+    </div>
+  </div>
+
+</div>
+
+<!-- ===== SCREEN: LEVELS ===== -->
+<div id="screen-levels" class="screen">
+  <div class="poc-banner">POC <span id="poc-val">-</span></div>
+
+  <div class="card">
+    <div class="card-title">⭐ AUTO SNR LEVELS</div>
+    <div class="snr-grid">
+      <div class="snr-box red"><div class="snr-label">R3</div><div class="snr-value" id="r3">-</div></div>
+      <div class="snr-box red"><div class="snr-label">R2</div><div class="snr-value" id="r2">-</div></div>
+      <div class="snr-box red"><div class="snr-label">R1</div><div class="snr-value" id="r1">-</div></div>
+      <div class="snr-box yellow"><div class="snr-label">POC</div><div class="snr-value" id="poc-box">-</div></div>
+      <div class="snr-box blue"><div class="snr-label">VAH</div><div class="snr-value" id="vah">-</div></div>
+      <div class="snr-box blue"><div class="snr-label">VAL</div><div class="snr-value" id="val">-</div></div>
+      <div class="snr-box green"><div class="snr-label">S1</div><div class="snr-value" id="s1">-</div></div>
+      <div class="snr-box green"><div class="snr-label">S2</div><div class="snr-value" id="s2">-</div></div>
+      <div class="snr-box green"><div class="snr-label">S3</div><div class="snr-value" id="s3">-</div></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">💧 LIQUIDITY LEVELS</div>
+    <div id="liquidity-content" style="font-family:'Baloo 2',sans-serif; font-size:12px; color:var(--cream); line-height:1.8;">
+      <div style="text-align:center; color:var(--gray);">Loading...</div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== SCREEN: MAPPING ===== -->
+<div id="screen-mapping" class="screen">
+  <div style="display:grid; grid-template-columns:repeat(3,1fr); gap:6px; margin-bottom:12px;">
+    <button onclick="showMapping('ASIA')" class="mapping-tab" id="tab-asia">ASIA</button>
+    <button onclick="showMapping('LONDON')" class="mapping-tab" id="tab-london">LONDON</button>
+    <button onclick="showMapping('NEW YORK')" class="mapping-tab" id="tab-ny">NY</button>
+  </div>
+  <div id="mapping-content">
+    <div class="loading">
+      <div class="spinner">⏳</div>
+      <div>Loading mapping...</div>
+    </div>
+  </div>
+  <button onclick="refreshMapping()" style="width:100%; padding:14px; background:linear-gradient(135deg, var(--gold), var(--gold-dim)); color:#000; border:none; border-radius:12px; font-family:'Luckiest Guy',cursive; font-size:16px; letter-spacing:1.5px; margin-top:12px; cursor:pointer;">
+    REFRESH MAPPING
+  </button>
+</div>
+
+<!-- ===== SCREEN: ASIA ===== -->
+<div id="screen-asia" class="screen">
+  <div class="card" style="text-align:center; padding:14px;">
+    <div style="font-family:'Baloo 2',sans-serif; font-size:10px; color:var(--gray); letter-spacing:2px; margin-bottom:6px;">🔺 ASIA BREAKOUT STATUS</div>
+    <div id="asia-status" style="font-family:'Luckiest Guy',cursive; font-size:22px; font-weight:400; color:var(--gray); letter-spacing:1px;">-</div>
+    <div id="asia-last" style="font-family:'Baloo 2',sans-serif; font-size:11px; color:var(--gray); margin-top:6px;">Terakhir: -</div>
+  </div>
+  <button onclick="loadAsiaBreakout()" style="width:100%; padding:12px; background:linear-gradient(135deg, var(--gold), var(--gold-dim)); color:#000; border:none; border-radius:12px; font-family:'Luckiest Guy',cursive; font-size:14px; letter-spacing:1.5px; cursor:pointer; margin-bottom:12px;">
+    REFRESH ASIA
+  </button>
+  <div id="asia-content">
+    <div class="loading"><div class="spinner">⏳</div><div>Loading...</div></div>
+  </div>
+</div>
+
+<!-- ===== SCREEN: NEWS ===== -->
+<div id="screen-news" class="screen">
+  <div class="card">
+    <div class="card-title">📰 ECONOMIC NEWS (USD)</div>
+    <div id="news-list">
+      <div class="loading"><div class="spinner">⏳</div><div>Memuatkan...</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== SCREEN: MESSAGES ===== -->
+<div id="screen-messages" class="screen">
+  <div class="card">
+    <div class="card-title">📨 NOTIFICATION HISTORY</div>
+    <div style="display:flex; gap:6px; margin-bottom:12px; flex-wrap:wrap;">
+      <button onclick="loadMessages('all')" class="msg-filter active" id="filter-all">ALL</button>
+      <button onclick="loadMessages('signal')" class="msg-filter" id="filter-signal">SIGNAL</button>
+      <button onclick="loadMessages('mapping')" class="msg-filter" id="filter-mapping">MAPPING</button>
+      <button onclick="loadMessages('alert')" class="msg-filter" id="filter-alert">ALERT</button>
+      <button onclick="loadMessages('asia_breakout')" class="msg-filter" id="filter-asia">ASIA</button>
+      <button onclick="loadMessages('daily_outlook,pre_market')" class="msg-filter" id="filter-daily">DAILY</button>
+      <button onclick="loadMessages('liquidity_sweep')" class="msg-filter" id="filter-sweep">SWEEP</button>
+    </div>
+    <div id="messages-content">
+      <div class="loading"><div class="spinner">⏳</div><div>Loading...</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== SCREEN: MT4 ===== -->
+<div id="screen-mt4" class="screen">
+  <div class="mt4-status offline" id="mt4-screen-status">🔴 OFFLINE</div>
+
+  <div class="card">
+    <div class="card-title">💼 ACCOUNT INFO</div>
+    <div class="grid-2">
+      <div class="data-box"><div class="data-label">Account</div><div class="data-value gold" id="mt4-account" style="font-size:14px;">-</div></div>
+      <div class="data-box"><div class="data-label">Broker</div><div class="data-value cream" id="mt4-broker" style="font-size:14px;">-</div></div>
+      <div class="data-box"><div class="data-label">Balance</div><div class="data-value gold" id="mt4-balance">-</div></div>
+      <div class="data-box"><div class="data-label">Equity</div><div class="data-value cream" id="mt4-equity">-</div></div>
+      <div class="data-box"><div class="data-label">Floating P/L</div><div class="data-value green" id="mt4-profit">-</div></div>
+      <div class="data-box"><div class="data-label">Spread</div><div class="data-value blue" id="mt4-spread">-</div></div>
+      <div class="data-box"><div class="data-label">Margin</div><div class="data-value gold" id="mt4-margin" style="font-size:14px;">-</div></div>
+      <div class="data-box"><div class="data-label">Free Margin</div><div class="data-value green" id="mt4-freemargin" style="font-size:14px;">-</div></div>
+      <div class="data-box"><div class="data-label">Leverage</div><div class="data-value cream" id="mt4-leverage" style="font-size:14px;">-</div></div>
+      <div class="data-box"><div class="data-label">Currency</div><div class="data-value cream" id="mt4-currency" style="font-size:14px;">-</div></div>
     </div>
   </div>
 
@@ -1006,7 +2027,7 @@ select {
       <button class="mt4-btn sell" onclick="mt4Trade('SELL')">▼ SELL</button>
     </div>
     <div style="display:flex; gap:8px; align-items:center; margin-bottom:10px;">
-      <span style="font-size:11px; color:var(--gray); font-weight:700; letter-spacing:1px;">LOT:</span>
+      <span style="font-family:'Luckiest Guy',cursive; font-size:14px; color:var(--gray); letter-spacing:1px;">LOT:</span>
       <input type="number" id="mt4-lot" value="0.01" step="0.01" min="0.01" class="mt4-input">
     </div>
     <button class="mt4-btn close" onclick="mt4CloseAll()">⚠ CLOSE ALL POSITIONS</button>
@@ -1023,12 +2044,12 @@ select {
 <!-- ===== BOTTOM NAV ===== -->
 <nav id="bottom-nav">
   <div class="nav-grid">
-    <button class="nav-item active" onclick="switchTab('signal', this)"><span class="nav-icon">📈</span><span>Signal</span></button>
-    <button class="nav-item" onclick="switchTab('levels', this)"><span class="nav-icon">⭐</span><span>Levels</span></button>
-    <button class="nav-item" onclick="switchTab('mapping', this)"><span class="nav-icon">🗺️</span><span>Mapping</span></button>
-    <button class="nav-item" onclick="switchTab('asia', this)"><span class="nav-icon">🔺</span><span>Asia</span></button>
-    <button class="nav-item" onclick="switchTab('news', this)"><span class="nav-icon">📰</span><span>News</span></button>
-    <button class="nav-item" onclick="switchTab('messages', this)"><span class="nav-icon">📨</span><span>Msg</span></button>
+    <button class="nav-item active" onclick="switchTab('signal', this)"><span class="nav-icon">📈</span><span>SIGNAL</span></button>
+    <button class="nav-item" onclick="switchTab('levels', this)"><span class="nav-icon">⭐</span><span>LEVELS</span></button>
+    <button class="nav-item" onclick="switchTab('mapping', this)"><span class="nav-icon">🗺️</span><span>MAPPING</span></button>
+    <button class="nav-item" onclick="switchTab('asia', this)"><span class="nav-icon">🔺</span><span>ASIA</span></button>
+    <button class="nav-item" onclick="switchTab('news', this)"><span class="nav-icon">📰</span><span>NEWS</span></button>
+    <button class="nav-item" onclick="switchTab('messages', this)"><span class="nav-icon">📨</span><span>MSG</span></button>
     <button class="nav-item" onclick="switchTab('mt4', this)" style="position:relative;"><span class="nav-icon">💼</span><span>MT4</span><span class="nav-badge-dot offline" id="mt4-nav-dot"></span></button>
   </div>
   <div class="tier-footer">👑 PREMIUM • BPT</div>
@@ -1053,11 +2074,12 @@ setInterval(updateUTCClock, 1000);
 updateUTCClock();
 
 // ===== TAB SWITCH =====
+// 🔧 FIX: guard element undefined
 function switchTab(tabName, element) {
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
   document.getElementById('screen-' + tabName).classList.add('active');
   document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
-  element.classList.add('active');
+  if (element) element.classList.add('active');
 
   if (tabName === 'news' && !newsLoaded) loadNews();
   if (tabName === 'messages') { loadMessages(currentFilter); }
@@ -1072,29 +2094,39 @@ function tukarMarket() {
   dapatkanMarketData();
 }
 
+// 🔧 FIX: helper — format nilai, elak papar 0.00 kalau kosong
+function fmtVal(v, fallback) {
+  fallback = fallback || '-';
+  if (v === null || v === undefined || v === '') return fallback;
+  const n = parseFloat(v);
+  if (isNaN(n) || n === 0) return fallback;
+  return n.toFixed(2);
+}
+function fmtValRaw(v, fallback) {
+  fallback = fallback || '-';
+  if (v === null || v === undefined || v === '') return fallback;
+  const n = parseFloat(v);
+  if (isNaN(n) || n === 0) return fallback;
+  return v;
+}
+
 // ===== SIGNAL =====
 async function dapatkanSignal() {
   try {
     const res = await fetch(`/api/signal?symbol=${marketAktif}`);
+    if (!res.ok) throw new Error('HTTP ' + res.status);
     const data = await res.json();
 
-    // PAIR HEADER
     const pairName = data.symbol ? data.symbol.replace('/', '') : marketAktif.replace('/', '');
     document.getElementById('pair-name').innerText = pairName;
     document.getElementById('pair-price').innerText = data.harga || '-';
     document.getElementById('pair-sub').innerText = data.symbol ? data.symbol.replace('/', ' / ') + ' — SPOT' : 'GOLD / US DOLLAR — SPOT';
-    
-    const changeEl = document.getElementById('pair-change');
-    const changeVal = data.change || 0;
-    if (changeVal >= 0) {
-      changeEl.className = 'pair-change up';
-      changeEl.innerHTML = '<span class="live-dot"></span> ● LIVE';
-    } else {
-      changeEl.className = 'pair-change down';
-      changeEl.innerHTML = '<span class="live-dot"></span> ● LIVE';
-    }
 
-    // SIGNAL BOX
+    // 🔧 FIX: pair-change jangan hardcode DOWN
+    const changeEl = document.getElementById('pair-change');
+    changeEl.className = 'pair-change live';
+    changeEl.innerHTML = '<span class="live-dot"></span> ● LIVE';
+
     const sb = document.getElementById('signal-box');
     if (data.signal === 'BUY' || data.signal === 'SELL') {
       sb.innerHTML = `
@@ -1110,26 +2142,24 @@ async function dapatkanSignal() {
       sb.className = 'signal-box wait';
     }
 
-    // ENTRY
-    document.getElementById('signal-entry').innerText = data.entry || data.harga || '-';
+    document.getElementById('signal-entry').innerText = fmtValRaw(data.entry, '-');
     document.getElementById('signal-source').innerText = '💼 ' + (data.harga_source || 'MT4');
 
-    // SL/TP
-    document.getElementById('sig-sl').innerText = data.sl || '-';
-    document.getElementById('sig-tp1').innerText = data.tp1 || '-';
-    document.getElementById('sig-tp2').innerText = data.tp2 || '-';
-    document.getElementById('sig-tp3').innerText = data.tp3 || '-';
+    // 🔧 FIX: SL/TP guna fmtVal — elak papar 0.00
+    document.getElementById('sig-sl').innerText = fmtVal(data.sl);
+    document.getElementById('sig-tp1').innerText = fmtVal(data.tp1);
+    document.getElementById('sig-tp2').innerText = fmtVal(data.tp2);
+    document.getElementById('sig-tp3').innerText = fmtVal(data.tp3);
 
-    // CONFIRMATION
     const confEl = document.getElementById('conf-percent');
     const confValue = data.score || 0;
     confEl.innerText = confValue + '%';
     confEl.className = 'conf-value';
     if (confValue >= 80) confEl.classList.add('high');
     else if (confValue >= 65) confEl.classList.add('mid');
-    else confEl.classList.add('low');
+    else if (confValue > 0) confEl.classList.add('low');
+    else confEl.classList.add('gray');
 
-    // SESSION + MTF
     document.getElementById('sig-session').innerText = data.session || '-';
     document.getElementById('sig-mtf').innerText = (data.mtf && data.mtf.agreement) ? data.mtf.agreement : '-';
 
@@ -1140,29 +2170,30 @@ async function dapatkanSignal() {
 async function dapatkanMarketData() {
   try {
     const res = await fetch(`/api/market?symbol=${marketAktif}`);
+    if (!res.ok) throw new Error('HTTP ' + res.status);
     const data = await res.json();
-    document.getElementById('poc-val').innerText = data.POC || '-';
-    document.getElementById('poc-box').innerText = data.POC || '-';
-    document.getElementById('r3').innerText = data.R3 || '-';
-    document.getElementById('r2').innerText = data.R2 || '-';
-    document.getElementById('r1').innerText = data.R1 || '-';
-    document.getElementById('s1').innerText = data.S1 || '-';
-    document.getElementById('s2').innerText = data.S2 || '-';
-    document.getElementById('s3').innerText = data.S3 || '-';
+    document.getElementById('poc-val').innerText = fmtValRaw(data.POC, '-');
+    document.getElementById('poc-box').innerText = fmtValRaw(data.POC, '-');
+    document.getElementById('r3').innerText = fmtValRaw(data.R3, '-');
+    document.getElementById('r2').innerText = fmtValRaw(data.R2, '-');
+    document.getElementById('r1').innerText = fmtValRaw(data.R1, '-');
+    document.getElementById('s1').innerText = fmtValRaw(data.S1, '-');
+    document.getElementById('s2').innerText = fmtValRaw(data.S2, '-');
+    document.getElementById('s3').innerText = fmtValRaw(data.S3, '-');
 
     const liq = data.liquidity;
     const liqEl = document.getElementById('liquidity-content');
     if (liq) {
       liqEl.innerHTML = `
         <div class="grid-2">
-          <div style="padding:10px; background:rgba(255,46,91,0.08); border-radius:8px;"><div style="font-size:9px; color:var(--gray); letter-spacing:1px;">YESTERDAY HIGH</div><div style="color:var(--red-neon); font-weight:700; margin-top:3px;">${liq.yesterdayHigh || '-'}</div></div>
-          <div style="padding:10px; background:rgba(0,255,136,0.08); border-radius:8px;"><div style="font-size:9px; color:var(--gray); letter-spacing:1px;">YESTERDAY LOW</div><div style="color:var(--green-neon); font-weight:700; margin-top:3px;">${liq.yesterdayLow || '-'}</div></div>
-          <div style="padding:10px; background:rgba(255,46,91,0.08); border-radius:8px;"><div style="font-size:9px; color:var(--gray); letter-spacing:1px;">ASIA HIGH</div><div style="color:var(--red-neon); font-weight:700; margin-top:3px;">${liq.asiaHigh || '-'}</div></div>
-          <div style="padding:10px; background:rgba(0,255,136,0.08); border-radius:8px;"><div style="font-size:9px; color:var(--gray); letter-spacing:1px;">ASIA LOW</div><div style="color:var(--green-neon); font-weight:700; margin-top:3px;">${liq.asiaLow || '-'}</div></div>
-          <div style="padding:10px; background:rgba(255,46,91,0.08); border-radius:8px;"><div style="font-size:9px; color:var(--gray); letter-spacing:1px;">LONDON HIGH</div><div style="color:var(--red-neon); font-weight:700; margin-top:3px;">${liq.londonHigh || '-'}</div></div>
-          <div style="padding:10px; background:rgba(0,255,136,0.08); border-radius:8px;"><div style="font-size:9px; color:var(--gray); letter-spacing:1px;">LONDON LOW</div><div style="color:var(--green-neon); font-weight:700; margin-top:3px;">${liq.londonLow || '-'}</div></div>
+          <div style="padding:10px; background:rgba(255,46,91,0.08); border-radius:8px;"><div style="font-size:9px; color:var(--gray); letter-spacing:1px;">YESTERDAY HIGH</div><div style="color:var(--red-neon); font-family:'Luckiest Guy',cursive; font-size:16px; margin-top:3px;">${liq.yesterdayHigh ?? '-'}</div></div>
+          <div style="padding:10px; background:rgba(0,255,136,0.08); border-radius:8px;"><div style="font-size:9px; color:var(--gray); letter-spacing:1px;">YESTERDAY LOW</div><div style="color:var(--green-neon); font-family:'Luckiest Guy',cursive; font-size:16px; margin-top:3px;">${liq.yesterdayLow ?? '-'}</div></div>
+          <div style="padding:10px; background:rgba(255,46,91,0.08); border-radius:8px;"><div style="font-size:9px; color:var(--gray); letter-spacing:1px;">ASIA HIGH</div><div style="color:var(--red-neon); font-family:'Luckiest Guy',cursive; font-size:16px; margin-top:3px;">${liq.asiaHigh ?? '-'}</div></div>
+          <div style="padding:10px; background:rgba(0,255,136,0.08); border-radius:8px;"><div style="font-size:9px; color:var(--gray); letter-spacing:1px;">ASIA LOW</div><div style="color:var(--green-neon); font-family:'Luckiest Guy',cursive; font-size:16px; margin-top:3px;">${liq.asiaLow ?? '-'}</div></div>
+          <div style="padding:10px; background:rgba(255,46,91,0.08); border-radius:8px;"><div style="font-size:9px; color:var(--gray); letter-spacing:1px;">LONDON HIGH</div><div style="color:var(--red-neon); font-family:'Luckiest Guy',cursive; font-size:16px; margin-top:3px;">${liq.londonHigh ?? '-'}</div></div>
+          <div style="padding:10px; background:rgba(0,255,136,0.08); border-radius:8px;"><div style="font-size:9px; color:var(--gray); letter-spacing:1px;">LONDON LOW</div><div style="color:var(--green-neon); font-family:'Luckiest Guy',cursive; font-size:16px; margin-top:3px;">${liq.londonLow ?? '-'}</div></div>
         </div>
-        ${liq.sweep ? `<div style="margin-top:10px; padding:10px; background:rgba(255,46,91,0.15); border-left:3px solid var(--red-neon); border-radius:8px;"><div style="font-size:11px; color:var(--red-neon); font-weight:700;">⚡ LIQUIDITY SWEEP: ${liq.sweep.type}</div><div style="font-size:11px; color:var(--cream); margin-top:4px;">Source: ${liq.sweep.source} @ ${liq.sweep.level}</div></div>` : ''}
+        ${liq.sweep ? `<div style="margin-top:10px; padding:10px; background:rgba(255,46,91,0.15); border-left:3px solid var(--red-neon); border-radius:8px;"><div style="font-family:'Luckiest Guy',cursive; font-size:14px; color:var(--red-neon); letter-spacing:1px;">⚡ LIQUIDITY SWEEP: ${liq.sweep.type}</div><div style="font-size:11px; color:var(--cream); margin-top:4px;">Source: ${liq.sweep.source} @ ${liq.sweep.level}</div></div>` : ''}
       `;
     } else {
       liqEl.innerHTML = '<div style="text-align:center; color:var(--gray);">Tiada data</div>';
@@ -1176,6 +2207,7 @@ let currentMappingSession = 'LONDON';
 async function refreshMapping() {
   try {
     const res = await fetch('/api/mapping');
+    if (!res.ok) throw new Error('HTTP ' + res.status);
     const data = await res.json();
     window.allMappings = data.mappings;
     if (data.current_session && data.current_session !== 'CLOSED' && data.mappings[data.current_session]) {
@@ -1200,69 +2232,77 @@ function showMapping(sessionName) {
   const map = window.allMappings ? window.allMappings[sessionName] : null;
 
   if (!map) {
-    container.innerHTML = `<div class="mapping-card" style="text-align:center; padding:40px;"><div style="font-size:48px; margin-bottom:15px;">⏳</div><div style="color:var(--gray); font-size:14px;">Mapping untuk <strong>${sessionName}</strong> belum tersedia.</div></div>`;
+    container.innerHTML = `<div class="mapping-card" style="text-align:center; padding:40px;"><div style="font-size:48px; margin-bottom:15px;">⏳</div><div style="color:var(--gray); font-family:'Baloo 2',sans-serif; font-size:14px;">Mapping untuk <strong>${sessionName}</strong> belum tersedia.</div></div>`;
     return;
   }
 
   const emoji = sessionName === 'LONDON' ? '🇬🇧' : sessionName === 'NEW YORK' ? '🇺🇸' : '🇯🇵';
   const statusClass = map.session_status && map.session_status.indexOf('PRIME') >= 0 ? 'badge-prime' : map.session_status && map.session_status.indexOf('SLOW') >= 0 ? 'badge-slow' : 'badge-closed';
   const mtfColor = map.mtf_consensus === 'BUY' ? 'var(--green-neon)' : map.mtf_consensus === 'SELL' ? 'var(--red-neon)' : 'var(--gray)';
-  let aiText = (map.ai_analysis || 'No analysis').replace(/\*\*(.+?)\*\*/g, '<strong style="color:var(--gold);">$1</strong>');
+  let aiText = (map.ai_analysis || 'No analysis').replace(/\*\*(.+?)\*\*/gs, '<strong style="color:var(--gold);">$1</strong>');
   const lv = map.levels || {};
+
+  // 🔧 FIX: guard — elak papar 0.00 kalau server skip
+  const entryDisplay = fmtVal(map.entry, '—');
+  const slDisplay    = fmtVal(map.sl, '—');
+  const tp1Display   = fmtVal(map.tp1, '—');
+  const tp2Display   = fmtVal(map.tp2, '—');
+  const planIncomplete = (map.sl === 0 || map.tp1 === 0 || !map.sl || !map.tp1);
 
   container.innerHTML = `
     <div class="mapping-card">
       <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; padding-bottom:12px; border-bottom:1px solid var(--border);">
         <div>
-          <div style="font-family:'Playfair Display',serif; font-size:22px; font-weight:900; color:var(--gold);">${emoji} ${map.session}</div>
-          <div style="font-size:10px; color:var(--gray); margin-top:4px;">📅 ${map.dayName || ''} ${map.dateStr} | ⏰ ${map.timeStr} MYT</div>
+          <div style="font-family:'Luckiest Guy',cursive; font-size:22px; color:var(--gold); letter-spacing:1px;">${emoji} ${map.session}</div>
+          <div style="font-family:'Baloo 2',sans-serif; font-size:10px; color:var(--gray); margin-top:4px;">📅 ${map.dayName || ''} ${map.dateStr} | ⏰ ${map.timeStr} MYT</div>
         </div>
         <div style="text-align:right;">
           <div class="mapping-badge ${statusClass}">${map.session_status}</div>
-          <div style="font-size:10px; color:var(--gray); margin-top:5px;">${map.harga_source}</div>
+          <div style="font-family:'Baloo 2',sans-serif; font-size:10px; color:var(--gray); margin-top:5px;">${map.harga_source}</div>
         </div>
       </div>
       <div style="text-align:center; padding:14px; background:rgba(251,191,36,0.05); border-radius:10px; margin-bottom:14px; border:1px solid var(--border-gold);">
-        <div style="font-size:10px; color:var(--gray); letter-spacing:1px;">HARGA</div>
-        <div style="font-family:'Playfair Display',serif; font-size:26px; font-weight:900; color:var(--gold); margin-top:4px;">${map.harga}</div>
+        <div style="font-family:'Baloo 2',sans-serif; font-size:10px; color:var(--gray); letter-spacing:1px;">HARGA</div>
+        <div style="font-family:'Luckiest Guy',cursive; font-size:28px; color:var(--gold); margin-top:4px; letter-spacing:1px;">${fmtVal(map.harga, '—')}</div>
       </div>
       <div style="text-align:center; padding:16px; background:rgba(${map.bias === 'BUY' ? '0,255,136' : map.bias === 'SELL' ? '255,46,91' : '107,114,128'},0.08); border-radius:12px; margin-bottom:14px; border:1px solid ${map.bias === 'BUY' ? 'var(--green-neon)' : map.bias === 'SELL' ? 'var(--red-neon)' : 'var(--gray)'};">
-        <div style="font-family:'Playfair Display',serif; font-size:30px; font-weight:900; color:${map.bias === 'BUY' ? 'var(--green-neon)' : map.bias === 'SELL' ? 'var(--red-neon)' : 'var(--gray)'}; letter-spacing:3px; text-shadow:0 0 20px ${map.bias === 'BUY' ? 'rgba(0,255,136,0.5)' : map.bias === 'SELL' ? 'rgba(255,46,91,0.5)' : 'transparent'};">${map.bias || 'WAIT'}</div>
-        <div style="font-size:12px; color:var(--gray); margin-top:6px;">Confidence: ${map.confidence || 0}%</div>
+        <div style="font-family:'Luckiest Guy',cursive; font-size:32px; color:${map.bias === 'BUY' ? 'var(--green-neon)' : map.bias === 'SELL' ? 'var(--red-neon)' : 'var(--gray)'}; letter-spacing:2px; text-shadow:0 0 20px ${map.bias === 'BUY' ? 'rgba(0,255,136,0.5)' : map.bias === 'SELL' ? 'rgba(255,46,91,0.5)' : 'transparent'};">${map.bias || 'WAIT'}</div>
+        <div style="font-family:'Baloo 2',sans-serif; font-size:12px; color:var(--gray); margin-top:6px; font-weight:700;">Confidence: ${map.confidence || 0}%</div>
       </div>
       <div style="background:rgba(255,255,255,0.02); border-radius:12px; padding:14px; margin-bottom:14px; border:1px solid var(--border);">
-        <div style="font-size:10px; color:var(--gold); margin-bottom:10px; font-weight:700; letter-spacing:2px;">🎯 PLAN ENTRY</div>
+        <div style="font-family:'Luckiest Guy',cursive; font-size:15px; color:var(--gold); margin-bottom:10px; letter-spacing:1px;">🎯 PLAN ENTRY</div>
+        ${planIncomplete ? `<div style="text-align:center; padding:14px; background:rgba(255,46,91,0.1); border-radius:8px; border:1px solid var(--red-neon); font-family:'Baloo 2',sans-serif; font-size:12px; color:var(--red-neon); font-weight:700;">⚠️ PLAN INCOMPLETE — SL/TP tiada. Tunggu mapping seterusnya.</div>` : ''}
         <div style="display:flex; justify-content:space-between; align-items:center; padding:9px 0; border-bottom:1px solid var(--border);">
-          <span style="font-size:12px; color:var(--gray);">📍 ENTRY</span>
-          <span style="font-family:'Playfair Display',serif; font-size:20px; font-weight:900; color:var(--gold);">${map.entry || '-'}</span>
+          <span style="font-family:'Baloo 2',sans-serif; font-size:12px; color:var(--gray); font-weight:700;">📍 ENTRY</span>
+          <span style="font-family:'Luckiest Guy',cursive; font-size:20px; color:var(--gold); letter-spacing:0.5px;">${entryDisplay}</span>
         </div>
         <div style="display:flex; justify-content:space-between; align-items:center; padding:9px 0; border-bottom:1px solid var(--border);">
-          <span style="font-size:12px; color:var(--gray);">🛑 SL</span>
-          <span style="font-family:'Playfair Display',serif; font-size:16px; font-weight:900; color:var(--red-neon);">${map.sl || '-'}</span>
+          <span style="font-family:'Baloo 2',sans-serif; font-size:12px; color:var(--gray); font-weight:700;">🛑 SL</span>
+          <span style="font-family:'Luckiest Guy',cursive; font-size:18px; color:var(--red-neon); letter-spacing:0.5px;">${slDisplay}</span>
         </div>
         <div style="display:flex; justify-content:space-between; align-items:center; padding:9px 0; border-bottom:1px solid var(--border);">
-          <span style="font-size:12px; color:var(--gray);">✅ TP1</span>
-          <span style="font-family:'Playfair Display',serif; font-size:16px; font-weight:900; color:var(--green-neon);">${map.tp1 || '-'}</span>
+          <span style="font-family:'Baloo 2',sans-serif; font-size:12px; color:var(--gray); font-weight:700;">✅ TP1</span>
+          <span style="font-family:'Luckiest Guy',cursive; font-size:18px; color:var(--green-neon); letter-spacing:0.5px;">${tp1Display}</span>
         </div>
         <div style="display:flex; justify-content:space-between; align-items:center; padding:9px 0;">
-          <span style="font-size:12px; color:var(--gray);">✅ TP2</span>
-          <span style="font-family:'Playfair Display',serif; font-size:16px; font-weight:900; color:var(--green-neon);">${map.tp2 || '-'}</span>
+          <span style="font-family:'Baloo 2',sans-serif; font-size:12px; color:var(--gray); font-weight:700;">✅ TP2</span>
+          <span style="font-family:'Luckiest Guy',cursive; font-size:18px; color:var(--green-neon); letter-spacing:0.5px;">${tp2Display}</span>
         </div>
       </div>
       <div style="margin-bottom:14px;">
-        <div style="font-size:10px; color:var(--gray); margin-bottom:8px; font-weight:700; letter-spacing:1px;">📊 KEY LEVELS (H4)</div>
+        <div style="font-family:'Baloo 2',sans-serif; font-size:10px; color:var(--gray); margin-bottom:8px; font-weight:800; letter-spacing:1px;">📊 KEY LEVELS (H4)</div>
         <div class="grid-3">
-          <div style="text-align:center; padding:8px; background:rgba(255,46,91,0.08); border-radius:8px; border:1px solid rgba(255,46,91,0.2);"><div style="font-size:9px; color:var(--red-neon);">R1</div><div style="font-size:12px; font-weight:700; color:var(--cream); margin-top:3px;">${lv.r1 || '-'}</div></div>
-          <div style="text-align:center; padding:8px; background:rgba(251,191,36,0.08); border-radius:8px; border:1px solid var(--border-gold);"><div style="font-size:9px; color:var(--gold);">POC</div><div style="font-size:12px; font-weight:700; color:var(--cream); margin-top:3px;">${map.harga || '-'}</div></div>
-          <div style="text-align:center; padding:8px; background:rgba(0,255,136,0.08); border-radius:8px; border:1px solid rgba(0,255,136,0.2);"><div style="font-size:9px; color:var(--green-neon);">S1</div><div style="font-size:12px; font-weight:700; color:var(--cream); margin-top:3px;">${lv.s1 || '-'}</div></div>
+          <div style="text-align:center; padding:8px; background:rgba(255,46,91,0.08); border-radius:8px; border:1px solid rgba(255,46,91,0.2);"><div style="font-family:'Baloo 2',sans-serif; font-size:9px; color:var(--red-neon); font-weight:800;">R1</div><div style="font-family:'Luckiest Guy',cursive; font-size:13px; color:var(--cream); margin-top:3px;">${fmtVal(lv.r1, '-')}</div></div>
+          <div style="text-align:center; padding:8px; background:rgba(251,191,36,0.08); border-radius:8px; border:1px solid var(--border-gold);"><div style="font-family:'Baloo 2',sans-serif; font-size:9px; color:var(--gold); font-weight:800;">POC</div><div style="font-family:'Luckiest Guy',cursive; font-size:13px; color:var(--cream); margin-top:3px;">${fmtVal(map.harga, '-')}</div></div>
+          <div style="text-align:center; padding:8px; background:rgba(0,255,136,0.08); border-radius:8px; border:1px solid rgba(0,255,136,0.2);"><div style="font-family:'Baloo 2',sans-serif; font-size:9px; color:var(--green-neon); font-weight:800;">S1</div><div style="font-family:'Luckiest Guy',cursive; font-size:13px; color:var(--cream); margin-top:3px;">${fmtVal(lv.s1, '-')}</div></div>
         </div>
       </div>
       <div style="display:flex; justify-content:space-between; padding:10px; background:rgba(255,255,255,0.02); border-radius:8px; margin-bottom:14px; border:1px solid var(--border);">
-        <span style="font-size:11px; color:var(--gray);">MTF Agreement</span>
-        <span style="font-size:12px; font-weight:700; color:${mtfColor};">${map.mtf_agreement} (${map.mtf_consensus})</span>
+        <span style="font-family:'Baloo 2',sans-serif; font-size:11px; color:var(--gray); font-weight:700;">MTF Agreement</span>
+        <span style="font-family:'Luckiest Guy',cursive; font-size:13px; color:${mtfColor}; letter-spacing:0.5px;">${map.mtf_agreement} (${map.mtf_consensus})</span>
       </div>
       <div style="border-top:1px solid var(--border); padding-top:14px;">
-        <div style="font-size:10px; color:#a78bfa; margin-bottom:10px; font-weight:700; letter-spacing:2px;">🤖 AI ANALYSIS</div>
+        <div style="font-family:'Luckiest Guy',cursive; font-size:15px; color:#a78bfa; margin-bottom:10px; letter-spacing:1px;">🤖 AI ANALYSIS</div>
         <div class="mapping-ai-text">${aiText}</div>
       </div>
     </div>
@@ -1275,13 +2315,14 @@ async function loadNews() {
   const list = document.getElementById('news-list');
   try {
     const res = await fetch('/api/news');
+    if (!res.ok) throw new Error('HTTP ' + res.status);
     const data = await res.json();
-    if (data.status === 'success' && data.events.length > 0) {
+    if (data.status === 'success' && data.events && data.events.length > 0) {
       list.innerHTML = '';
       data.events.forEach(e => {
         const div = document.createElement('div');
         div.className = 'news-item';
-        div.innerHTML = `<div style="display:flex; justify-content:space-between; margin-bottom:8px;"><span style="font-size:11px; color:var(--gold); font-weight:700; letter-spacing:1px;">${e.time || 'Akan datang'}</span><span style="background:rgba(251,191,36,0.15); color:var(--gold); padding:3px 8px; border-radius:4px; font-size:10px; font-weight:700;">${e.currency}</span></div><div style="font-size:13px; font-weight:600; color:var(--cream);">${e.event}</div>`;
+        div.innerHTML = `<div style="display:flex; justify-content:space-between; margin-bottom:8px;"><span style="font-family:'Baloo 2',sans-serif; font-size:11px; color:var(--gold); font-weight:800; letter-spacing:1px;">${e.time || 'Akan datang'}</span><span style="background:rgba(251,191,36,0.15); color:var(--gold); padding:3px 8px; border-radius:4px; font-family:'Luckiest Guy',cursive; font-size:11px; letter-spacing:0.5px;">${e.currency}</span></div><div style="font-family:'Baloo 2',sans-serif; font-size:13px; font-weight:700; color:var(--cream);">${e.event}</div>`;
         list.appendChild(div);
       });
     } else list.innerHTML = '<div style="text-align:center; padding:30px; color:var(--gray);">Tiada berita</div>';
@@ -1289,6 +2330,7 @@ async function loadNews() {
 }
 
 // ===== MESSAGES =====
+// 🔧 FIX: guard m.type undefined + guna data.messages
 async function loadMessages(filter) {
   messagesLoaded = true;
   currentFilter = filter;
@@ -1305,40 +2347,47 @@ async function loadMessages(filter) {
 
   try {
     const res = await fetch(`/api/messages?type=${apiFilter}&limit=50`);
+    if (!res.ok) throw new Error('HTTP ' + res.status);
     const data = await res.json();
-    
-    if (data.status === 'OK' && data.messages && data.messages.length > 0) {
-      content.innerHTML = '';
-      
+
+    const msgs = data.messages || [];
+    const stats = data.stats || {};
+
+    if (msgs.length > 0) {
+      let html = '';
       if (data.stats) {
-        const statsHtml = `
+        html += `
           <div style="display:grid; grid-template-columns:repeat(4,1fr); gap:6px; margin-bottom:12px; padding:10px; background:rgba(251,191,36,0.04); border-radius:10px; border:1px solid var(--border);">
-            <div style="text-align:center;"><div style="font-size:8px; color:var(--gray); letter-spacing:1px;">SIGNAL</div><div style="font-family:'Playfair Display',serif; font-size:16px; font-weight:900; color:var(--green-neon);">${data.stats.signal}</div></div>
-            <div style="text-align:center;"><div style="font-size:8px; color:var(--gray); letter-spacing:1px;">MAPPING</div><div style="font-family:'Playfair Display',serif; font-size:16px; font-weight:900; color:#38bdf8;">${data.stats.mapping}</div></div>
-            <div style="text-align:center;"><div style="font-size:8px; color:var(--gray); letter-spacing:1px;">ASIA</div><div style="font-family:'Playfair Display',serif; font-size:16px; font-weight:900; color:#a78bfa;">${data.stats.asia_breakout}</div></div>
-            <div style="text-align:center;"><div style="font-size:8px; color:var(--gray); letter-spacing:1px;">ALERT</div><div style="font-family:'Playfair Display',serif; font-size:16px; font-weight:900; color:var(--red-neon);">${data.stats.level_alert + data.stats.news_alert}</div></div>
+            <div style="text-align:center;"><div style="font-family:'Baloo 2',sans-serif; font-size:8px; color:var(--gray); letter-spacing:1px; font-weight:700;">SIGNAL</div><div style="font-family:'Luckiest Guy',cursive; font-size:18px; color:var(--green-neon);">${stats.signal || 0}</div></div>
+            <div style="text-align:center;"><div style="font-family:'Baloo 2',sans-serif; font-size:8px; color:var(--gray); letter-spacing:1px; font-weight:700;">MAPPING</div><div style="font-family:'Luckiest Guy',cursive; font-size:18px; color:#38bdf8;">${stats.mapping || 0}</div></div>
+            <div style="text-align:center;"><div style="font-family:'Baloo 2',sans-serif; font-size:8px; color:var(--gray); letter-spacing:1px; font-weight:700;">ASIA</div><div style="font-family:'Luckiest Guy',cursive; font-size:18px; color:#a78bfa;">${stats.asia_breakout || 0}</div></div>
+            <div style="text-align:center;"><div style="font-family:'Baloo 2',sans-serif; font-size:8px; color:var(--gray); letter-spacing:1px; font-weight:700;">ALERT</div><div style="font-family:'Luckiest Guy',cursive; font-size:18px; color:var(--red-neon);">${(stats.level_alert || 0) + (stats.news_alert || 0)}</div></div>
           </div>
         `;
-        content.innerHTML = statsHtml;
       }
-      
-      data.messages.forEach(m => {
+      content.innerHTML = html;
+
+      msgs.forEach(m => {
         const card = document.createElement('div');
-        card.className = 'msg-card ' + (m.type || '');
+        const mtype = m.type || 'unknown';
+        card.className = 'msg-card ' + mtype;
         const time = new Date(m.timestamp).toLocaleString('ms-MY', { timeZone: 'Asia/Kuala_Lumpur', hour: '2-digit', minute: '2-digit', day: '2-digit', month: 'short' });
-        const text = (m.data && m.data.telegram_msg) 
+        const text = (m.data && m.data.telegram_msg)
           ? m.data.telegram_msg.replace(/<[^>]*>/g, '').replace(/\n+/g, ' · ').substring(0, 300)
           : JSON.stringify(m.data || {}).substring(0, 200);
-        
+
         const typeLabels = {
           signal: '📊 SIGNAL', mapping: '🗺️ MAPPING', asia_breakout: '🔺 ASIA',
           daily_outlook: '📅 DAILY', pre_market: '⏰ PRE-MKT',
           level_alert: '🚨 LEVEL', news_alert: '📰 NEWS', liquidity_sweep: '💧 SWEEP'
         };
-        
+
+        // 🔧 FIX: guard m.type undefined
+        const typeLabel = typeLabels[mtype] || mtype.toUpperCase();
+
         card.innerHTML = `
           <div class="msg-header">
-            <div class="msg-type">${typeLabels[m.type] || m.type.toUpperCase()}</div>
+            <div class="msg-type">${typeLabel}</div>
             <div class="msg-time">${time}</div>
           </div>
           <div class="msg-body">${text}</div>
@@ -1359,77 +2408,80 @@ async function loadAsiaBreakout() {
   const content = document.getElementById('asia-content');
   const statusEl = document.getElementById('asia-status');
   const lastEl = document.getElementById('asia-last');
-  
+
   content.innerHTML = '<div class="loading"><div class="spinner">⏳</div><div>Loading...</div></div>';
-  
+
   try {
     const res = await fetch('/api/messages?type=asia_breakout&limit=50');
+    if (!res.ok) throw new Error('HTTP ' + res.status);
     const data = await res.json();
-    
-    if (data.status === 'OK' && data.messages && data.messages.length > 0) {
-      statusEl.innerText = `🎯 ${data.messages.length} BREAKOUT`;
+
+    const msgs = data.messages || [];
+
+    if (msgs.length > 0) {
+      statusEl.innerText = `${msgs.length} BREAKOUT`;
       statusEl.style.color = 'var(--green-neon)';
       statusEl.style.textShadow = '0 0 15px rgba(0,255,136,0.5)';
-      
-      const lastMsg = data.messages[0];
+
+      const lastMsg = msgs[0];
       const lastTime = new Date(lastMsg.timestamp).toLocaleString('ms-MY', { timeZone: 'Asia/Kuala_Lumpur', hour: '2-digit', minute: '2-digit', day: '2-digit', month: 'short' });
       lastEl.innerText = `Terakhir: ${lastTime}`;
-      
+
       content.innerHTML = '';
-      data.messages.forEach(m => {
+      msgs.forEach(m => {
         const d = m.data || {};
         const time = new Date(m.timestamp).toLocaleString('ms-MY', { timeZone: 'Asia/Kuala_Lumpur', hour: '2-digit', minute: '2-digit', day: '2-digit', month: 'short' });
         const biasColor = d.bias === 'BUY' ? 'var(--green-neon)' : d.bias === 'SELL' ? 'var(--red-neon)' : 'var(--gray)';
         const typeEmoji = (d.type || '').indexOf('HIGH') >= 0 ? '🔺' : '🔻';
-        
+
         const card = document.createElement('div');
         card.className = 'mapping-card';
         card.style.borderLeft = '3px solid ' + biasColor;
-        
+
         card.innerHTML = `
           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
             <div>
-              <div style="font-family:'Playfair Display',serif; font-size:15px; font-weight:900; color:${biasColor};">
+              <div style="font-family:'Luckiest Guy',cursive; font-size:16px; color:${biasColor}; letter-spacing:0.5px;">
                 ${typeEmoji} ${(d.type || 'BREAKOUT').replace(/_/g, ' ')}
               </div>
-              <div style="font-size:9px; color:var(--gray); margin-top:3px;">🕐 ${time} MYT</div>
+              <div style="font-family:'Baloo 2',sans-serif; font-size:9px; color:var(--gray); margin-top:3px;">🕐 ${time} MYT</div>
             </div>
             <div style="text-align:right;">
-              <div style="font-size:10px; color:${biasColor}; font-weight:700; padding:3px 8px; background:rgba(${d.bias === 'BUY' ? '0,255,136' : '255,46,91'},0.1); border-radius:6px; border:1px solid ${biasColor};">
-                ${d.bias}
+              <div style="font-family:'Luckiest Guy',cursive; font-size:12px; color:${biasColor}; padding:3px 8px; background:rgba(${d.bias === 'BUY' ? '0,255,136' : '255,46,91'},0.1); border-radius:6px; border:1px solid ${biasColor}; letter-spacing:0.5px;">
+                ${d.bias || '-'}
               </div>
-              <div style="font-size:9px; color:var(--gray); margin-top:3px;">MTF: ${d.mtf_agreement || '-'}</div>
+              <div style="font-family:'Baloo 2',sans-serif; font-size:9px; color:var(--gray); margin-top:3px;">MTF: ${d.mtf_agreement || '-'}</div>
             </div>
           </div>
           <div style="background:rgba(255,255,255,0.02); border-radius:8px; padding:10px; margin-bottom:8px; border:1px solid var(--border);">
             <div style="display:flex; justify-content:space-between; margin-bottom:6px;">
-              <span style="font-size:10px; color:var(--gray);">💰 Harga</span>
-              <span style="font-size:11px; font-weight:700; color:var(--cream);">${d.harga || '-'}</span>
+              <span style="font-family:'Baloo 2',sans-serif; font-size:10px; color:var(--gray); font-weight:700;">💰 Harga</span>
+              <span style="font-family:'Luckiest Guy',cursive; font-size:12px; color:var(--cream);">${fmtValRaw(d.harga, '-')}</span>
             </div>
             <div style="display:flex; justify-content:space-between;">
-              <span style="font-size:10px; color:var(--gray);">📍 Level</span>
-              <span style="font-size:11px; font-weight:700; color:var(--gold);">${d.level || '-'}</span>
+              <span style="font-family:'Baloo 2',sans-serif; font-size:10px; color:var(--gray); font-weight:700;">📍 Level</span>
+              <span style="font-family:'Luckiest Guy',cursive; font-size:12px; color:var(--gold);">${fmtValRaw(d.level, '-')}</span>
             </div>
           </div>
           <div class="grid-3">
             <div style="text-align:center; padding:6px; background:rgba(255,46,91,0.08); border-radius:6px; border:1px solid rgba(255,46,91,0.2);">
-              <div style="font-size:8px; color:var(--red-neon);">SL</div>
-              <div style="font-size:11px; font-weight:700; color:var(--red-neon);">${d.sl || '-'}</div>
+              <div style="font-family:'Baloo 2',sans-serif; font-size:8px; color:var(--red-neon); font-weight:800;">SL</div>
+              <div style="font-family:'Luckiest Guy',cursive; font-size:12px; color:var(--red-neon);">${fmtVal(d.sl, '-')}</div>
             </div>
             <div style="text-align:center; padding:6px; background:rgba(0,255,136,0.08); border-radius:6px; border:1px solid rgba(0,255,136,0.2);">
-              <div style="font-size:8px; color:var(--green-neon);">TP1</div>
-              <div style="font-size:11px; font-weight:700; color:var(--green-neon);">${d.tp1 || '-'}</div>
+              <div style="font-family:'Baloo 2',sans-serif; font-size:8px; color:var(--green-neon); font-weight:800;">TP1</div>
+              <div style="font-family:'Luckiest Guy',cursive; font-size:12px; color:var(--green-neon);">${fmtVal(d.tp1, '-')}</div>
             </div>
             <div style="text-align:center; padding:6px; background:rgba(0,255,136,0.08); border-radius:6px; border:1px solid rgba(0,255,136,0.2);">
-              <div style="font-size:8px; color:var(--green-neon);">TP2</div>
-              <div style="font-size:11px; font-weight:700; color:var(--green-neon);">${d.tp2 || '-'}</div>
+              <div style="font-family:'Baloo 2',sans-serif; font-size:8px; color:var(--green-neon); font-weight:800;">TP2</div>
+              <div style="font-family:'Luckiest Guy',cursive; font-size:12px; color:var(--green-neon);">${fmtVal(d.tp2, '-')}</div>
             </div>
           </div>
         `;
         content.appendChild(card);
       });
     } else {
-      statusEl.innerText = '⏳ TIADA BREAKOUT';
+      statusEl.innerText = 'TIADA BREAKOUT';
       statusEl.style.color = 'var(--gray)';
       statusEl.style.textShadow = 'none';
       lastEl.innerText = 'Menunggu Asia session...';
@@ -1449,10 +2501,10 @@ async function loadAsiaBreakout() {
 async function refreshMT4Status() {
   try {
     const res = await fetch('/api/ea/status');
+    if (!res.ok) throw new Error('HTTP ' + res.status);
     const data = await res.json();
     const isOnline = data.online;
 
-    // HEADER BADGE
     const badge = document.getElementById('mt4-badge');
     const badgeText = document.getElementById('mt4-badge-text');
     if (isOnline) {
@@ -1463,17 +2515,17 @@ async function refreshMT4Status() {
       badgeText.innerText = 'MT4 OFFLINE';
     }
 
-    // STATUS BAR
     const statusBar = document.getElementById('mt4-status-bar');
     if (isOnline) {
       const balance = (data.balance || 0).toFixed(2);
       const equity = (data.equity || 0).toFixed(2);
-      const profit = (data.profit || 0).toFixed(2);
+      const profitVal = data.profit || 0;
+      const profit = profitVal.toFixed(2);
       const accNum = data.accountNumber || '-';
       const broker = data.broker || '-';
-      const profitSign = data.profit >= 0 ? '+' : '';
-      const profitColor = data.profit > 0 ? 'var(--green-neon)' : data.profit < 0 ? 'var(--red-neon)' : 'var(--gray)';
-      
+      const profitSign = profitVal >= 0 ? '+' : '';
+      const profitColor = profitVal > 0 ? 'var(--green-neon)' : profitVal < 0 ? 'var(--red-neon)' : 'var(--gray)';
+
       statusBar.className = 'mt4-status-bar online';
       statusBar.innerHTML = `
         <div class="row">
@@ -1493,11 +2545,9 @@ async function refreshMT4Status() {
       statusBar.innerHTML = `💼 MT4 OFFLINE · Menunggu EA connect...`;
     }
 
-    // NAV DOT
     const navDot = document.getElementById('mt4-nav-dot');
     if (navDot) navDot.className = 'nav-badge-dot ' + (isOnline ? 'online' : 'offline');
 
-    // TAB MT4
     const statusEl = document.getElementById('mt4-screen-status');
     if (statusEl) {
       if (isOnline) {
@@ -1509,7 +2559,6 @@ async function refreshMT4Status() {
       }
     }
 
-    // ACCOUNT INFO
     const setVal = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
     setVal('mt4-account', data.accountNumber || '-');
     setVal('mt4-broker', data.broker || '-');
@@ -1522,9 +2571,9 @@ async function refreshMT4Status() {
 
     const profitEl = document.getElementById('mt4-profit');
     if (profitEl) {
-      const profit = data.profit || 0;
-      profitEl.textContent = (profit >= 0 ? '+' : '') + '$' + profit.toFixed(2);
-      profitEl.style.color = profit > 0 ? 'var(--green-neon)' : profit < 0 ? 'var(--red-neon)' : 'var(--gray)';
+      const profitVal = data.profit || 0;
+      profitEl.textContent = (profitVal >= 0 ? '+' : '') + '$' + profitVal.toFixed(2);
+      profitEl.style.color = profitVal > 0 ? 'var(--green-neon)' : profitVal < 0 ? 'var(--red-neon)' : 'var(--gray)';
     }
 
     const spreadEl = document.getElementById('mt4-spread');
@@ -1542,24 +2591,23 @@ async function refreshMT4Status() {
       if (!found) spreadEl.textContent = '-';
     }
 
-    // POSITIONS
     const positions = data.positions || [];
     const posEl = document.getElementById('mt4-positions');
 
     if (positions.length > 0) {
-      let html = `<div style="font-size:10px; color:var(--gray); margin-bottom:8px; font-weight:700; letter-spacing:1px;">POSISI TERBUKA (${positions.length})</div>`;
+      let html = `<div style="font-family:'Baloo 2',sans-serif; font-size:10px; color:var(--gray); margin-bottom:8px; font-weight:800; letter-spacing:1px;">POSISI TERBUKA (${positions.length})</div>`;
       positions.forEach(p => {
         const profitColor = p.profit > 0 ? 'var(--green-neon)' : p.profit < 0 ? 'var(--red-neon)' : 'var(--gray)';
         const typeColor = p.type === 'BUY' ? 'var(--green-neon)' : 'var(--red-neon)';
         html += `<div class="position-card">
           <div>
-            <span style="color:${typeColor}; font-weight:900; font-family:'Rajdhani',sans-serif; letter-spacing:1px;">${p.type}</span>
-            <span style="color:var(--cream); margin-left:8px; font-weight:700;">${p.symbol}</span>
-            <span style="color:var(--gold); margin-left:8px; font-weight:700;">${p.lot}</span>
+            <span style="color:${typeColor}; font-family:'Luckiest Guy',cursive; letter-spacing:0.5px; font-size:13px;">${p.type}</span>
+            <span style="color:var(--cream); margin-left:8px; font-weight:800;">${p.symbol}</span>
+            <span style="color:var(--gold); margin-left:8px; font-weight:800;">${p.lot}</span>
           </div>
           <div style="text-align:right;">
-            <div style="color:${profitColor}; font-weight:700; font-family:'Playfair Display',serif;">${p.profit >= 0 ? '+' : ''}$${(p.profit || 0).toFixed(2)}</div>
-            <button onclick="mt4Close(${p.ticket})" style="font-size:9px; padding:3px 10px; background:var(--red-neon); color:#000; border:none; border-radius:4px; cursor:pointer; margin-top:4px; font-weight:900; letter-spacing:1px;">CLOSE</button>
+            <div style="color:${profitColor}; font-family:'Luckiest Guy',cursive; font-size:13px;">${p.profit >= 0 ? '+' : ''}$${(p.profit || 0).toFixed(2)}</div>
+            <button onclick="mt4Close(${p.ticket})" style="font-family:'Luckiest Guy',cursive; font-size:10px; padding:3px 10px; background:var(--red-neon); color:#000; border:none; border-radius:4px; cursor:pointer; margin-top:4px; letter-spacing:0.5px;">CLOSE</button>
           </div>
         </div>`;
       });
