@@ -6,188 +6,801 @@
 <title>BPT — Borneo Pro Trade</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=Orbitron:wght@700;900&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=Orbitron:wght@700;900&family=Playfair+Display:wght@700;900&display=swap" rel="stylesheet">
 <style>
 * { box-sizing: border-box; margin: 0; padding: 0; }
 :root {
-  --neon-blue: #38bdf8;
-  --neon-gold: #fbbf24;
-  --neon-green: #22c55e;
-  --neon-red: #ef4444;
-  --neon-purple: #a78bfa;
-  --bg-dark: #050a15;
-  --bg-card: #0a1525;
-  --border: #1f2d42;
-  --text-white: #f1f5f9;
-  --text-gray: #94a3b8;
+  --bg-dark: #000000;
+  --bg-card: #0a0a0a;
+  --bg-card-2: #111111;
+  --border: #1a1a1a;
+  --border-gold: rgba(251,191,36,0.15);
+  
+  --gold: #fbbf24;
+  --gold-dim: #d97706;
+  --gold-bright: #fcd34d;
+  --cream: #fef3c7;
+  --white: #f1f5f9;
+  --gray: #6b7280;
+  --gray-dim: #4b5563;
+  
+  --green: #22c55e;
+  --green-dark: #166534;
+  --green-neon: #00ff88;
+  --red: #ef4444;
+  --red-dark: #8b1a1a;
+  --red-neon: #ff2e5b;
 }
 body {
   background: var(--bg-dark);
-  background-image:
-    radial-gradient(circle at 15% 20%, rgba(56,189,248,0.08) 0%, transparent 45%),
-    radial-gradient(circle at 85% 80%, rgba(251,191,36,0.06) 0%, transparent 45%);
-  background-attachment: fixed;
-  color: var(--text-white);
+  color: var(--cream);
   font-family: 'Rajdhani', -apple-system, BlinkMacSystemFont, Arial, sans-serif;
-  padding-bottom: 85px;
+  padding-bottom: 95px;
   min-height: 100vh;
 }
 
 /* ===== HEADER ===== */
-.header { padding: 15px; background: linear-gradient(180deg, #0a1525 0%, #050a15 100%); border-bottom: 1px solid var(--border); position: relative; }
-.header-top { position: relative; text-align: center; padding-top: 5px; }
-.header-logo-center { display: flex; flex-direction: column; align-items: center; gap: 8px; margin-bottom: 10px; }
-.header-logo-center img { width: 70px; height: 70px; border-radius: 50%; object-fit: cover; box-shadow: 0 0 25px rgba(251,191,36,0.8); border: 2px solid #fbbf24; display: block; }
-.header-text h1 { font-family: 'Orbitron', sans-serif; font-size: 26px; font-weight: 900; color: var(--neon-gold); letter-spacing: 3px; margin-bottom: 2px; text-shadow: 0 0 20px rgba(251,191,36,0.5); }
-.header-text p { font-size: 11px; color: var(--neon-blue); letter-spacing: 2px; font-weight: 600; }
-.header-right { position: absolute; top: 0; right: 0; font-size: 10px; color: var(--text-gray); text-align: right; line-height: 1.6; }
-.pro-badge { background: linear-gradient(135deg, rgba(251,191,36,0.2), rgba(217,119,6,0.2)); border: 1px solid rgba(251,191,36,0.5); padding: 3px 8px; border-radius: 6px; color: var(--neon-gold); font-weight: 600; letter-spacing: 0.5px; display: inline-block; margin-bottom: 3px; }
-.utc-clock { color: var(--neon-blue); font-weight: 600; }
+.header { padding: 14px 15px; background: #000; border-bottom: 1px solid var(--border); position: relative; }
+.header-top { position: relative; padding-top: 4px; }
+.header-brand {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+.brand-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.brand-icon {
+  width: 34px;
+  height: 34px;
+  border-radius: 8px;
+  background: linear-gradient(135deg, #1a1a1a, #0a0a0a);
+  border: 1px solid var(--border-gold);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  box-shadow: 0 0 15px rgba(251,191,36,0.2);
+}
+.brand-name {
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--gold);
+  letter-spacing: 2px;
+  text-shadow: 0 0 10px rgba(251,191,36,0.4);
+}
+.brand-sub {
+  font-size: 8px;
+  color: var(--gray);
+  letter-spacing: 1.5px;
+  margin-top: 2px;
+  font-weight: 600;
+}
+.pro-badge {
+  background: transparent;
+  border: 1px solid var(--gold);
+  padding: 4px 10px;
+  border-radius: 20px;
+  color: var(--gold);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+  font-family: 'Rajdhani', sans-serif;
+}
 
-.status-bar { text-align: center; padding: 8px; background: linear-gradient(90deg, transparent, rgba(56,189,248,0.08), transparent); border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); font-size: 11px; letter-spacing: 1px; font-weight: 600; color: var(--text-gray); }
-.status-bar.active { color: var(--neon-green); text-shadow: 0 0 10px rgba(34,197,94,0.5); }
-.status-bar.awaiting { color: var(--neon-blue); }
+/* ===== MT4 BADGE (Header) ===== */
+.mt4-badge {
+  position: absolute;
+  top: 4px;
+  right: 15px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 8px;
+  border-radius: 6px;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  font-family: 'Rajdhani', sans-serif;
+}
+.mt4-badge.online {
+  background: rgba(34,197,94,0.15);
+  border: 1px solid var(--green);
+  color: var(--green);
+  text-shadow: 0 0 8px rgba(34,197,94,0.6);
+}
+.mt4-badge.offline {
+  background: rgba(239,68,68,0.15);
+  border: 1px solid var(--red);
+  color: var(--red);
+}
+.mt4-badge .dot {
+  width: 5px; height: 5px;
+  border-radius: 50%;
+  display: inline-block;
+}
+.mt4-badge.online .dot {
+  background: var(--green);
+  box-shadow: 0 0 6px var(--green);
+  animation: blink 1.5s infinite;
+}
+.mt4-badge.offline .dot { background: var(--red); }
+@keyframes blink { 0%,100% { opacity: 1; } 50% { opacity: 0.3; } }
 
-select { margin-top: 10px; padding: 9px 12px; border-radius: 8px; background: rgba(13,26,51,0.8); color: white; border: 1px solid rgba(56,189,248,0.4); font-weight: 600; width: 100%; font-size: 13px; font-family: 'Rajdhani', sans-serif; outline: none; }
+/* ===== MYT CLOCK ===== */
+.clock-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 0;
+  font-size: 10px;
+  color: var(--gray);
+  font-weight: 600;
+  letter-spacing: 0.5px;
+}
+.clock-row .time { color: var(--gold); font-family: 'Rajdhani', sans-serif; }
 
-.screen { display: none; padding: 12px; }
+/* ===== MT4 STATUS BAR ===== */
+.mt4-status-bar {
+  padding: 7px 12px;
+  background: linear-gradient(90deg, transparent, rgba(251,191,36,0.04), transparent);
+  border-bottom: 1px solid var(--border);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  text-align: center;
+}
+.mt4-status-bar.online { color: var(--green); }
+.mt4-status-bar.offline { color: var(--red); }
+.mt4-status-bar .row { display: flex; justify-content: center; gap: 8px; flex-wrap: wrap; margin: 2px 0; }
+.mt4-status-bar .sep { color: var(--gray-dim); }
+.mt4-status-bar .label { color: var(--gray); font-weight: 500; }
+
+/* ===== SELECT ===== */
+select {
+  margin-top: 10px;
+  padding: 10px 14px;
+  border-radius: 10px;
+  background: #0a0a0a;
+  color: var(--gold);
+  border: 1px solid var(--border-gold);
+  font-weight: 700;
+  width: 100%;
+  font-size: 13px;
+  font-family: 'Rajdhani', sans-serif;
+  outline: none;
+  letter-spacing: 1px;
+}
+
+/* ===== SCREEN ===== */
+.screen { display: none; padding: 14px; }
 .screen.active { display: block; }
 
-.glass-card { background: linear-gradient(135deg, rgba(13,21,38,0.95), rgba(10,21,37,0.95)); border: 1px solid rgba(56,189,248,0.3); border-radius: 14px; padding: 14px; margin-bottom: 12px; position: relative; box-shadow: 0 0 20px rgba(56,189,248,0.08); }
-.glass-card::before { content: ''; position: absolute; top: -1px; left: -1px; width: 18px; height: 18px; border-top: 2px solid var(--neon-gold); border-left: 2px solid var(--neon-gold); border-radius: 14px 0 0 0; }
-.glass-card::after { content: ''; position: absolute; bottom: -1px; right: -1px; width: 18px; height: 18px; border-bottom: 2px solid var(--neon-gold); border-right: 2px solid var(--neon-gold); border-radius: 0 0 14px 0; }
-.card-title { font-size: 13px; font-weight: 600; color: var(--neon-blue); margin-bottom: 10px; display: flex; align-items: center; gap: 6px; }
+/* ===== CARD ===== */
+.card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 14px;
+  margin-bottom: 12px;
+  position: relative;
+}
+.card-title {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--gold);
+  margin-bottom: 12px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-family: 'Rajdhani', sans-serif;
+}
+.card-title::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(90deg, var(--border-gold), transparent);
+  margin-left: 12px;
+}
 
-/* ===== SIGNAL BOX BESAR ===== */
-.signal-box { padding: 45px 25px; border-radius: 28px; text-align: center; margin: 15px auto; animation: pulse 2s infinite; }
-@keyframes pulse { 0%,100% { transform: scale(1); } 50% { transform: scale(1.02); } }
-.signal-box.wait { background: linear-gradient(135deg, #1e293b, #0f172a); color: #64748b; border: 3px solid #475569; }
-.signal-box.buy { background: linear-gradient(135deg, #064e3b, #065f46); color: #4ade80; border: 3px solid #22c55e; box-shadow: 0 0 40px rgba(34,197,94,0.5), 0 0 80px rgba(34,197,94,0.3); }
-.signal-box.sell { background: linear-gradient(135deg, #7f1d1d, #991b1b); color: #fca5a5; border: 3px solid #ef4444; box-shadow: 0 0 40px rgba(239,68,68,0.5), 0 0 80px rgba(239,68,68,0.3); }
-.signal-main { font-family: 'Orbitron', sans-serif; font-size: 56px; font-weight: 900; letter-spacing: 6px; line-height: 1; }
-.signal-box.buy .signal-main { color: #00ff88; text-shadow: 0 0 20px #00ff88, 0 0 40px rgba(0,255,136,0.6); }
-.signal-box.sell .signal-main { color: #ff2e5b; text-shadow: 0 0 20px #ff2e5b, 0 0 40px rgba(255,46,91,0.6); }
-.signal-price { font-family: 'Orbitron', sans-serif; font-size: 22px; font-weight: 700; margin-top: 12px; letter-spacing: 2px; opacity: 0.9; }
-.signal-conf { font-size: 14px; margin-top: 8px; letter-spacing: 2px; opacity: 0.85; font-weight: 600; }
+/* ===== MAIN PAIR HEADER (Big XAUUSD style) ===== */
+.pair-header {
+  background: #000;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 18px;
+  margin-bottom: 12px;
+}
+.pair-row-1 {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 4px;
+}
+.pair-name {
+  font-family: 'Playfair Display', serif;
+  font-size: 34px;
+  font-weight: 900;
+  color: var(--gold);
+  letter-spacing: 1px;
+  line-height: 1;
+  text-shadow: 0 0 25px rgba(251,191,36,0.5);
+}
+.pair-price {
+  font-family: 'Playfair Display', serif;
+  font-size: 34px;
+  font-weight: 900;
+  color: var(--gold-bright);
+  letter-spacing: 1px;
+  line-height: 1;
+  text-shadow: 0 0 25px rgba(251,191,36,0.6);
+}
+.pair-row-2 {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 11px;
+  color: var(--gray);
+  font-weight: 600;
+  letter-spacing: 1px;
+}
+.pair-change { display: flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 700; }
+.pair-change.down { color: var(--red-neon); }
+.pair-change.up { color: var(--green-neon); }
+.live-dot {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: var(--green);
+  box-shadow: 0 0 8px var(--green);
+  animation: blink 1.5s infinite;
+  display: inline-block;
+  margin-right: 4px;
+}
 
-/* ===== ENTRY CARD ===== */
-.entry-card { text-align: center; padding: 18px; }
-.entry-label { font-size: 11px; color: #94a3b8; letter-spacing: 2px; font-weight: 600; margin-bottom: 8px; }
-.entry-value { font-family: 'Orbitron', sans-serif; font-size: 32px; font-weight: 900; color: #fbbf24; text-shadow: 0 0 20px rgba(251,191,36,0.6); letter-spacing: 2px; }
-.entry-source { font-size: 11px; color: #94a3b8; margin-top: 6px; }
+/* ===== SIGNAL BIG BOX ===== */
+.signal-box {
+  padding: 35px 20px;
+  border-radius: 20px;
+  text-align: center;
+  margin: 12px 0;
+  border: 1px solid var(--border);
+  background: #000;
+  position: relative;
+  overflow: hidden;
+}
+.signal-box.wait { color: var(--gray); }
+.signal-box.buy {
+  background: linear-gradient(135deg, #052e1a, #0a0a0a);
+  border: 1px solid rgba(0,255,136,0.3);
+  box-shadow: inset 0 0 40px rgba(0,255,136,0.1);
+}
+.signal-box.sell {
+  background: linear-gradient(135deg, #2e0512, #0a0a0a);
+  border: 1px solid rgba(255,46,91,0.3);
+  box-shadow: inset 0 0 40px rgba(255,46,91,0.1);
+}
+.signal-main {
+  font-family: 'Playfair Display', serif;
+  font-size: 60px;
+  font-weight: 900;
+  letter-spacing: 4px;
+  line-height: 1;
+}
+.signal-box.buy .signal-main {
+  color: var(--green-neon);
+  text-shadow: 0 0 30px var(--green-neon), 0 0 60px rgba(0,255,136,0.4);
+}
+.signal-box.sell .signal-main {
+  color: var(--red-neon);
+  text-shadow: 0 0 30px var(--red-neon), 0 0 60px rgba(255,46,91,0.4);
+}
+.signal-box.wait .signal-main { color: var(--gray); }
+.signal-conf {
+  font-size: 13px;
+  margin-top: 10px;
+  letter-spacing: 2px;
+  color: var(--cream);
+  opacity: 0.7;
+  font-weight: 600;
+}
 
-/* ===== SL/TP GRID ===== */
-.sltp-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-bottom: 10px; }
-.data-box { background: rgba(13,26,51,0.6); border: 1px solid var(--border); border-radius: 10px; padding: 12px 8px; text-align: center; }
-.data-label { font-size: 10px; color: var(--text-gray); font-weight: 600; margin-bottom: 5px; letter-spacing: 1px; }
-.data-value { font-size: 15px; font-weight: 700; font-family: 'Orbitron', sans-serif; }
-.data-value.sl { color: var(--neon-red); text-shadow: 0 0 10px rgba(239,68,68,0.5); }
-.data-value.tp { color: var(--neon-green); text-shadow: 0 0 10px rgba(34,197,94,0.5); }
-.data-value.entry { color: var(--neon-gold); text-shadow: 0 0 10px rgba(251,191,36,0.5); }
-.data-value.current { color: var(--neon-blue); text-shadow: 0 0 10px rgba(56,189,248,0.5); }
+/* ===== DATA GRID ===== */
+.grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
+.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 
-/* ===== CONFIRMATION % ===== */
-.conf-box { text-align: center; padding: 16px; }
-.conf-label { font-size: 11px; color: #94a3b8; letter-spacing: 2px; font-weight: 600; margin-bottom: 8px; }
-.conf-value { font-family: 'Orbitron', sans-serif; font-size: 40px; font-weight: 900; color: #22c55e; text-shadow: 0 0 20px rgba(34,197,94,0.6); }
-.conf-value.high { color: #22c55e; text-shadow: 0 0 20px rgba(34,197,94,0.6); }
-.conf-value.mid { color: #fbbf24; text-shadow: 0 0 20px rgba(251,191,36,0.6); }
-.conf-value.low { color: #ef4444; text-shadow: 0 0 20px rgba(239,68,68,0.6); }
+.data-box {
+  background: var(--bg-card-2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 12px 8px;
+  text-align: center;
+}
+.data-label {
+  font-size: 9px;
+  color: var(--gray);
+  font-weight: 600;
+  margin-bottom: 6px;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+}
+.data-value {
+  font-family: 'Playfair Display', serif;
+  font-size: 16px;
+  font-weight: 900;
+  letter-spacing: 0.5px;
+}
+.data-value.gold { color: var(--gold); text-shadow: 0 0 12px rgba(251,191,36,0.5); }
+.data-value.green { color: var(--green-neon); text-shadow: 0 0 12px rgba(0,255,136,0.4); }
+.data-value.red { color: var(--red-neon); text-shadow: 0 0 12px rgba(255,46,91,0.4); }
+.data-value.cream { color: var(--cream); }
+.data-value.blue { color: #38bdf8; text-shadow: 0 0 12px rgba(56,189,248,0.4); }
 
-/* ===== SESSION + MTF ===== */
-.session-row { display: flex; justify-content: space-between; padding: 14px; }
+/* ===== ENTRY CARD (Big highlight) ===== */
+.entry-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-gold);
+  border-radius: 14px;
+  padding: 20px;
+  text-align: center;
+  margin-bottom: 12px;
+}
+.entry-label {
+  font-size: 10px;
+  color: var(--gray);
+  letter-spacing: 3px;
+  font-weight: 600;
+  margin-bottom: 8px;
+  text-transform: uppercase;
+}
+.entry-value {
+  font-family: 'Playfair Display', serif;
+  font-size: 38px;
+  font-weight: 900;
+  color: var(--gold);
+  letter-spacing: 1px;
+  text-shadow: 0 0 30px rgba(251,191,36,0.6);
+}
+.entry-source {
+  font-size: 10px;
+  color: var(--gray);
+  margin-top: 6px;
+  letter-spacing: 1px;
+}
+
+/* ===== CONFIRMATION ===== */
+.conf-box {
+  text-align: center;
+  padding: 18px;
+}
+.conf-label {
+  font-size: 10px;
+  color: var(--gray);
+  letter-spacing: 3px;
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+.conf-value {
+  font-family: 'Playfair Display', serif;
+  font-size: 44px;
+  font-weight: 900;
+  color: var(--green-neon);
+  text-shadow: 0 0 25px rgba(0,255,136,0.6);
+}
+.conf-value.high { color: var(--green-neon); text-shadow: 0 0 25px rgba(0,255,136,0.6); }
+.conf-value.mid { color: var(--gold); text-shadow: 0 0 25px rgba(251,191,36,0.6); }
+.conf-value.low { color: var(--red-neon); text-shadow: 0 0 25px rgba(255,46,91,0.6); }
+
+/* ===== SESSION ROW ===== */
+.session-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 14px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  margin-bottom: 12px;
+}
 .session-item { text-align: center; flex: 1; }
-.session-label { font-size: 10px; color: #94a3b8; letter-spacing: 1px; margin-bottom: 4px; }
-.session-value { font-size: 16px; font-weight: 700; font-family: 'Orbitron', sans-serif; color: #a78bfa; }
+.session-label {
+  font-size: 9px;
+  color: var(--gray);
+  letter-spacing: 2px;
+  margin-bottom: 6px;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+.session-value {
+  font-family: 'Playfair Display', serif;
+  font-size: 18px;
+  font-weight: 900;
+  color: var(--gold);
+  letter-spacing: 1px;
+}
 
-/* ===== SNR ===== */
+/* ===== POC BANNER ===== */
+.poc-banner {
+  background: linear-gradient(135deg, var(--gold), var(--gold-dim));
+  color: #000;
+  font-weight: 900;
+  text-align: center;
+  padding: 14px;
+  border-radius: 12px;
+  margin-bottom: 12px;
+  font-size: 16px;
+  font-family: 'Playfair Display', serif;
+  letter-spacing: 1px;
+  box-shadow: 0 0 25px rgba(251,191,36,0.4);
+}
+
+/* ===== SNR GRID ===== */
 .snr-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-bottom: 10px; }
-.snr-box { background: rgba(13,26,51,0.6); padding: 12px 6px; border-radius: 10px; text-align: center; border: 1px solid var(--border); }
-.snr-label { font-size: 10px; margin-bottom: 5px; font-weight: 600; }
-.snr-value { font-size: 13px; font-weight: 700; color: var(--text-white); font-family: 'Orbitron', sans-serif; }
-.snr-box.red .snr-label { color: var(--neon-red); }
-.snr-box.green .snr-label { color: var(--neon-green); }
-.snr-box.blue .snr-label { color: var(--neon-blue); }
-.snr-box.yellow { background: linear-gradient(135deg, #fbbf24, #d97706); border: none; box-shadow: 0 0 20px rgba(251,191,36,0.4); }
-.snr-box.yellow .snr-label, .snr-box.yellow .snr-value { color: #050a15; }
+.snr-box {
+  background: var(--bg-card-2);
+  padding: 12px 6px;
+  border-radius: 10px;
+  text-align: center;
+  border: 1px solid var(--border);
+}
+.snr-label {
+  font-size: 10px;
+  margin-bottom: 6px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  font-family: 'Rajdhani', sans-serif;
+}
+.snr-value {
+  font-family: 'Playfair Display', serif;
+  font-size: 14px;
+  font-weight: 900;
+  color: var(--cream);
+}
+.snr-box.red { border-color: rgba(255,46,91,0.3); }
+.snr-box.red .snr-label { color: var(--red-neon); }
+.snr-box.red .snr-value { color: var(--red-neon); }
+.snr-box.green { border-color: rgba(0,255,136,0.3); }
+.snr-box.green .snr-label { color: var(--green-neon); }
+.snr-box.green .snr-value { color: var(--green-neon); }
+.snr-box.blue { border-color: rgba(56,189,248,0.3); }
+.snr-box.blue .snr-label { color: #38bdf8; }
+.snr-box.blue .snr-value { color: #38bdf8; }
+.snr-box.yellow {
+  background: linear-gradient(135deg, var(--gold), var(--gold-dim));
+  border: none;
+  box-shadow: 0 0 15px rgba(251,191,36,0.4);
+}
+.snr-box.yellow .snr-label,
+.snr-box.yellow .snr-value { color: #000; }
 
-.poc-banner { background: linear-gradient(135deg, #fbbf24, #d97706); color: #050a15; font-weight: 700; text-align: center; padding: 14px; border-radius: 12px; margin-bottom: 12px; font-size: 16px; box-shadow: 0 0 25px rgba(251,191,36,0.4); font-family: 'Orbitron', sans-serif; }
+/* ===== MAPPING TABS ===== */
+.mapping-tab {
+  padding: 12px 8px;
+  background: var(--bg-card-2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  color: var(--gray);
+  font-weight: 700;
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.3s;
+  letter-spacing: 1px;
+}
+.mapping-tab.active {
+  background: linear-gradient(135deg, var(--gold), var(--gold-dim));
+  color: #000;
+  border-color: var(--gold);
+  box-shadow: 0 0 20px rgba(251,191,36,0.5);
+}
 
-/* ===== MAPPING ===== */
-.mapping-tab { padding: 12px 8px; background: rgba(13,26,51,0.8); border: 1px solid rgba(56,189,248,0.3); border-radius: 10px; color: #94a3b8; font-weight: 600; font-family: 'Rajdhani', sans-serif; font-size: 12px; cursor: pointer; transition: all 0.3s; }
-.mapping-tab.active { background: linear-gradient(135deg, #38bdf8, #0284c7); color: #fff; border-color: #38bdf8; box-shadow: 0 0 15px rgba(56,189,248,0.5); }
-.mapping-card { background: linear-gradient(135deg, rgba(13,21,38,0.95), rgba(10,21,37,0.95)); border: 1px solid rgba(56,189,248,0.3); border-radius: 14px; padding: 16px; margin-bottom: 12px; }
-.mapping-ai-text { font-size: 13px; line-height: 1.7; color: #cbd5e1; white-space: pre-wrap; word-break: break-word; }
-.mapping-badge { display: inline-block; padding: 4px 10px; border-radius: 6px; font-size: 11px; font-weight: 600; }
-.badge-prime { background: rgba(34,197,94,0.2); color: #22c55e; border: 1px solid #22c55e; }
-.badge-slow { background: rgba(251,191,36,0.2); color: #fbbf24; border: 1px solid #fbbf24; }
-.badge-closed { background: rgba(239,68,68,0.2); color: #ef4444; border: 1px solid #ef4444; }
+/* ===== MAPPING CARD ===== */
+.mapping-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 16px;
+  margin-bottom: 12px;
+}
+.mapping-ai-text {
+  font-size: 13px;
+  line-height: 1.7;
+  color: var(--cream);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+.mapping-badge {
+  display: inline-block;
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 1px;
+}
+.badge-prime { background: rgba(0,255,136,0.15); color: var(--green-neon); border: 1px solid var(--green-neon); }
+.badge-slow { background: rgba(251,191,36,0.15); color: var(--gold); border: 1px solid var(--gold); }
+.badge-closed { background: rgba(255,46,91,0.15); color: var(--red-neon); border: 1px solid var(--red-neon); }
 
 /* ===== MESSAGES ===== */
-.msg-filter { padding: 7px 12px; background: rgba(13,26,51,0.8); border: 1px solid rgba(56,189,248,0.3); border-radius: 8px; color: #94a3b8; font-weight: 700; font-size: 10px; cursor: pointer; transition: all 0.3s; font-family: 'Rajdhani', sans-serif; letter-spacing: 0.5px; }
-.msg-filter.active { background: linear-gradient(135deg, #fbbf24, #d97706); color: #050a15; border-color: #fbbf24; box-shadow: 0 0 15px rgba(251,191,36,0.4); }
-.msg-card { background: linear-gradient(135deg, rgba(13,21,38,0.95), rgba(10,21,37,0.95)); border: 1px solid rgba(56,189,248,0.3); border-left: 4px solid var(--neon-gold); border-radius: 12px; padding: 12px; margin-bottom: 10px; }
-.msg-card.signal { border-left-color: var(--neon-green); }
-.msg-card.mapping { border-left-color: var(--neon-blue); }
-.msg-card.asia_breakout { border-left-color: var(--neon-purple); }
-.msg-card.daily_outlook { border-left-color: var(--neon-gold); }
+.msg-filter {
+  padding: 7px 12px;
+  background: var(--bg-card-2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--gray);
+  font-weight: 700;
+  font-size: 10px;
+  cursor: pointer;
+  transition: all 0.3s;
+  font-family: 'Rajdhani', sans-serif;
+  letter-spacing: 1px;
+}
+.msg-filter.active {
+  background: linear-gradient(135deg, var(--gold), var(--gold-dim));
+  color: #000;
+  border-color: var(--gold);
+  box-shadow: 0 0 15px rgba(251,191,36,0.4);
+}
+.msg-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--gold);
+  border-radius: 10px;
+  padding: 12px;
+  margin-bottom: 10px;
+}
+.msg-card.signal { border-left-color: var(--green-neon); }
+.msg-card.mapping { border-left-color: #38bdf8; }
+.msg-card.asia_breakout { border-left-color: #a78bfa; }
+.msg-card.daily_outlook { border-left-color: var(--gold); }
 .msg-card.pre_market { border-left-color: #f97316; }
 .msg-card.level_alert { border-left-color: #ec4899; }
-.msg-card.news_alert { border-left-color: var(--neon-red); }
+.msg-card.news_alert { border-left-color: var(--red-neon); }
 .msg-card.liquidity_sweep { border-left-color: #06b6d4; }
-.msg-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; padding-bottom: 8px; border-bottom: 1px solid rgba(56,189,248,0.15); }
-.msg-type { font-size: 11px; font-weight: 700; color: var(--neon-gold); letter-spacing: 1px; text-transform: uppercase; font-family: 'Orbitron', sans-serif; }
-.msg-time { font-size: 10px; color: var(--text-gray); }
-.msg-body { font-size: 12px; color: #cbd5e1; white-space: pre-wrap; line-height: 1.6; word-break: break-word; }
+.msg-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border);
+}
+.msg-type {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--gold);
+  letter-spacing: 1.5px;
+  font-family: 'Rajdhani', sans-serif;
+}
+.msg-time { font-size: 10px; color: var(--gray); }
+.msg-body {
+  font-size: 12px;
+  color: var(--cream);
+  white-space: pre-wrap;
+  line-height: 1.6;
+  word-break: break-word;
+}
 
-/* ===== MT4 ===== */
-.mt4-status { display: flex; align-items: center; justify-content: center; gap: 10px; padding: 15px; border-radius: 14px; margin-bottom: 15px; font-family: 'Orbitron', sans-serif; font-size: 16px; font-weight: 900; letter-spacing: 2px; }
-.mt4-status.online { background: linear-gradient(135deg, rgba(34,197,94,0.15), rgba(22,163,74,0.15)); border: 2px solid var(--neon-green); color: var(--neon-green); text-shadow: 0 0 20px rgba(34,197,94,0.6); box-shadow: 0 0 30px rgba(34,197,94,0.3); }
-.mt4-status.offline { background: linear-gradient(135deg, rgba(239,68,68,0.15), rgba(220,38,38,0.15)); border: 2px solid var(--neon-red); color: var(--neon-red); text-shadow: 0 0 20px rgba(239,68,68,0.6); }
+/* ===== MT4 SCREEN ===== */
+.mt4-status {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 14px;
+  border-radius: 12px;
+  margin-bottom: 14px;
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 15px;
+  font-weight: 900;
+  letter-spacing: 3px;
+}
+.mt4-status.online {
+  background: linear-gradient(135deg, rgba(0,255,136,0.1), rgba(0,0,0,0));
+  border: 1px solid var(--green-neon);
+  color: var(--green-neon);
+  text-shadow: 0 0 15px rgba(0,255,136,0.6);
+  box-shadow: 0 0 25px rgba(0,255,136,0.2);
+}
+.mt4-status.offline {
+  background: linear-gradient(135deg, rgba(255,46,91,0.1), rgba(0,0,0,0));
+  border: 1px solid var(--red-neon);
+  color: var(--red-neon);
+}
 
-.mt4-btn { padding: 16px; border: none; border-radius: 12px; font-family: 'Orbitron', sans-serif; font-weight: 900; font-size: 14px; cursor: pointer; letter-spacing: 2px; transition: all 0.3s; width: 100%; }
-.mt4-btn.buy { background: linear-gradient(135deg, #22c55e, #16a34a); color: #fff; box-shadow: 0 0 25px rgba(34,197,94,0.5); }
-.mt4-btn.sell { background: linear-gradient(135deg, #ef4444, #dc2626); color: #fff; box-shadow: 0 0 25px rgba(239,68,68,0.5); }
-.mt4-btn.close { background: linear-gradient(135deg, #f59e0b, #d97706); color: #fff; box-shadow: 0 0 25px rgba(245,158,11,0.5); }
+.mt4-btn {
+  padding: 16px;
+  border: none;
+  border-radius: 12px;
+  font-family: 'Rajdhani', sans-serif;
+  font-weight: 900;
+  font-size: 14px;
+  cursor: pointer;
+  letter-spacing: 2px;
+  transition: all 0.3s;
+  width: 100%;
+}
+.mt4-btn.buy {
+  background: linear-gradient(135deg, var(--green-neon), #059669);
+  color: #000;
+  box-shadow: 0 0 25px rgba(0,255,136,0.4);
+}
+.mt4-btn.sell {
+  background: linear-gradient(135deg, var(--red-neon), #be123c);
+  color: #fff;
+  box-shadow: 0 0 25px rgba(255,46,91,0.4);
+}
+.mt4-btn.close {
+  background: linear-gradient(135deg, var(--gold), var(--gold-dim));
+  color: #000;
+  box-shadow: 0 0 25px rgba(251,191,36,0.4);
+}
 .mt4-btn:active { transform: scale(0.97); }
-.mt4-input { flex: 1; padding: 12px; background: rgba(10,21,37,0.8); border: 2px solid rgba(167,139,250,0.4); border-radius: 10px; color: #fff; font-family: 'Orbitron', sans-serif; font-weight: 700; text-align: center; outline: none; }
+.mt4-input {
+  flex: 1;
+  padding: 12px;
+  background: var(--bg-card-2);
+  border: 1px solid var(--border-gold);
+  border-radius: 10px;
+  color: var(--gold);
+  font-family: 'Playfair Display', serif;
+  font-weight: 900;
+  text-align: center;
+  outline: none;
+  font-size: 16px;
+}
 
-.position-card { background: rgba(10,21,37,0.8); border-left: 4px solid var(--neon-gold); border-radius: 10px; padding: 10px 12px; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; }
+.position-card {
+  background: var(--bg-card-2);
+  border-left: 3px solid var(--gold);
+  border-radius: 8px;
+  padding: 10px 12px;
+  margin-bottom: 8px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 12px;
+}
 
 /* ===== NEWS ===== */
-.news-item { background: rgba(13,21,38,0.95); border: 1px solid rgba(56,189,248,0.3); border-radius: 12px; padding: 14px; margin-bottom: 10px; border-left: 3px solid var(--neon-gold); }
+.news-item {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 14px;
+  margin-bottom: 10px;
+  border-left: 3px solid var(--gold);
+}
 
-/* ===== NAV ===== */
-#bottom-nav { position: fixed; bottom: 0; left: 0; width: 100%; background: linear-gradient(180deg, #0a1525, #050a15); border-top: 1px solid rgba(56,189,248,0.3); display: flex; justify-content: space-around; padding: 8px 0 10px; z-index: 100; }
-.nav-item { display: flex; flex-direction: column; align-items: center; color: #64748b; font-size: 9px; cursor: pointer; background: none; border: none; width: 13.5%; letter-spacing: 0.3px; font-weight: 600; font-family: 'Rajdhani', sans-serif; padding: 4px 0; transition: all 0.2s; position: relative; }
-.nav-item.active { color: var(--neon-gold); }
-.nav-item.active span { color: var(--neon-gold); }
-.nav-item span { margin-top: 3px; }
-.nav-item .nav-icon { font-size: 17px; line-height: 1; filter: drop-shadow(0 0 3px rgba(251,191,36,0.3)); }
-.nav-badge { position: absolute; top: 0; right: 12px; background: var(--neon-red); color: #fff; font-size: 8px; font-weight: 700; padding: 1px 5px; border-radius: 10px; min-width: 14px; text-align: center; box-shadow: 0 0 10px rgba(239,68,68,0.8); display: none; }
-.nav-badge.show { display: block; }
+/* ===== BOTTOM NAV ===== */
+#bottom-nav {
+  position: fixed;
+  bottom: 0; left: 0; width: 100%;
+  background: linear-gradient(180deg, #0a0a0a, #000);
+  border-top: 1px solid var(--border);
+  padding: 8px 0 12px;
+  z-index: 100;
+}
+.nav-grid {
+  display: flex;
+  justify-content: space-around;
+  margin-bottom: 6px;
+}
+.nav-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  color: var(--gray);
+  font-size: 9px;
+  cursor: pointer;
+  background: none;
+  border: none;
+  width: 13.5%;
+  letter-spacing: 0.5px;
+  font-weight: 600;
+  font-family: 'Rajdhani', sans-serif;
+  padding: 4px 0;
+  position: relative;
+  text-transform: uppercase;
+}
+.nav-item.active { color: var(--gold); }
+.nav-item.active span { color: var(--gold); }
+.nav-item span { margin-top: 4px; }
+.nav-item .nav-icon {
+  font-size: 18px;
+  line-height: 1;
+  filter: drop-shadow(0 0 4px rgba(251,191,36,0.4));
+}
+.nav-badge-dot {
+  position: absolute;
+  top: 2px; right: 12px;
+  width: 7px; height: 7px;
+  border-radius: 50%;
+  display: none;
+}
+.nav-badge-dot.online {
+  background: var(--green-neon);
+  box-shadow: 0 0 8px var(--green-neon);
+  animation: blink 1.5s infinite;
+  display: block;
+}
+.nav-badge-dot.offline { background: var(--red-neon); display: block; }
+
+/* ===== TIER FOOTER ===== */
+.tier-footer {
+  text-align: center;
+  font-size: 9px;
+  color: var(--gold);
+  letter-spacing: 3px;
+  padding: 8px;
+  border: 1px solid var(--border-gold);
+  border-radius: 20px;
+  margin: 0 30px;
+  font-weight: 700;
+  text-transform: uppercase;
+  font-family: 'Rajdhani', sans-serif;
+}
 
 /* ===== LOADING ===== */
-.loading { text-align: center; padding: 40px; color: #94a3b8; }
-.loading .spinner { font-size: 48px; margin-bottom: 15px; animation: spin 2s linear infinite; display: inline-block; }
+.loading { text-align: center; padding: 40px; color: var(--gray); }
+.loading .spinner {
+  font-size: 42px;
+  margin-bottom: 15px;
+  animation: spin 2s linear infinite;
+  display: inline-block;
+}
 @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+/* ===== TOP TITLE BAR ===== */
+.top-title {
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--gold);
+  letter-spacing: 2px;
+  margin: 12px 0 8px;
+  text-transform: uppercase;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.top-title::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(90deg, var(--border-gold), transparent);
+  margin-left: 12px;
+}
 </style>
 </head>
 <body>
 
 <div class="header">
   <div class="header-top">
-    <div class="header-right">
-      <div class="pro-badge">PRO • ACTIVE</div>
-      <div>⏰ <span class="utc-clock" id="utc-clock">--:--:-- MYT</span></div>
-      <div>📅 <span id="utc-date">--</span></div>
+    <!-- MT4 BADGE -->
+    <div class="mt4-badge offline" id="mt4-badge">
+      <span class="dot"></span>
+      <span id="mt4-badge-text">OFFLINE</span>
     </div>
-    <div class="header-logo-center">
-      <img src="logo.png" alt="BPT Logo" onerror="this.style.display='none'">
-      <div class="header-text">
-        <h1>BPT</h1>
-        <p>BORNEO PRO TRADE</p>
+
+    <div class="header-brand">
+      <div class="brand-left">
+        <div class="brand-icon">👑</div>
+        <div>
+          <div class="brand-name">BPT</div>
+          <div class="brand-sub">BORNEO PRO TRADE</div>
+        </div>
       </div>
+      <div class="pro-badge">PRO • ACTIVE</div>
+    </div>
+
+    <div class="clock-row">
+      <span>⏰ <span class="time" id="utc-clock">--:--:--</span> MYT</span>
+      <span>📅 <span id="utc-date">--</span></span>
     </div>
   </div>
   <select id="market-selector" onchange="tukarMarket()">
@@ -200,57 +813,78 @@ select { margin-top: 10px; padding: 9px 12px; border-radius: 8px; background: rg
   </select>
 </div>
 
-<div class="status-bar awaiting" id="status-bar">● AWAITING SIGNAL · LOADING</div>
+<!-- MT4 STATUS BAR -->
+<div class="mt4-status-bar offline" id="mt4-status-bar">
+  💼 MT4 OFFLINE · Menunggu EA connect...
+</div>
 
 <!-- ===== SCREEN: SIGNAL ===== -->
 <div id="screen-signal" class="screen active">
 
-  <div id="signal-box" class="signal-box wait">
-    <div class="signal-main">WAIT</div>
-    <div class="signal-price">Menunggu setup</div>
+  <!-- PAIR HEADER (Big XAUUSD style) -->
+  <div class="pair-header">
+    <div class="pair-row-1">
+      <div class="pair-name" id="pair-name">XAUUSD</div>
+      <div class="pair-price" id="pair-price">-</div>
+    </div>
+    <div class="pair-row-2">
+      <div id="pair-sub">GOLD / US DOLLAR — SPOT</div>
+      <div class="pair-change down" id="pair-change">
+        <span class="live-dot"></span> LIVE
+      </div>
+    </div>
   </div>
 
-  <div class="glass-card entry-card">
-    <div style="font-size:11px; color:#94a3b8; letter-spacing:2px; font-weight:600; margin-bottom:6px;">📊 <span id="signal-symbol">XAU/USD</span></div>
+  <!-- SIGNAL BOX -->
+  <div id="signal-box" class="signal-box wait">
+    <div class="signal-main">WAIT</div>
+    <div class="signal-conf">Menunggu setup</div>
+  </div>
+
+  <!-- ENTRY CARD -->
+  <div class="entry-card">
     <div class="entry-label">🎯 ENTRY</div>
     <div class="entry-value" id="signal-entry">-</div>
     <div class="entry-source" id="signal-source">💼 MT4</div>
   </div>
 
-  <div class="glass-card" style="padding:14px;">
-    <div class="sltp-grid">
-      <div class="data-box" style="border-color:rgba(239,68,68,0.4);">
+  <!-- SL/TP -->
+  <div class="card">
+    <div class="grid-3" style="margin-bottom:8px;">
+      <div class="data-box" style="border-color:rgba(255,46,91,0.3);">
         <div class="data-label">🛑 SL</div>
-        <div class="data-value sl" id="sig-sl">-</div>
+        <div class="data-value red" id="sig-sl">-</div>
       </div>
-      <div class="data-box" style="border-color:rgba(34,197,94,0.4);">
+      <div class="data-box" style="border-color:rgba(0,255,136,0.3);">
         <div class="data-label">✅ TP1</div>
-        <div class="data-value tp" id="sig-tp1">-</div>
+        <div class="data-value green" id="sig-tp1">-</div>
       </div>
-      <div class="data-box" style="border-color:rgba(34,197,94,0.4);">
+      <div class="data-box" style="border-color:rgba(0,255,136,0.3);">
         <div class="data-label">✅ TP2</div>
-        <div class="data-value tp" id="sig-tp2">-</div>
+        <div class="data-value green" id="sig-tp2">-</div>
       </div>
     </div>
-    <div class="data-box" style="border-color:rgba(34,197,94,0.4);">
+    <div class="data-box" style="border-color:rgba(0,255,136,0.3);">
       <div class="data-label">✅ TP3</div>
-      <div class="data-value tp" id="sig-tp3">-</div>
+      <div class="data-value green" id="sig-tp3">-</div>
     </div>
   </div>
 
-  <div class="glass-card conf-box">
+  <!-- CONFIRMATION -->
+  <div class="card conf-box">
     <div class="conf-label">📊 CONFIRMATION</div>
     <div class="conf-value" id="conf-percent">-</div>
   </div>
 
-  <div class="glass-card session-row" style="padding:14px;">
+  <!-- SESSION -->
+  <div class="session-row">
     <div class="session-item">
       <div class="session-label">⏰ SESSION</div>
       <div class="session-value" id="sig-session">-</div>
     </div>
     <div class="session-item">
       <div class="session-label">📈 MTF</div>
-      <div class="session-value" id="sig-mtf" style="color:#38bdf8;">-</div>
+      <div class="session-value" id="sig-mtf">-</div>
     </div>
   </div>
 
@@ -260,8 +894,8 @@ select { margin-top: 10px; padding: 9px 12px; border-radius: 8px; background: rg
 <div id="screen-levels" class="screen">
   <div class="poc-banner">POC <span id="poc-val">-</span></div>
 
-  <div class="glass-card">
-    <p class="card-title">⭐ Auto SNR Levels</p>
+  <div class="card">
+    <div class="card-title">⭐ AUTO SNR LEVELS</div>
     <div class="snr-grid">
       <div class="snr-box red"><div class="snr-label">R3</div><div class="snr-value" id="r3">-</div></div>
       <div class="snr-box red"><div class="snr-label">R2</div><div class="snr-value" id="r2">-</div></div>
@@ -275,10 +909,10 @@ select { margin-top: 10px; padding: 9px 12px; border-radius: 8px; background: rg
     </div>
   </div>
 
-  <div class="glass-card">
-    <p class="card-title">💧 Liquidity Levels</p>
-    <div id="liquidity-content" style="font-size:12px; color:#cbd5e1; line-height:1.8;">
-      <div style="text-align:center; color:#94a3b8;">Loading...</div>
+  <div class="card">
+    <div class="card-title">💧 LIQUIDITY LEVELS</div>
+    <div id="liquidity-content" style="font-size:12px; color:var(--cream); line-height:1.8;">
+      <div style="text-align:center; color:var(--gray);">Loading...</div>
     </div>
   </div>
 </div>
@@ -296,49 +930,40 @@ select { margin-top: 10px; padding: 9px 12px; border-radius: 8px; background: rg
       <div>Loading mapping...</div>
     </div>
   </div>
-  <button onclick="refreshMapping()" style="width:100%; padding:14px; background:linear-gradient(135deg,#a78bfa,#7c3aed); color:white; border:none; border-radius:12px; font-weight:700; margin-top:12px; cursor:pointer; font-family:'Rajdhani',sans-serif; font-size:14px; letter-spacing:1px;">
-    🔄 Refresh Mapping
+  <button onclick="refreshMapping()" style="width:100%; padding:14px; background:linear-gradient(135deg, var(--gold), var(--gold-dim)); color:#000; border:none; border-radius:12px; font-weight:900; margin-top:12px; cursor:pointer; font-family:'Rajdhani',sans-serif; font-size:14px; letter-spacing:2px;">
+    🔄 REFRESH MAPPING
   </button>
 </div>
 
-<!-- ===== SCREEN: ASIA BREAKOUT ===== -->
+<!-- ===== SCREEN: ASIA ===== -->
 <div id="screen-asia" class="screen">
-  <div class="glass-card" style="text-align:center; padding:14px;">
-    <div style="font-size:11px; color:#94a3b8; letter-spacing:2px; margin-bottom:6px;">🔺 ASIA BREAKOUT STATUS</div>
-    <div id="asia-status" style="font-family:'Orbitron',sans-serif; font-size:18px; font-weight:900; color:#94a3b8;">-</div>
-    <div id="asia-last" style="font-size:11px; color:#94a3b8; margin-top:6px;">Terakhir: -</div>
+  <div class="card" style="text-align:center; padding:14px;">
+    <div style="font-size:10px; color:var(--gray); letter-spacing:2px; margin-bottom:6px;">🔺 ASIA BREAKOUT STATUS</div>
+    <div id="asia-status" style="font-family:'Playfair Display',serif; font-size:18px; font-weight:900; color:var(--gray);">-</div>
+    <div id="asia-last" style="font-size:11px; color:var(--gray); margin-top:6px;">Terakhir: -</div>
   </div>
-
-  <button onclick="loadAsiaBreakout()" style="width:100%; padding:12px; background:linear-gradient(135deg,#a78bfa,#7c3aed); color:white; border:none; border-radius:12px; font-weight:700; font-size:13px; cursor:pointer; font-family:'Rajdhani',sans-serif; letter-spacing:1px; margin-bottom:12px;">
-    🔄 Refresh Asia Breakout
+  <button onclick="loadAsiaBreakout()" style="width:100%; padding:12px; background:linear-gradient(135deg, var(--gold), var(--gold-dim)); color:#000; border:none; border-radius:12px; font-weight:900; font-size:13px; cursor:pointer; font-family:'Rajdhani',sans-serif; letter-spacing:2px; margin-bottom:12px;">
+    🔄 REFRESH ASIA
   </button>
-
   <div id="asia-content">
-    <div class="loading">
-      <div class="spinner">⏳</div>
-      <div>Loading...</div>
-    </div>
+    <div class="loading"><div class="spinner">⏳</div><div>Loading...</div></div>
   </div>
 </div>
 
 <!-- ===== SCREEN: NEWS ===== -->
 <div id="screen-news" class="screen">
-  <div class="glass-card">
-    <p class="card-title" style="color:#fbbf24;">📰 Economic News (USD)</p>
+  <div class="card">
+    <div class="card-title">📰 ECONOMIC NEWS (USD)</div>
     <div id="news-list">
-      <div class="loading">
-        <div class="spinner">⏳</div>
-        <div>Memuatkan...</div>
-      </div>
+      <div class="loading"><div class="spinner">⏳</div><div>Memuatkan...</div></div>
     </div>
   </div>
 </div>
 
 <!-- ===== SCREEN: MESSAGES ===== -->
 <div id="screen-messages" class="screen">
-  <div class="glass-card">
-    <p class="card-title">📨 Notification History</p>
-
+  <div class="card">
+    <div class="card-title">📨 NOTIFICATION HISTORY</div>
     <div style="display:flex; gap:6px; margin-bottom:12px; flex-wrap:wrap;">
       <button onclick="loadMessages('all')" class="msg-filter active" id="filter-all">ALL</button>
       <button onclick="loadMessages('signal')" class="msg-filter" id="filter-signal">SIGNAL</button>
@@ -348,12 +973,8 @@ select { margin-top: 10px; padding: 9px 12px; border-radius: 8px; background: rg
       <button onclick="loadMessages('daily_outlook,pre_market')" class="msg-filter" id="filter-daily">DAILY</button>
       <button onclick="loadMessages('liquidity_sweep')" class="msg-filter" id="filter-sweep">SWEEP</button>
     </div>
-
     <div id="messages-content">
-      <div class="loading">
-        <div class="spinner">⏳</div>
-        <div>Loading...</div>
-      </div>
+      <div class="loading"><div class="spinner">⏳</div><div>Loading...</div></div>
     </div>
   </div>
 </div>
@@ -362,48 +983,55 @@ select { margin-top: 10px; padding: 9px 12px; border-radius: 8px; background: rg
 <div id="screen-mt4" class="screen">
   <div class="mt4-status offline" id="mt4-screen-status">🔴 OFFLINE</div>
 
-  <div class="glass-card">
-    <p class="card-title">💼 Account Info</p>
-    <div class="sltp-grid" style="grid-template-columns:repeat(2,1fr);">
-      <div class="data-box"><div class="data-label">Account</div><div class="data-value" id="mt4-account" style="color:#fbbf24; font-size:12px;">-</div></div>
-      <div class="data-box"><div class="data-label">Broker</div><div class="data-value" id="mt4-broker" style="color:#38bdf8; font-size:12px;">-</div></div>
-      <div class="data-box"><div class="data-label">Balance</div><div class="data-value" id="mt4-balance" style="color:#fbbf24;">-</div></div>
-      <div class="data-box"><div class="data-label">Equity</div><div class="data-value" id="mt4-equity" style="color:#38bdf8;">-</div></div>
-      <div class="data-box"><div class="data-label">Floating P/L</div><div class="data-value" id="mt4-profit" style="color:#22c55e;">-</div></div>
-      <div class="data-box"><div class="data-label">Spread</div><div class="data-value" id="mt4-spread" style="color:#a78bfa;">-</div></div>
+  <div class="card">
+    <div class="card-title">💼 ACCOUNT INFO</div>
+    <div class="grid-2">
+      <div class="data-box"><div class="data-label">Account</div><div class="data-value gold" id="mt4-account" style="font-size:12px;">-</div></div>
+      <div class="data-box"><div class="data-label">Broker</div><div class="data-value cream" id="mt4-broker" style="font-size:12px;">-</div></div>
+      <div class="data-box"><div class="data-label">Balance</div><div class="data-value gold" id="mt4-balance">-</div></div>
+      <div class="data-box"><div class="data-label">Equity</div><div class="data-value cream" id="mt4-equity">-</div></div>
+      <div class="data-box"><div class="data-label">Floating P/L</div><div class="data-value green" id="mt4-profit">-</div></div>
+      <div class="data-box"><div class="data-label">Spread</div><div class="data-value blue" id="mt4-spread">-</div></div>
+      <div class="data-box"><div class="data-label">Margin</div><div class="data-value gold" id="mt4-margin" style="font-size:13px;">-</div></div>
+      <div class="data-box"><div class="data-label">Free Margin</div><div class="data-value green" id="mt4-freemargin" style="font-size:13px;">-</div></div>
+      <div class="data-box"><div class="data-label">Leverage</div><div class="data-value cream" id="mt4-leverage" style="font-size:13px;">-</div></div>
+      <div class="data-box"><div class="data-label">Currency</div><div class="data-value cream" id="mt4-currency" style="font-size:13px;">-</div></div>
     </div>
   </div>
 
-  <div class="glass-card">
-    <p class="card-title">⚡ Execute Trade</p>
-    <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:10px;">
+  <div class="card">
+    <div class="card-title">⚡ EXECUTE TRADE</div>
+    <div class="grid-2" style="margin-bottom:10px;">
       <button class="mt4-btn buy" onclick="mt4Trade('BUY')">▲ BUY</button>
       <button class="mt4-btn sell" onclick="mt4Trade('SELL')">▼ SELL</button>
     </div>
     <div style="display:flex; gap:8px; align-items:center; margin-bottom:10px;">
-      <span style="font-size:11px; color:#94a3b8; font-weight:600;">LOT:</span>
+      <span style="font-size:11px; color:var(--gray); font-weight:700; letter-spacing:1px;">LOT:</span>
       <input type="number" id="mt4-lot" value="0.01" step="0.01" min="0.01" class="mt4-input">
     </div>
     <button class="mt4-btn close" onclick="mt4CloseAll()">⚠ CLOSE ALL POSITIONS</button>
   </div>
 
-  <div class="glass-card">
-    <p class="card-title">📊 Open Positions</p>
+  <div class="card">
+    <div class="card-title">📊 OPEN POSITIONS</div>
     <div id="mt4-positions">
-      <div style="text-align:center; padding:20px; color:#94a3b8;">Tiada posisi</div>
+      <div style="text-align:center; padding:20px; color:var(--gray);">Tiada posisi</div>
     </div>
   </div>
 </div>
 
-<!-- ===== BOTTOM NAV (7 TAB) ===== -->
+<!-- ===== BOTTOM NAV ===== -->
 <nav id="bottom-nav">
-  <button class="nav-item active" onclick="switchTab('signal', this)"><span class="nav-icon">📈</span><span>Signal</span><span class="nav-badge" id="badge-signal"></span></button>
-  <button class="nav-item" onclick="switchTab('levels', this)"><span class="nav-icon">⭐</span><span>Levels</span></button>
-  <button class="nav-item" onclick="switchTab('mapping', this)"><span class="nav-icon">🗺️</span><span>Mapping</span></button>
-  <button class="nav-item" onclick="switchTab('asia', this)"><span class="nav-icon">🔺</span><span>Asia</span></button>
-  <button class="nav-item" onclick="switchTab('news', this)"><span class="nav-icon">📰</span><span>News</span></button>
-  <button class="nav-item" onclick="switchTab('messages', this)"><span class="nav-icon">📨</span><span>Msg</span><span class="nav-badge" id="badge-msg"></span></button>
-  <button class="nav-item" onclick="switchTab('mt4', this)"><span class="nav-icon">💼</span><span>MT4</span></button>
+  <div class="nav-grid">
+    <button class="nav-item active" onclick="switchTab('signal', this)"><span class="nav-icon">📈</span><span>Signal</span></button>
+    <button class="nav-item" onclick="switchTab('levels', this)"><span class="nav-icon">⭐</span><span>Levels</span></button>
+    <button class="nav-item" onclick="switchTab('mapping', this)"><span class="nav-icon">🗺️</span><span>Mapping</span></button>
+    <button class="nav-item" onclick="switchTab('asia', this)"><span class="nav-icon">🔺</span><span>Asia</span></button>
+    <button class="nav-item" onclick="switchTab('news', this)"><span class="nav-icon">📰</span><span>News</span></button>
+    <button class="nav-item" onclick="switchTab('messages', this)"><span class="nav-icon">📨</span><span>Msg</span></button>
+    <button class="nav-item" onclick="switchTab('mt4', this)" style="position:relative;"><span class="nav-icon">💼</span><span>MT4</span><span class="nav-badge-dot offline" id="mt4-nav-dot"></span></button>
+  </div>
+  <div class="tier-footer">👑 PREMIUM • BPT</div>
 </nav>
 
 <script>
@@ -411,7 +1039,6 @@ let marketAktif = 'XAU/USD';
 let newsLoaded = false;
 let messagesLoaded = false;
 let asiaLoaded = false;
-let lastMessageId = 0;
 let currentFilter = 'all';
 
 // ===== MYT CLOCK =====
@@ -419,7 +1046,7 @@ function updateUTCClock() {
   const now = new Date();
   const timeStr = now.toLocaleTimeString('ms-MY', { timeZone: 'Asia/Kuala_Lumpur', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false });
   const dateStr = now.toLocaleDateString('ms-MY', { timeZone: 'Asia/Kuala_Lumpur', day: '2-digit', month: 'short', year: 'numeric' });
-  document.getElementById('utc-clock').innerText = timeStr + ' MYT';
+  document.getElementById('utc-clock').innerText = timeStr;
   document.getElementById('utc-date').innerText = dateStr;
 }
 setInterval(updateUTCClock, 1000);
@@ -433,7 +1060,7 @@ function switchTab(tabName, element) {
   element.classList.add('active');
 
   if (tabName === 'news' && !newsLoaded) loadNews();
-  if (tabName === 'messages') { loadMessages(currentFilter); clearBadge('msg'); }
+  if (tabName === 'messages') { loadMessages(currentFilter); }
   if (tabName === 'asia') loadAsiaBreakout();
   if (tabName === 'mapping') refreshMapping();
   if (tabName === 'mt4') refreshMT4Status();
@@ -451,13 +1078,20 @@ async function dapatkanSignal() {
     const res = await fetch(`/api/signal?symbol=${marketAktif}`);
     const data = await res.json();
 
-    const statusBar = document.getElementById('status-bar');
-    if (data.signal === 'BUY' || data.signal === 'SELL') {
-      statusBar.className = 'status-bar active';
-      statusBar.innerHTML = `● Signal Active · ${data.signal} · ${data.score || 0}% Confidence`;
+    // PAIR HEADER
+    const pairName = data.symbol ? data.symbol.replace('/', '') : marketAktif.replace('/', '');
+    document.getElementById('pair-name').innerText = pairName;
+    document.getElementById('pair-price').innerText = data.harga || '-';
+    document.getElementById('pair-sub').innerText = data.symbol ? data.symbol.replace('/', ' / ') + ' — SPOT' : 'GOLD / US DOLLAR — SPOT';
+    
+    const changeEl = document.getElementById('pair-change');
+    const changeVal = data.change || 0;
+    if (changeVal >= 0) {
+      changeEl.className = 'pair-change up';
+      changeEl.innerHTML = '<span class="live-dot"></span> ● LIVE';
     } else {
-      statusBar.className = 'status-bar awaiting';
-      statusBar.innerHTML = `● Awaiting Signal · ${marketAktif}`;
+      changeEl.className = 'pair-change down';
+      changeEl.innerHTML = '<span class="live-dot"></span> ● LIVE';
     }
 
     // SIGNAL BOX
@@ -471,13 +1105,12 @@ async function dapatkanSignal() {
     } else {
       sb.innerHTML = `
         <div class="signal-main">WAIT</div>
-        <div class="signal-price">Menunggu setup</div>
+        <div class="signal-conf">Menunggu setup</div>
       `;
       sb.className = 'signal-box wait';
     }
 
     // ENTRY
-    document.getElementById('signal-symbol').innerText = data.symbol || marketAktif;
     document.getElementById('signal-entry').innerText = data.entry || data.harga || '-';
     document.getElementById('signal-source').innerText = '💼 ' + (data.harga_source || 'MT4');
 
@@ -487,7 +1120,7 @@ async function dapatkanSignal() {
     document.getElementById('sig-tp2').innerText = data.tp2 || '-';
     document.getElementById('sig-tp3').innerText = data.tp3 || '-';
 
-    // CONFIRMATION %
+    // CONFIRMATION
     const confEl = document.getElementById('conf-percent');
     const confValue = data.score || 0;
     confEl.innerText = confValue + '%';
@@ -521,18 +1154,18 @@ async function dapatkanMarketData() {
     const liqEl = document.getElementById('liquidity-content');
     if (liq) {
       liqEl.innerHTML = `
-        <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
-          <div style="padding:8px; background:rgba(239,68,68,0.1); border-radius:8px;"><div style="font-size:10px; color:#94a3b8;">YESTERDAY HIGH</div><div style="color:#ef4444; font-weight:700;">${liq.yesterdayHigh || '-'}</div></div>
-          <div style="padding:8px; background:rgba(34,197,94,0.1); border-radius:8px;"><div style="font-size:10px; color:#94a3b8;">YESTERDAY LOW</div><div style="color:#22c55e; font-weight:700;">${liq.yesterdayLow || '-'}</div></div>
-          <div style="padding:8px; background:rgba(239,68,68,0.1); border-radius:8px;"><div style="font-size:10px; color:#94a3b8;">ASIA HIGH</div><div style="color:#ef4444; font-weight:700;">${liq.asiaHigh || '-'}</div></div>
-          <div style="padding:8px; background:rgba(34,197,94,0.1); border-radius:8px;"><div style="font-size:10px; color:#94a3b8;">ASIA LOW</div><div style="color:#22c55e; font-weight:700;">${liq.asiaLow || '-'}</div></div>
-          <div style="padding:8px; background:rgba(239,68,68,0.1); border-radius:8px;"><div style="font-size:10px; color:#94a3b8;">LONDON HIGH</div><div style="color:#ef4444; font-weight:700;">${liq.londonHigh || '-'}</div></div>
-          <div style="padding:8px; background:rgba(34,197,94,0.1); border-radius:8px;"><div style="font-size:10px; color:#94a3b8;">LONDON LOW</div><div style="color:#22c55e; font-weight:700;">${liq.londonLow || '-'}</div></div>
+        <div class="grid-2">
+          <div style="padding:10px; background:rgba(255,46,91,0.08); border-radius:8px;"><div style="font-size:9px; color:var(--gray); letter-spacing:1px;">YESTERDAY HIGH</div><div style="color:var(--red-neon); font-weight:700; margin-top:3px;">${liq.yesterdayHigh || '-'}</div></div>
+          <div style="padding:10px; background:rgba(0,255,136,0.08); border-radius:8px;"><div style="font-size:9px; color:var(--gray); letter-spacing:1px;">YESTERDAY LOW</div><div style="color:var(--green-neon); font-weight:700; margin-top:3px;">${liq.yesterdayLow || '-'}</div></div>
+          <div style="padding:10px; background:rgba(255,46,91,0.08); border-radius:8px;"><div style="font-size:9px; color:var(--gray); letter-spacing:1px;">ASIA HIGH</div><div style="color:var(--red-neon); font-weight:700; margin-top:3px;">${liq.asiaHigh || '-'}</div></div>
+          <div style="padding:10px; background:rgba(0,255,136,0.08); border-radius:8px;"><div style="font-size:9px; color:var(--gray); letter-spacing:1px;">ASIA LOW</div><div style="color:var(--green-neon); font-weight:700; margin-top:3px;">${liq.asiaLow || '-'}</div></div>
+          <div style="padding:10px; background:rgba(255,46,91,0.08); border-radius:8px;"><div style="font-size:9px; color:var(--gray); letter-spacing:1px;">LONDON HIGH</div><div style="color:var(--red-neon); font-weight:700; margin-top:3px;">${liq.londonHigh || '-'}</div></div>
+          <div style="padding:10px; background:rgba(0,255,136,0.08); border-radius:8px;"><div style="font-size:9px; color:var(--gray); letter-spacing:1px;">LONDON LOW</div><div style="color:var(--green-neon); font-weight:700; margin-top:3px;">${liq.londonLow || '-'}</div></div>
         </div>
-        ${liq.sweep ? `<div style="margin-top:10px; padding:10px; background:rgba(239,68,68,0.2); border-left:3px solid #ef4444; border-radius:8px;"><div style="font-size:11px; color:#ef4444; font-weight:700;">⚡ LIQUIDITY SWEEP: ${liq.sweep.type}</div><div style="font-size:11px; color:#cbd5e1; margin-top:4px;">Source: ${liq.sweep.source} @ ${liq.sweep.level}</div></div>` : ''}
+        ${liq.sweep ? `<div style="margin-top:10px; padding:10px; background:rgba(255,46,91,0.15); border-left:3px solid var(--red-neon); border-radius:8px;"><div style="font-size:11px; color:var(--red-neon); font-weight:700;">⚡ LIQUIDITY SWEEP: ${liq.sweep.type}</div><div style="font-size:11px; color:var(--cream); margin-top:4px;">Source: ${liq.sweep.source} @ ${liq.sweep.level}</div></div>` : ''}
       `;
     } else {
-      liqEl.innerHTML = '<div style="text-align:center; color:#94a3b8;">Tiada data</div>';
+      liqEl.innerHTML = '<div style="text-align:center; color:var(--gray);">Tiada data</div>';
     }
   } catch (e) { console.error('Market error:', e); }
 }
@@ -567,69 +1200,69 @@ function showMapping(sessionName) {
   const map = window.allMappings ? window.allMappings[sessionName] : null;
 
   if (!map) {
-    container.innerHTML = `<div class="mapping-card" style="text-align:center; padding:40px;"><div style="font-size:48px; margin-bottom:15px;">⏳</div><div style="color:#94a3b8; font-size:14px;">Mapping untuk <strong>${sessionName}</strong> belum tersedia.</div><div style="font-size:11px; color:#64748b; margin-top:10px;">Auto hantar setiap session mula.</div></div>`;
+    container.innerHTML = `<div class="mapping-card" style="text-align:center; padding:40px;"><div style="font-size:48px; margin-bottom:15px;">⏳</div><div style="color:var(--gray); font-size:14px;">Mapping untuk <strong>${sessionName}</strong> belum tersedia.</div></div>`;
     return;
   }
 
   const emoji = sessionName === 'LONDON' ? '🇬🇧' : sessionName === 'NEW YORK' ? '🇺🇸' : '🇯🇵';
   const statusClass = map.session_status && map.session_status.indexOf('PRIME') >= 0 ? 'badge-prime' : map.session_status && map.session_status.indexOf('SLOW') >= 0 ? 'badge-slow' : 'badge-closed';
-  const mtfColor = map.mtf_consensus === 'BUY' ? '#22c55e' : map.mtf_consensus === 'SELL' ? '#ef4444' : '#94a3b8';
-  let aiText = (map.ai_analysis || 'No analysis').replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+  const mtfColor = map.mtf_consensus === 'BUY' ? 'var(--green-neon)' : map.mtf_consensus === 'SELL' ? 'var(--red-neon)' : 'var(--gray)';
+  let aiText = (map.ai_analysis || 'No analysis').replace(/\*\*(.+?)\*\*/g, '<strong style="color:var(--gold);">$1</strong>');
   const lv = map.levels || {};
 
   container.innerHTML = `
     <div class="mapping-card">
-      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; padding-bottom:12px; border-bottom:1px solid rgba(56,189,248,0.2);">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; padding-bottom:12px; border-bottom:1px solid var(--border);">
         <div>
-          <div style="font-size:20px; font-weight:700; color:#fbbf24;">${emoji} ${map.session}</div>
-          <div style="font-size:11px; color:#94a3b8;">📅 ${map.dayName || ''} ${map.dateStr} | ⏰ ${map.timeStr} MYT</div>
+          <div style="font-family:'Playfair Display',serif; font-size:22px; font-weight:900; color:var(--gold);">${emoji} ${map.session}</div>
+          <div style="font-size:10px; color:var(--gray); margin-top:4px;">📅 ${map.dayName || ''} ${map.dateStr} | ⏰ ${map.timeStr} MYT</div>
         </div>
         <div style="text-align:right;">
           <div class="mapping-badge ${statusClass}">${map.session_status}</div>
-          <div style="font-size:11px; color:#94a3b8; margin-top:5px;">${map.harga_source}</div>
+          <div style="font-size:10px; color:var(--gray); margin-top:5px;">${map.harga_source}</div>
         </div>
       </div>
-      <div style="text-align:center; padding:12px; background:rgba(56,189,248,0.1); border-radius:10px; margin-bottom:15px;">
-        <div style="font-size:11px; color:#94a3b8;">HARGA</div>
-        <div style="font-size:24px; font-weight:700; color:#38bdf8; font-family:'Orbitron',sans-serif;">${map.harga}</div>
+      <div style="text-align:center; padding:14px; background:rgba(251,191,36,0.05); border-radius:10px; margin-bottom:14px; border:1px solid var(--border-gold);">
+        <div style="font-size:10px; color:var(--gray); letter-spacing:1px;">HARGA</div>
+        <div style="font-family:'Playfair Display',serif; font-size:26px; font-weight:900; color:var(--gold); margin-top:4px;">${map.harga}</div>
       </div>
-      <div style="text-align:center; padding:15px; background:rgba(${map.bias === 'BUY' ? '34,197,94' : map.bias === 'SELL' ? '239,68,68' : '148,163,184'},0.15); border-radius:12px; margin-bottom:15px; border:2px solid ${map.bias === 'BUY' ? '#22c55e' : map.bias === 'SELL' ? '#ef4444' : '#94a3b8'};">
-        <div style="font-size:28px; font-weight:900; color:${map.bias === 'BUY' ? '#22c55e' : map.bias === 'SELL' ? '#ef4444' : '#94a3b8'}; font-family:'Orbitron',sans-serif; letter-spacing:3px;">${map.bias || 'WAIT'}</div>
-        <div style="font-size:14px; color:#94a3b8; margin-top:5px;">Confidence: ${map.confidence || 0}%</div>
+      <div style="text-align:center; padding:16px; background:rgba(${map.bias === 'BUY' ? '0,255,136' : map.bias === 'SELL' ? '255,46,91' : '107,114,128'},0.08); border-radius:12px; margin-bottom:14px; border:1px solid ${map.bias === 'BUY' ? 'var(--green-neon)' : map.bias === 'SELL' ? 'var(--red-neon)' : 'var(--gray)'};">
+        <div style="font-family:'Playfair Display',serif; font-size:30px; font-weight:900; color:${map.bias === 'BUY' ? 'var(--green-neon)' : map.bias === 'SELL' ? 'var(--red-neon)' : 'var(--gray)'}; letter-spacing:3px; text-shadow:0 0 20px ${map.bias === 'BUY' ? 'rgba(0,255,136,0.5)' : map.bias === 'SELL' ? 'rgba(255,46,91,0.5)' : 'transparent'};">${map.bias || 'WAIT'}</div>
+        <div style="font-size:12px; color:var(--gray); margin-top:6px;">Confidence: ${map.confidence || 0}%</div>
       </div>
-      <div style="background:rgba(10,21,37,0.8); border-radius:12px; padding:15px; margin-bottom:15px;">
-        <div style="font-size:11px; color:#94a3b8; margin-bottom:10px; font-weight:600; letter-spacing:1px;">🎯 PLAN ENTRY</div>
-        <div style="display:flex; justify-content:space-between; align-items:center; padding:10px 0; border-bottom:1px solid rgba(56,189,248,0.1);">
-          <span style="font-size:13px; color:#94a3b8;">📍 ENTRY</span>
-          <span style="font-size:20px; font-weight:900; color:#fbbf24; font-family:'Orbitron',sans-serif;">${map.entry || '-'}</span>
+      <div style="background:rgba(255,255,255,0.02); border-radius:12px; padding:14px; margin-bottom:14px; border:1px solid var(--border);">
+        <div style="font-size:10px; color:var(--gold); margin-bottom:10px; font-weight:700; letter-spacing:2px;">🎯 PLAN ENTRY</div>
+        <div style="display:flex; justify-content:space-between; align-items:center; padding:9px 0; border-bottom:1px solid var(--border);">
+          <span style="font-size:12px; color:var(--gray);">📍 ENTRY</span>
+          <span style="font-family:'Playfair Display',serif; font-size:20px; font-weight:900; color:var(--gold);">${map.entry || '-'}</span>
         </div>
-        <div style="display:flex; justify-content:space-between; align-items:center; padding:10px 0; border-bottom:1px solid rgba(56,189,248,0.1);">
-          <span style="font-size:13px; color:#94a3b8;">🛑 SL</span>
-          <span style="font-size:16px; font-weight:700; color:#ef4444; font-family:'Orbitron',sans-serif;">${map.sl || '-'}</span>
+        <div style="display:flex; justify-content:space-between; align-items:center; padding:9px 0; border-bottom:1px solid var(--border);">
+          <span style="font-size:12px; color:var(--gray);">🛑 SL</span>
+          <span style="font-family:'Playfair Display',serif; font-size:16px; font-weight:900; color:var(--red-neon);">${map.sl || '-'}</span>
         </div>
-        <div style="display:flex; justify-content:space-between; align-items:center; padding:10px 0; border-bottom:1px solid rgba(56,189,248,0.1);">
-          <span style="font-size:13px; color:#94a3b8;">✅ TP1</span>
-          <span style="font-size:16px; font-weight:700; color:#22c55e; font-family:'Orbitron',sans-serif;">${map.tp1 || '-'}</span>
+        <div style="display:flex; justify-content:space-between; align-items:center; padding:9px 0; border-bottom:1px solid var(--border);">
+          <span style="font-size:12px; color:var(--gray);">✅ TP1</span>
+          <span style="font-family:'Playfair Display',serif; font-size:16px; font-weight:900; color:var(--green-neon);">${map.tp1 || '-'}</span>
         </div>
-        <div style="display:flex; justify-content:space-between; align-items:center; padding:10px 0;">
-          <span style="font-size:13px; color:#94a3b8;">✅ TP2</span>
-          <span style="font-size:16px; font-weight:700; color:#22c55e; font-family:'Orbitron',sans-serif;">${map.tp2 || '-'}</span>
-        </div>
-      </div>
-      <div style="margin-bottom:15px;">
-        <div style="font-size:11px; color:#94a3b8; margin-bottom:8px; font-weight:600;">📊 KEY LEVELS (H4)</div>
-        <div style="display:grid; grid-template-columns:repeat(3,1fr); gap:6px;">
-          <div style="text-align:center; padding:6px; background:rgba(239,68,68,0.1); border-radius:6px;"><div style="font-size:10px; color:#ef4444;">R1</div><div style="font-size:11px; font-weight:700;">${lv.r1 || '-'}</div></div>
-          <div style="text-align:center; padding:6px; background:rgba(251,191,36,0.1); border-radius:6px;"><div style="font-size:10px; color:#fbbf24;">POC</div><div style="font-size:11px; font-weight:700;">${map.harga || '-'}</div></div>
-          <div style="text-align:center; padding:6px; background:rgba(34,197,94,0.1); border-radius:6px;"><div style="font-size:10px; color:#22c55e;">S1</div><div style="font-size:11px; font-weight:700;">${lv.s1 || '-'}</div></div>
+        <div style="display:flex; justify-content:space-between; align-items:center; padding:9px 0;">
+          <span style="font-size:12px; color:var(--gray);">✅ TP2</span>
+          <span style="font-family:'Playfair Display',serif; font-size:16px; font-weight:900; color:var(--green-neon);">${map.tp2 || '-'}</span>
         </div>
       </div>
-      <div style="display:flex; justify-content:space-between; padding:10px; background:rgba(10,21,37,0.6); border-radius:8px; margin-bottom:15px;">
-        <span style="font-size:11px; color:#94a3b8;">MTF Agreement</span>
-        <span style="font-size:13px; font-weight:700; color:${mtfColor};">${map.mtf_agreement} (${map.mtf_consensus})</span>
+      <div style="margin-bottom:14px;">
+        <div style="font-size:10px; color:var(--gray); margin-bottom:8px; font-weight:700; letter-spacing:1px;">📊 KEY LEVELS (H4)</div>
+        <div class="grid-3">
+          <div style="text-align:center; padding:8px; background:rgba(255,46,91,0.08); border-radius:8px; border:1px solid rgba(255,46,91,0.2);"><div style="font-size:9px; color:var(--red-neon);">R1</div><div style="font-size:12px; font-weight:700; color:var(--cream); margin-top:3px;">${lv.r1 || '-'}</div></div>
+          <div style="text-align:center; padding:8px; background:rgba(251,191,36,0.08); border-radius:8px; border:1px solid var(--border-gold);"><div style="font-size:9px; color:var(--gold);">POC</div><div style="font-size:12px; font-weight:700; color:var(--cream); margin-top:3px;">${map.harga || '-'}</div></div>
+          <div style="text-align:center; padding:8px; background:rgba(0,255,136,0.08); border-radius:8px; border:1px solid rgba(0,255,136,0.2);"><div style="font-size:9px; color:var(--green-neon);">S1</div><div style="font-size:12px; font-weight:700; color:var(--cream); margin-top:3px;">${lv.s1 || '-'}</div></div>
+        </div>
       </div>
-      <div style="border-top:1px solid rgba(56,189,248,0.2); padding-top:15px;">
-        <div style="font-size:11px; color:#a78bfa; margin-bottom:10px; font-weight:600;">🤖 AI ANALYSIS</div>
+      <div style="display:flex; justify-content:space-between; padding:10px; background:rgba(255,255,255,0.02); border-radius:8px; margin-bottom:14px; border:1px solid var(--border);">
+        <span style="font-size:11px; color:var(--gray);">MTF Agreement</span>
+        <span style="font-size:12px; font-weight:700; color:${mtfColor};">${map.mtf_agreement} (${map.mtf_consensus})</span>
+      </div>
+      <div style="border-top:1px solid var(--border); padding-top:14px;">
+        <div style="font-size:10px; color:#a78bfa; margin-bottom:10px; font-weight:700; letter-spacing:2px;">🤖 AI ANALYSIS</div>
         <div class="mapping-ai-text">${aiText}</div>
       </div>
     </div>
@@ -648,13 +1281,11 @@ async function loadNews() {
       data.events.forEach(e => {
         const div = document.createElement('div');
         div.className = 'news-item';
-        div.innerHTML = `<div style="display:flex; justify-content:space-between; margin-bottom:8px;"><span style="font-size:12px; color:#38bdf8; font-weight:600;">${e.time || 'Akan datang'}</span><span style="background:rgba(56,189,248,0.15); color:#38bdf8; padding:3px 8px; border-radius:4px; font-size:11px; font-weight:600;">${e.currency}</span></div><div style="font-size:14px; font-weight:600;">${e.event}</div>`;
+        div.innerHTML = `<div style="display:flex; justify-content:space-between; margin-bottom:8px;"><span style="font-size:11px; color:var(--gold); font-weight:700; letter-spacing:1px;">${e.time || 'Akan datang'}</span><span style="background:rgba(251,191,36,0.15); color:var(--gold); padding:3px 8px; border-radius:4px; font-size:10px; font-weight:700;">${e.currency}</span></div><div style="font-size:13px; font-weight:600; color:var(--cream);">${e.event}</div>`;
         list.appendChild(div);
       });
-    } else list.innerHTML = '<div style="text-align:center; padding:30px; color:#94a3b8;">Tiada berita</div>';
-  } catch (err) { 
-    list.innerHTML = '<div style="text-align:center; padding:30px; color:#ef4444;">Gagal load</div>'; 
-  }
+    } else list.innerHTML = '<div style="text-align:center; padding:30px; color:var(--gray);">Tiada berita</div>';
+  } catch (err) { list.innerHTML = '<div style="text-align:center; padding:30px; color:var(--red-neon);">Gagal load</div>'; }
 }
 
 // ===== MESSAGES =====
@@ -669,7 +1300,6 @@ async function loadMessages(filter) {
   const activeBtn = document.getElementById('filter-' + (btnMap[filter] || 'all'));
   if (activeBtn) activeBtn.classList.add('active');
 
-  // Handle "alert" = level_alert + news_alert
   let apiFilter = filter;
   if (filter === 'alert') apiFilter = 'level_alert,news_alert';
 
@@ -680,14 +1310,13 @@ async function loadMessages(filter) {
     if (data.status === 'OK' && data.messages && data.messages.length > 0) {
       content.innerHTML = '';
       
-      // Statistik
       if (data.stats) {
         const statsHtml = `
-          <div style="display:grid; grid-template-columns:repeat(4,1fr); gap:6px; margin-bottom:12px; padding:10px; background:rgba(10,21,37,0.6); border-radius:10px;">
-            <div style="text-align:center;"><div style="font-size:9px; color:#94a3b8;">SIGNAL</div><div style="font-size:14px; font-weight:700; color:#22c55e; font-family:'Orbitron',sans-serif;">${data.stats.signal}</div></div>
-            <div style="text-align:center;"><div style="font-size:9px; color:#94a3b8;">MAPPING</div><div style="font-size:14px; font-weight:700; color:#38bdf8; font-family:'Orbitron',sans-serif;">${data.stats.mapping}</div></div>
-            <div style="text-align:center;"><div style="font-size:9px; color:#94a3b8;">ASIA</div><div style="font-size:14px; font-weight:700; color:#a78bfa; font-family:'Orbitron',sans-serif;">${data.stats.asia_breakout}</div></div>
-            <div style="text-align:center;"><div style="font-size:9px; color:#94a3b8;">ALERT</div><div style="font-size:14px; font-weight:700; color:#ef4444; font-family:'Orbitron',sans-serif;">${data.stats.level_alert + data.stats.news_alert}</div></div>
+          <div style="display:grid; grid-template-columns:repeat(4,1fr); gap:6px; margin-bottom:12px; padding:10px; background:rgba(251,191,36,0.04); border-radius:10px; border:1px solid var(--border);">
+            <div style="text-align:center;"><div style="font-size:8px; color:var(--gray); letter-spacing:1px;">SIGNAL</div><div style="font-family:'Playfair Display',serif; font-size:16px; font-weight:900; color:var(--green-neon);">${data.stats.signal}</div></div>
+            <div style="text-align:center;"><div style="font-size:8px; color:var(--gray); letter-spacing:1px;">MAPPING</div><div style="font-family:'Playfair Display',serif; font-size:16px; font-weight:900; color:#38bdf8;">${data.stats.mapping}</div></div>
+            <div style="text-align:center;"><div style="font-size:8px; color:var(--gray); letter-spacing:1px;">ASIA</div><div style="font-family:'Playfair Display',serif; font-size:16px; font-weight:900; color:#a78bfa;">${data.stats.asia_breakout}</div></div>
+            <div style="text-align:center;"><div style="font-size:8px; color:var(--gray); letter-spacing:1px;">ALERT</div><div style="font-family:'Playfair Display',serif; font-size:16px; font-weight:900; color:var(--red-neon);">${data.stats.level_alert + data.stats.news_alert}</div></div>
           </div>
         `;
         content.innerHTML = statsHtml;
@@ -696,24 +1325,15 @@ async function loadMessages(filter) {
       data.messages.forEach(m => {
         const card = document.createElement('div');
         card.className = 'msg-card ' + (m.type || '');
-        const time = new Date(m.timestamp).toLocaleString('ms-MY', { 
-          timeZone: 'Asia/Kuala_Lumpur', 
-          hour: '2-digit', minute: '2-digit', 
-          day: '2-digit', month: 'short' 
-        });
+        const time = new Date(m.timestamp).toLocaleString('ms-MY', { timeZone: 'Asia/Kuala_Lumpur', hour: '2-digit', minute: '2-digit', day: '2-digit', month: 'short' });
         const text = (m.data && m.data.telegram_msg) 
           ? m.data.telegram_msg.replace(/<[^>]*>/g, '').replace(/\n+/g, ' · ').substring(0, 300)
           : JSON.stringify(m.data || {}).substring(0, 200);
         
         const typeLabels = {
-          signal: '📊 SIGNAL',
-          mapping: '🗺️ MAPPING',
-          asia_breakout: '🔺 ASIA BREAK',
-          daily_outlook: '📅 DAILY',
-          pre_market: '⏰ PRE-MARKET',
-          level_alert: '🚨 LEVEL',
-          news_alert: '📰 NEWS',
-          liquidity_sweep: '💧 SWEEP'
+          signal: '📊 SIGNAL', mapping: '🗺️ MAPPING', asia_breakout: '🔺 ASIA',
+          daily_outlook: '📅 DAILY', pre_market: '⏰ PRE-MKT',
+          level_alert: '🚨 LEVEL', news_alert: '📰 NEWS', liquidity_sweep: '💧 SWEEP'
         };
         
         card.innerHTML = `
@@ -726,14 +1346,14 @@ async function loadMessages(filter) {
         content.appendChild(card);
       });
     } else {
-      content.innerHTML = '<div style="text-align:center; padding:40px; color:#94a3b8;">Tiada mesej</div>';
+      content.innerHTML = '<div style="text-align:center; padding:40px; color:var(--gray);">Tiada mesej</div>';
     }
   } catch (err) {
-    content.innerHTML = '<div style="text-align:center; padding:40px; color:#ef4444;">Gagal load messages</div>';
+    content.innerHTML = '<div style="text-align:center; padding:40px; color:var(--red-neon);">Gagal load</div>';
   }
 }
 
-// ===== ASIA BREAKOUT =====
+// ===== ASIA =====
 async function loadAsiaBreakout() {
   asiaLoaded = true;
   const content = document.getElementById('asia-content');
@@ -747,98 +1367,81 @@ async function loadAsiaBreakout() {
     const data = await res.json();
     
     if (data.status === 'OK' && data.messages && data.messages.length > 0) {
-      statusEl.innerText = `🎯 ${data.messages.length} breakout detected`;
-      statusEl.style.color = '#22c55e';
-      statusEl.style.textShadow = '0 0 15px rgba(34,197,94,0.6)';
+      statusEl.innerText = `🎯 ${data.messages.length} BREAKOUT`;
+      statusEl.style.color = 'var(--green-neon)';
+      statusEl.style.textShadow = '0 0 15px rgba(0,255,136,0.5)';
       
       const lastMsg = data.messages[0];
-      const lastTime = new Date(lastMsg.timestamp).toLocaleString('ms-MY', {
-        timeZone: 'Asia/Kuala_Lumpur',
-        hour: '2-digit', minute: '2-digit',
-        day: '2-digit', month: 'short'
-      });
+      const lastTime = new Date(lastMsg.timestamp).toLocaleString('ms-MY', { timeZone: 'Asia/Kuala_Lumpur', hour: '2-digit', minute: '2-digit', day: '2-digit', month: 'short' });
       lastEl.innerText = `Terakhir: ${lastTime}`;
       
       content.innerHTML = '';
       data.messages.forEach(m => {
         const d = m.data || {};
-        const time = new Date(m.timestamp).toLocaleString('ms-MY', {
-          timeZone: 'Asia/Kuala_Lumpur',
-          hour: '2-digit', minute: '2-digit',
-          day: '2-digit', month: 'short'
-        });
-        
-        const biasColor = d.bias === 'BUY' ? '#22c55e' : d.bias === 'SELL' ? '#ef4444' : '#94a3b8';
+        const time = new Date(m.timestamp).toLocaleString('ms-MY', { timeZone: 'Asia/Kuala_Lumpur', hour: '2-digit', minute: '2-digit', day: '2-digit', month: 'short' });
+        const biasColor = d.bias === 'BUY' ? 'var(--green-neon)' : d.bias === 'SELL' ? 'var(--red-neon)' : 'var(--gray)';
         const typeEmoji = (d.type || '').indexOf('HIGH') >= 0 ? '🔺' : '🔻';
         
         const card = document.createElement('div');
         card.className = 'mapping-card';
-        card.style.borderLeft = '4px solid ' + biasColor;
+        card.style.borderLeft = '3px solid ' + biasColor;
         
         card.innerHTML = `
           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
             <div>
-              <div style="font-size:14px; font-weight:700; color:${biasColor};">
+              <div style="font-family:'Playfair Display',serif; font-size:15px; font-weight:900; color:${biasColor};">
                 ${typeEmoji} ${(d.type || 'BREAKOUT').replace(/_/g, ' ')}
               </div>
-              <div style="font-size:10px; color:#94a3b8; margin-top:2px;">🕐 ${time} MYT</div>
+              <div style="font-size:9px; color:var(--gray); margin-top:3px;">🕐 ${time} MYT</div>
             </div>
             <div style="text-align:right;">
-              <div style="font-size:11px; color:${biasColor}; font-weight:700; padding:3px 8px; background:rgba(${d.bias === 'BUY' ? '34,197,94' : '239,68,68'},0.15); border-radius:6px;">
+              <div style="font-size:10px; color:${biasColor}; font-weight:700; padding:3px 8px; background:rgba(${d.bias === 'BUY' ? '0,255,136' : '255,46,91'},0.1); border-radius:6px; border:1px solid ${biasColor};">
                 ${d.bias}
               </div>
-              <div style="font-size:10px; color:#94a3b8; margin-top:3px;">MTF: ${d.mtf_agreement || '-'}</div>
+              <div style="font-size:9px; color:var(--gray); margin-top:3px;">MTF: ${d.mtf_agreement || '-'}</div>
             </div>
           </div>
-          <div style="background:rgba(10,21,37,0.6); border-radius:8px; padding:10px; margin-bottom:8px;">
+          <div style="background:rgba(255,255,255,0.02); border-radius:8px; padding:10px; margin-bottom:8px; border:1px solid var(--border);">
             <div style="display:flex; justify-content:space-between; margin-bottom:6px;">
-              <span style="font-size:11px; color:#94a3b8;">💰 Harga</span>
-              <span style="font-size:12px; font-weight:700; color:#38bdf8;">${d.harga || '-'}</span>
+              <span style="font-size:10px; color:var(--gray);">💰 Harga</span>
+              <span style="font-size:11px; font-weight:700; color:var(--cream);">${d.harga || '-'}</span>
             </div>
             <div style="display:flex; justify-content:space-between;">
-              <span style="font-size:11px; color:#94a3b8;">📍 Level</span>
-              <span style="font-size:12px; font-weight:700; color:#fbbf24;">${d.level || '-'}</span>
+              <span style="font-size:10px; color:var(--gray);">📍 Level</span>
+              <span style="font-size:11px; font-weight:700; color:var(--gold);">${d.level || '-'}</span>
             </div>
           </div>
-          <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:6px;">
-            <div style="text-align:center; padding:6px; background:rgba(239,68,68,0.1); border-radius:6px;">
-              <div style="font-size:9px; color:#ef4444;">SL</div>
-              <div style="font-size:11px; font-weight:700; color:#ef4444;">${d.sl || '-'}</div>
+          <div class="grid-3">
+            <div style="text-align:center; padding:6px; background:rgba(255,46,91,0.08); border-radius:6px; border:1px solid rgba(255,46,91,0.2);">
+              <div style="font-size:8px; color:var(--red-neon);">SL</div>
+              <div style="font-size:11px; font-weight:700; color:var(--red-neon);">${d.sl || '-'}</div>
             </div>
-            <div style="text-align:center; padding:6px; background:rgba(34,197,94,0.1); border-radius:6px;">
-              <div style="font-size:9px; color:#22c55e;">TP1</div>
-              <div style="font-size:11px; font-weight:700; color:#22c55e;">${d.tp1 || '-'}</div>
+            <div style="text-align:center; padding:6px; background:rgba(0,255,136,0.08); border-radius:6px; border:1px solid rgba(0,255,136,0.2);">
+              <div style="font-size:8px; color:var(--green-neon);">TP1</div>
+              <div style="font-size:11px; font-weight:700; color:var(--green-neon);">${d.tp1 || '-'}</div>
             </div>
-            <div style="text-align:center; padding:6px; background:rgba(34,197,94,0.1); border-radius:6px;">
-              <div style="font-size:9px; color:#22c55e;">TP2</div>
-              <div style="font-size:11px; font-weight:700; color:#22c55e;">${d.tp2 || '-'}</div>
+            <div style="text-align:center; padding:6px; background:rgba(0,255,136,0.08); border-radius:6px; border:1px solid rgba(0,255,136,0.2);">
+              <div style="font-size:8px; color:var(--green-neon);">TP2</div>
+              <div style="font-size:11px; font-weight:700; color:var(--green-neon);">${d.tp2 || '-'}</div>
             </div>
           </div>
-          ${d.entry ? `
-          <div style="margin-top:8px; text-align:center; padding:6px; background:rgba(251,191,36,0.15); border-radius:6px;">
-            <span style="font-size:10px; color:#94a3b8;">📍 ENTRY: </span>
-            <span style="font-size:12px; font-weight:700; color:#fbbf24;">${d.entry}</span>
-          </div>
-          ` : ''}
         `;
-        
         content.appendChild(card);
       });
     } else {
-      statusEl.innerText = '⏳ Tiada breakout lagi';
-      statusEl.style.color = '#94a3b8';
+      statusEl.innerText = '⏳ TIADA BREAKOUT';
+      statusEl.style.color = 'var(--gray)';
+      statusEl.style.textShadow = 'none';
       lastEl.innerText = 'Menunggu Asia session...';
       content.innerHTML = `
         <div class="loading">
           <div class="spinner">⏳</div>
           <div>Tiada Asia Breakout detected</div>
-          <div style="font-size:11px; margin-top:10px; color:#64748b;">Breakout akan detect automatically bila harga tembus Asia High/Low</div>
         </div>
       `;
     }
   } catch (e) {
-    console.error('Asia breakout error:', e);
-    content.innerHTML = '<div style="text-align:center; padding:40px; color:#ef4444;">Gagal load</div>';
+    content.innerHTML = '<div style="text-align:center; padding:40px; color:var(--red-neon);">Gagal load</div>';
   }
 }
 
@@ -847,54 +1450,132 @@ async function refreshMT4Status() {
   try {
     const res = await fetch('/api/ea/status');
     const data = await res.json();
+    const isOnline = data.online;
 
-    const statusEl = document.getElementById('mt4-screen-status');
-    if (data.online) {
-      statusEl.textContent = '🟢 ONLINE';
-      statusEl.className = 'mt4-status online';
+    // HEADER BADGE
+    const badge = document.getElementById('mt4-badge');
+    const badgeText = document.getElementById('mt4-badge-text');
+    if (isOnline) {
+      badge.className = 'mt4-badge online';
+      badgeText.innerText = 'MT4 LIVE';
     } else {
-      statusEl.textContent = '🔴 OFFLINE';
-      statusEl.className = 'mt4-status offline';
+      badge.className = 'mt4-badge offline';
+      badgeText.innerText = 'MT4 OFFLINE';
     }
 
-    document.getElementById('mt4-account').textContent = data.accountNumber || '-';
-    document.getElementById('mt4-broker').textContent = data.broker || '-';
-    document.getElementById('mt4-balance').textContent = '$' + (data.balance || 0).toFixed(2);
-    document.getElementById('mt4-equity').textContent = '$' + (data.equity || 0).toFixed(2);
+    // STATUS BAR
+    const statusBar = document.getElementById('mt4-status-bar');
+    if (isOnline) {
+      const balance = (data.balance || 0).toFixed(2);
+      const equity = (data.equity || 0).toFixed(2);
+      const profit = (data.profit || 0).toFixed(2);
+      const accNum = data.accountNumber || '-';
+      const broker = data.broker || '-';
+      const profitSign = data.profit >= 0 ? '+' : '';
+      const profitColor = data.profit > 0 ? 'var(--green-neon)' : data.profit < 0 ? 'var(--red-neon)' : 'var(--gray)';
+      
+      statusBar.className = 'mt4-status-bar online';
+      statusBar.innerHTML = `
+        <div class="row">
+          <span>💼 LIVE</span><span class="sep">·</span>
+          <span><span class="label">ACC:</span> ${accNum}</span>
+          <span class="sep">·</span>
+          <span><span class="label">BROKER:</span> ${broker}</span>
+        </div>
+        <div class="row">
+          <span><span class="label">BAL:</span> $${balance}</span><span class="sep">·</span>
+          <span><span class="label">EQ:</span> $${equity}</span><span class="sep">·</span>
+          <span style="color:${profitColor};"><span class="label">P/L:</span> ${profitSign}$${profit}</span>
+        </div>
+      `;
+    } else {
+      statusBar.className = 'mt4-status-bar offline';
+      statusBar.innerHTML = `💼 MT4 OFFLINE · Menunggu EA connect...`;
+    }
+
+    // NAV DOT
+    const navDot = document.getElementById('mt4-nav-dot');
+    if (navDot) navDot.className = 'nav-badge-dot ' + (isOnline ? 'online' : 'offline');
+
+    // TAB MT4
+    const statusEl = document.getElementById('mt4-screen-status');
+    if (statusEl) {
+      if (isOnline) {
+        statusEl.textContent = '🟢 ONLINE';
+        statusEl.className = 'mt4-status online';
+      } else {
+        statusEl.textContent = '🔴 OFFLINE';
+        statusEl.className = 'mt4-status offline';
+      }
+    }
+
+    // ACCOUNT INFO
+    const setVal = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
+    setVal('mt4-account', data.accountNumber || '-');
+    setVal('mt4-broker', data.broker || '-');
+    setVal('mt4-balance', '$' + (data.balance || 0).toFixed(2));
+    setVal('mt4-equity', '$' + (data.equity || 0).toFixed(2));
+    setVal('mt4-margin', '$' + (data.margin || 0).toFixed(2));
+    setVal('mt4-freemargin', '$' + (data.freeMargin || 0).toFixed(2));
+    setVal('mt4-leverage', data.leverage ? '1:' + data.leverage : '-');
+    setVal('mt4-currency', data.currency || 'USD');
 
     const profitEl = document.getElementById('mt4-profit');
-    const profit = data.profit || 0;
-    profitEl.textContent = (profit >= 0 ? '+' : '') + '$' + profit.toFixed(2);
-    profitEl.style.color = profit > 0 ? '#22c55e' : profit < 0 ? '#ef4444' : '#94a3b8';
+    if (profitEl) {
+      const profit = data.profit || 0;
+      profitEl.textContent = (profit >= 0 ? '+' : '') + '$' + profit.toFixed(2);
+      profitEl.style.color = profit > 0 ? 'var(--green-neon)' : profit < 0 ? 'var(--red-neon)' : 'var(--gray)';
+    }
 
-    document.getElementById('mt4-spread').textContent = (data.prices && data.prices['XAUUSD'] && data.prices['XAUUSD'].spread) 
-      ? data.prices['XAUUSD'].spread.toFixed(2) : '-';
+    const spreadEl = document.getElementById('mt4-spread');
+    if (spreadEl) {
+      const prices = data.prices || {};
+      const keys = Object.keys(prices);
+      let found = false;
+      for (let i = 0; i < keys.length; i++) {
+        if (prices[keys[i]] && prices[keys[i]].spread) {
+          spreadEl.textContent = parseFloat(prices[keys[i]].spread).toFixed(2);
+          found = true;
+          break;
+        }
+      }
+      if (!found) spreadEl.textContent = '-';
+    }
 
+    // POSITIONS
     const positions = data.positions || [];
     const posEl = document.getElementById('mt4-positions');
 
     if (positions.length > 0) {
-      let html = `<div style="font-size:11px; color:#94a3b8; margin-bottom:6px; font-weight:600;">POSISI TERBUKA (${positions.length})</div>`;
+      let html = `<div style="font-size:10px; color:var(--gray); margin-bottom:8px; font-weight:700; letter-spacing:1px;">POSISI TERBUKA (${positions.length})</div>`;
       positions.forEach(p => {
-        const profitColor = p.profit > 0 ? '#22c55e' : p.profit < 0 ? '#ef4444' : '#94a3b8';
-        const typeColor = p.type === 'BUY' ? '#22c55e' : '#ef4444';
+        const profitColor = p.profit > 0 ? 'var(--green-neon)' : p.profit < 0 ? 'var(--red-neon)' : 'var(--gray)';
+        const typeColor = p.type === 'BUY' ? 'var(--green-neon)' : 'var(--red-neon)';
         html += `<div class="position-card">
           <div>
-            <span style="color:${typeColor}; font-weight:700; font-family:'Orbitron',sans-serif;">${p.type}</span>
-            <span style="color:#94a3b8; margin-left:6px;">${p.symbol}</span>
-            <span style="color:#fbbf24; margin-left:6px; font-weight:700;">${p.lot}</span>
+            <span style="color:${typeColor}; font-weight:900; font-family:'Rajdhani',sans-serif; letter-spacing:1px;">${p.type}</span>
+            <span style="color:var(--cream); margin-left:8px; font-weight:700;">${p.symbol}</span>
+            <span style="color:var(--gold); margin-left:8px; font-weight:700;">${p.lot}</span>
           </div>
           <div style="text-align:right;">
-            <div style="color:${profitColor}; font-weight:700; font-family:'Orbitron',sans-serif;">${p.profit >= 0 ? '+' : ''}$${(p.profit || 0).toFixed(2)}</div>
-            <button onclick="mt4Close(${p.ticket})" style="font-size:10px; padding:3px 10px; background:#ef4444; color:#fff; border:none; border-radius:4px; cursor:pointer; margin-top:4px; font-weight:700;">CLOSE</button>
+            <div style="color:${profitColor}; font-weight:700; font-family:'Playfair Display',serif;">${p.profit >= 0 ? '+' : ''}$${(p.profit || 0).toFixed(2)}</div>
+            <button onclick="mt4Close(${p.ticket})" style="font-size:9px; padding:3px 10px; background:var(--red-neon); color:#000; border:none; border-radius:4px; cursor:pointer; margin-top:4px; font-weight:900; letter-spacing:1px;">CLOSE</button>
           </div>
         </div>`;
       });
       posEl.innerHTML = html;
     } else {
-      posEl.innerHTML = '<div style="text-align:center; padding:20px; color:#94a3b8;">Tiada posisi terbuka</div>';
+      posEl.innerHTML = '<div style="text-align:center; padding:20px; color:var(--gray);">Tiada posisi terbuka</div>';
     }
-  } catch (e) { console.error('MT4 error:', e); }
+  } catch (e) {
+    const badge = document.getElementById('mt4-badge');
+    if (badge) badge.className = 'mt4-badge offline';
+    const statusBar = document.getElementById('mt4-status-bar');
+    if (statusBar) {
+      statusBar.className = 'mt4-status-bar offline';
+      statusBar.innerHTML = `💼 MT4 OFFLINE · Server tak respond`;
+    }
+  }
 }
 
 async function mt4Trade(action) {
@@ -905,13 +1586,7 @@ async function mt4Trade(action) {
     const res = await fetch('/api/ea/execute', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ 
-        symbol: marketAktif.replace('/', ''), 
-        action: action, 
-        lot: lot, 
-        sl: 0, 
-        tp: 0 
-      })
+      body: JSON.stringify({ symbol: marketAktif.replace('/', ''), action, lot, sl: 0, tp: 0 })
     });
     const data = await res.json();
     if (data.status === 'OK') alert(`✅ Command dihantar!`);
@@ -922,11 +1597,7 @@ async function mt4Trade(action) {
 async function mt4Close(ticket) {
   if (!confirm(`Close ticket ${ticket}?`)) return;
   try {
-    await fetch('/api/ea/close', { 
-      method: 'POST', 
-      headers: { 'Content-Type': 'application/json' }, 
-      body: JSON.stringify({ ticket: ticket }) 
-    });
+    await fetch('/api/ea/close', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ticket }) });
     alert('Close command dihantar');
   } catch (e) { alert(`Error: ${e.message}`); }
 }
@@ -937,20 +1608,6 @@ async function mt4CloseAll() {
     await fetch('/api/ea/close-all', { method: 'POST' });
     alert('Close all dihantar');
   } catch (e) { alert(`Error: ${e.message}`); }
-}
-
-// ===== BADGE =====
-function showBadge(id, count) {
-  const el = document.getElementById(id);
-  if (el) {
-    el.innerText = count > 9 ? '9+' : count;
-    el.classList.add('show');
-  }
-}
-
-function clearBadge(type) {
-  const el = document.getElementById(type === 'msg' ? 'badge-msg' : 'badge-' + type);
-  if (el) el.classList.remove('show');
 }
 
 // ===== AUTO REFRESH =====
