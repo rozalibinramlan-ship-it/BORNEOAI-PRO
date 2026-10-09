@@ -1,6 +1,6 @@
 // ===============================================
 // BPT — Borneo Pro Trade v3.4 FULLCODE FINAL
-// Patch: Fix mapping 0.00 + Restore /api/signal — EA TIDAK DISENTUH
+// Patch: Fix mapping 0.00 + Restore /api/signal + Log parseEAJson — EA TIDAK DISENTUH
 // ===============================================
 const express = require('express');
 const cors = require('cors');
@@ -102,7 +102,37 @@ async function sendTelegram(message){
 // EA BRIDGE — JANGAN SENTUH
 let eaStatus={online:false,lastSeen:0,balance:0,equity:0,margin:0,freeMargin:0,profit:0,positions:[],prices:{},accountNumber:'',broker:'',leverage:0,currency:'USD'};
 let tradeQueue=[];
-function parseEAJson(rawText){try{let raw=(rawText||'').toString().replace(/\x00/g,'').trim();if(!raw)return{};if(raw.includes('}{'))raw=raw.split('}{')[0]+'}';let depth=0,start=-1,first=null;for(let i=0;i<raw.length;i++){if(raw[i]==='{'){if(depth===0)start=i;depth++;}else if(raw[i]==='}'){depth--;if(depth===0&&start!==-1){first=raw.substring(start,i+1);break;}}}if(first)raw=first;return JSON.parse(raw)}catch(e){return{}}}
+
+// 🔍 parseEAJson dengan LOG SEMENTARA
+function parseEAJson(rawText){
+  try{
+    let raw=(rawText||'').toString().replace(/\x00/g,'').trim();
+    // 🔍 LOG SEMENTARA
+    console.log('📥 [PARSE] raw length=' + raw.length + ' preview=' + raw.substring(0,150));
+    // 🔍 END LOG
+
+    if(!raw)return{};
+    if(raw.includes('}{'))raw=raw.split('}{')[0]+'}';
+    let depth=0,start=-1,first=null;
+    for(let i=0;i<raw.length;i++){
+      if(raw[i]==='{'){if(depth===0)start=i;depth++;}
+      else if(raw[i]==='}'){depth--;if(depth===0&&start!==-1){first=raw.substring(start,i+1);break;}}
+    }
+    if(first)raw=first;
+
+    const parsed = JSON.parse(raw);
+    // 🔍 LOG SEMENTARA — tunjuk keys yang berjaya parse
+    console.log('📥 [PARSE] OK — Keys: ' + Object.keys(parsed).join(','));
+    // 🔍 END LOG
+    return parsed;
+  }catch(e){
+    // 🔍 LOG SEMENTARA — kalau parse gagal
+    console.log('❌ [PARSE] FAIL — ' + e.message + ' | raw first 200: ' + (rawText||'').toString().substring(0,200));
+    // 🔍 END LOG
+    return {};
+  }
+}
+
 app.post('/api/ea/heartbeat',express.text({type:'*/*',limit:'5mb'}),(req,res)=>{const b=parseEAJson(req.body);eaStatus={online:true,lastSeen:Date.now(),balance:parseFloat(b.balance||0),equity:parseFloat(b.equity||0),margin:parseFloat(b.margin||0),freeMargin:parseFloat(b.freeMargin||0),profit:parseFloat(b.profit||0),positions:b.positions||[],prices:b.prices||{},accountNumber:b.accountNumber||'',broker:b.broker||'',leverage:b.leverage||0,currency:b.currency||'USD'};res.json({status:'OK'})});
 app.get('/api/ea/status',(req,res)=>{const on=(Date.now()-eaStatus.lastSeen)<30000;res.json({...eaStatus,online:on,secondsAgo:on?Math.round((Date.now()-eaStatus.lastSeen)/1000):null})});
 app.get('/api/ea/commands',(req,res)=>{const p=tradeQueue.filter(c=>c.status==='pending');if(p.length>0){p[0].status='sent';p[0].sentAt=Date.now();res.json({command:p[0]})}else res.json({command:null})});
