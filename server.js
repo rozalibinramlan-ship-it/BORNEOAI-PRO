@@ -1,6 +1,6 @@
 // ===============================================
-// BPT — Borneo Pro Trade v3.7.1 FINAL
-// Fix: FVG mitigation + Confidence ≥70 + Guard jarak 2.0
+// BPT — Borneo Pro Trade v3.7.2 FINAL
+// Patch: Log trace untuk generate-mapping
 // EA TIDAK DISENTUH
 // ===============================================
 const express = require('express');
@@ -27,8 +27,7 @@ const COOLDOWN_MS = 15 * 60 * 1000;
 const MAX_LOCK_MS = 30 * 60 * 1000;
 const NEWS_AVOID_MS = 60 * 60 * 1000;
 const SCORE_BOLEH = 65;
-const MIN_CONFIDENCE = 70; // 🔧 v3.7.1: Signal filter
-const MIN_ENTRY_DIST = 2.0; // 🔧 v3.7.1: Entry mesti ≥2 pts dari market
+const MIN_CONFIDENCE = 70; // Signal filter — skip kalau bawah 70
 const SPREAD_LIMIT = { 'XAU/USD': 0.80, 'XAG/USD': 0.05, 'EUR/USD': 0.00025, 'GBP/USD': 0.00035, 'USD/JPY': 0.025, 'DEFAULT': 0.0010 };
 const TWELVEDATA_KEYS = [process.env.TWELVEDATA_API_KEY||'',process.env.TWELVEDATA_API_KEY_2||'',process.env.TWELVEDATA_API_KEY_3||''].filter(k=>k.length>0);
 let currentKeyIndex=0;
@@ -36,7 +35,7 @@ function getCurrentKey(){return TWELVEDATA_KEYS[currentKeyIndex]||TWELVEDATA_KEY
 function switchKey(){if(TWELVEDATA_KEYS.length>1)currentKeyIndex=(currentKeyIndex+1)%TWELVEDATA_KEYS.length}
 
 console.log('╔══════════════════════════════════════╗');
-console.log('║ BPT — BORNEO PRO TRADE v3.7.1 FINAL ║');
+console.log('║ BPT — BORNEO PRO TRADE v3.7.2 FINAL ║');
 console.log('╚══════════════════════════════════════╝');
 
 const DATA_DIR=path.join(__dirname,'data');
@@ -83,8 +82,6 @@ function parseEAJson(rawText){
 
 app.post('/api/ea/heartbeat', express.text({type:'*/*', limit:'10mb'}), (req, res) => {
   const b = parseEAJson(req.body);
-  console.log('📥 [PARSE] raw length=' + (req.body?req.body.length:0) + ' preview=' + String(req.body||'').substring(0,150));
-  console.log('📥 [PARSE] OK — Keys:', Object.keys(b).join(','));
   eaStatus = {
     online: true, lastSeen: Date.now(),
     balance: parseFloat(b.balance ?? b.Balance ?? b.bal ?? 0),
@@ -99,7 +96,6 @@ app.post('/api/ea/heartbeat', express.text({type:'*/*', limit:'10mb'}), (req, re
     leverage: b.leverage || b.Leverage || 0,
     currency: b.currency || b.Currency || 'USD'
   };
-  console.log(`✅ [HEARTBEAT] Bal:${eaStatus.balance} Acc:${eaStatus.accountNumber} Broker:${eaStatus.broker} Pos:${eaStatus.positions.length}`);
   res.json({status:'OK'});
 });
 
@@ -138,23 +134,15 @@ async function generateAIAnalysis(prompt,fallbackData){
   return a+`\n\n⚙️ <i>Analysis manual — AI offline</i>`;
 }
 
-async function sendAndSave(type,data){
-  try{
-    if(data.telegram_msg)await sendTelegram(data.telegram_msg);
-    const entry={id:Date.now()+Math.floor(Math.random()*1000),type,timestamp:Date.now(),data,telegram_sent:!!data.telegram_msg};
-    messageHistory.unshift(entry);if(messageHistory.length>100)messageHistory.pop();saveHistory();
-    if(type==='signal'){signalHistory.unshift(entry);if(signalHistory.length>200)signalHistory.pop();saveSignalHistory();}
-  }catch(e){}
-}
-
 async function sendTelegram(message){
-  if(!TELEGRAM_BOT_TOKEN||!TELEGRAM_CHAT_ID)return false;
+  if(!TELEGRAM_BOT_TOKEN||!TELEGRAM_CHAT_ID){console.log('⚠️ [TELEGRAM] Token/ChatID kosong');return false;}
   for(let i=0;i<3;i++){
     try{
-      await axios.post('https://api.telegram.org/bot'+TELEGRAM_BOT_TOKEN+'/sendMessage',{chat_id:TELEGRAM_CHAT_ID,text:message,parse_mode:'HTML'},{timeout:15000});
-      console.log('📱 Telegram sent');return true;
+      const r=await axios.post('https://api.telegram.org/bot'+TELEGRAM_BOT_TOKEN+'/sendMessage',{chat_id:TELEGRAM_CHAT_ID,text:message,parse_mode:'HTML'},{timeout:15000});
+      console.log('📱 [TELEGRAM] Sent OK — msg_id:',r.data?.result?.message_id);
+      return true;
     }catch(e){
-      console.log('❌ Retry '+(i+1)+': '+e.message);
+      console.log(`❌ [TELEGRAM] Retry ${i+1}: ${e.message} | response: ${JSON.stringify(e.response?.data||{})}`);
       if(i<2)await new Promise(r=>setTimeout(r,2000*Math.pow(2,i)));
     }
   }
@@ -168,65 +156,12 @@ const symbolMap={'XAU/USD':'XAU/USD','XAG/USD':'XAG/USD','EUR/USD':'EUR/USD','GB
 function toTwelveData(s){return symbolMap[s]||s}
 function getDecimal(s){if(s.indexOf('JPY')>=0)return 3;if(s.indexOf('XAU')>=0||s.indexOf('XAG')>=0)return 2;return 5}
 function getSpreadLimit(s){return SPREAD_LIMIT[s]||SPREAD_LIMIT['DEFAULT']}
-function getPipSize(s){if(s.indexOf('JPY')>=0)return 0.01;if(s.indexOf('XAU')>=0)return 0.10;if(s.indexOf('XAG')>=0)return 0.01;return 0.0001}
 function calculateEMA(closes,period){if(closes.length===0)return 0;let e=closes[0];let k=2/(period+1);for(let i=1;i<closes.length;i++)e=(closes[i]*k)+(e*(1-k));return e}
 function calculateATR(candles,period){period=period||14;if(candles.length<period+1)return 0;let trs=[];for(let i=candles.length-period;i<candles.length;i++){const h=candles[i].high,l=candles[i].low,pc=candles[i-1].close;trs.push(Math.max(h-l,Math.abs(h-pc),Math.abs(l-pc)))}return trs.reduce((a,b)=>a+b,0)/period}
+function calculateRSI(candles, period) {period = period || 14;if (candles.length < period + 1) return 0;let gains = 0, losses = 0;const start = candles.length - period;for (let i = start; i < candles.length; i++) {const diff = candles[i].close - candles[i-1].close;if (diff > 0) gains += diff;else losses -= diff;}const avgGain = gains / period;const avgLoss = losses / period;if (avgLoss === 0) return 100;const rs = avgGain / avgLoss;return 100 - (100 / (1 + rs));}
+function calculateSuperTrend(candles, period, multiplier) {period = period || 10;multiplier = multiplier || 3.0;if (candles.length < period + 1) return { trend: 'UNKNOWN', value: 0 };const atr = calculateATR(candles, period);if (atr <= 0) return { trend: 'UNKNOWN', value: 0 };const lastCandle = candles[candles.length - 1];const lastClose = lastCandle.close;const hl2 = (lastCandle.high + lastCandle.low) / 2;const upperBand = hl2 + (multiplier * atr);const lowerBand = hl2 - (multiplier * atr);let trend, value;if (lastClose > upperBand) {trend = 'BULLISH'; value = lowerBand;} else if (lastClose < lowerBand) {trend = 'BEARISH'; value = upperBand;} else {const closes = candles.map(c => c.close);const ema21 = calculateEMA(closes, 21);trend = lastClose > ema21 ? 'BULLISH' : 'BEARISH';value = trend === 'BULLISH' ? lowerBand : upperBand;}return { trend, value };}
+function calculateEMADistance(candles) {if (candles.length < 21) return { distance: 0, strength: 'WEAK' };const closes = candles.map(c => c.close);const ema9 = calculateEMA(closes, 9);const ema21 = calculateEMA(closes, 21);const distance = Math.abs(ema9 - ema21);let strength = 'WEAK';if (distance >= 5) strength = 'STRONG';else if (distance >= 2) strength = 'MEDIUM';return { distance: parseFloat(distance.toFixed(2)), strength };}
 
-function calculateRSI(candles, period) {
-  period = period || 14;
-  if (candles.length < period + 1) return 0;
-  let gains = 0, losses = 0;
-  const start = candles.length - period;
-  for (let i = start; i < candles.length; i++) {
-    const diff = candles[i].close - candles[i-1].close;
-    if (diff > 0) gains += diff;
-    else losses -= diff;
-  }
-  const avgGain = gains / period;
-  const avgLoss = losses / period;
-  if (avgLoss === 0) return 100;
-  const rs = avgGain / avgLoss;
-  return 100 - (100 / (1 + rs));
-}
-
-function calculateSuperTrend(candles, period, multiplier) {
-  period = period || 10;
-  multiplier = multiplier || 3.0;
-  if (candles.length < period + 1) return { trend: 'UNKNOWN', value: 0 };
-  const atr = calculateATR(candles, period);
-  if (atr <= 0) return { trend: 'UNKNOWN', value: 0 };
-  const lastCandle = candles[candles.length - 1];
-  const lastClose = lastCandle.close;
-  const hl2 = (lastCandle.high + lastCandle.low) / 2;
-  const upperBand = hl2 + (multiplier * atr);
-  const lowerBand = hl2 - (multiplier * atr);
-  let trend, value;
-  if (lastClose > upperBand) {
-    trend = 'BULLISH'; value = lowerBand;
-  } else if (lastClose < lowerBand) {
-    trend = 'BEARISH'; value = upperBand;
-  } else {
-    const closes = candles.map(c => c.close);
-    const ema21 = calculateEMA(closes, 21);
-    trend = lastClose > ema21 ? 'BULLISH' : 'BEARISH';
-    value = trend === 'BULLISH' ? lowerBand : upperBand;
-  }
-  return { trend, value };
-}
-
-function calculateEMADistance(candles) {
-  if (candles.length < 21) return { distance: 0, strength: 'WEAK' };
-  const closes = candles.map(c => c.close);
-  const ema9 = calculateEMA(closes, 9);
-  const ema21 = calculateEMA(closes, 21);
-  const distance = Math.abs(ema9 - ema21);
-  let strength = 'WEAK';
-  if (distance >= 5) strength = 'STRONG';
-  else if (distance >= 2) strength = 'MEDIUM';
-  return { distance: parseFloat(distance.toFixed(2)), strength };
-}
-
-// 🔧 FASA 2: FVG Detection DENGAN MITIGATION CHECK
 function detectFVG(candles) {
   if (!candles || candles.length < 5) return [];
   const fvgs = [];
@@ -234,13 +169,11 @@ function detectFVG(candles) {
   for (let i = 2; i < recent.length; i++) {
     const c1 = recent[i - 2];
     const c3 = recent[i];
-
     if (c1.high < c3.low) {
       const fvg = { type: 'BULLISH', top: c3.low, bottom: c1.high, mid: (c3.low + c1.high) / 2, index: i };
       const mitigated = recent.slice(i + 1).some(c => c.low <= fvg.bottom);
       if (!mitigated) fvgs.push(fvg);
     }
-
     if (c1.low > c3.high) {
       const fvg = { type: 'BEARISH', top: c1.low, bottom: c3.high, mid: (c1.low + c3.high) / 2, index: i };
       const mitigated = recent.slice(i + 1).some(c => c.high >= fvg.top);
@@ -272,9 +205,6 @@ function getATRProfile(candles){const atrNow=calculateATR(candles,14),atrAvg=cal
 function detectSNR(candles){if(!candles||candles.length<50)return{S1:null,S2:null,S3:null,R1:null,R2:null,R3:null,POC:0};const recent=candles.slice(-200);const lastPrice=recent[recent.length-1].close;let atrSum=0;for(let i=0;i<14;i++)atrSum+=(recent.slice(-14)[i].high-recent.slice(-14)[i].low);const ATR=atrSum/14;const tolerance=Math.max(lastPrice*0.002,ATR*0.4);let swingLows=[],swingHighs=[];for(let i=2;i<recent.length-2;i++){const isLow=recent[i].low<recent[i-1].low&&recent[i].low<recent[i-2].low&&recent[i].low<recent[i+1].low&&recent[i].low<recent[i+2].low;const isHigh=recent[i].high>recent[i-1].high&&recent[i].high>recent[i-2].high&&recent[i].high>recent[i+1].high&&recent[i].high>recent[i+2].high;if(isLow)swingLows.push({price:recent[i].low});if(isHigh)swingHighs.push({price:recent[i].high})}let supports=swingLows.filter(s=>s.price<lastPrice).sort((a,b)=>b.price-a.price);let resistances=swingHighs.filter(s=>s.price>lastPrice).sort((a,b)=>a.price-b.price);return{S1:supports[0]?.price||null,S2:supports[1]?.price||null,S3:supports[2]?.price||null,R1:resistances[0]?.price||null,R2:resistances[1]?.price||null,R3:resistances[2]?.price||null,POC:lastPrice}}
 function detectLiquidity(candles){if(!candles||candles.length<100)return null;const recent=candles.slice(-300);const yesterdayCandles=recent.slice(-288,-50);const asiaCandles=recent.slice(-96,-20);const londonCandles=recent.slice(-60);const yesterdayHigh=yesterdayCandles.length?Math.max(...yesterdayCandles.map(c=>c.high)):0;const yesterdayLow=yesterdayCandles.length?Math.min(...yesterdayCandles.map(c=>c.low)):0;const asiaHigh=asiaCandles.length?Math.max(...asiaCandles.map(c=>c.high)):0;const asiaLow=asiaCandles.length?Math.min(...asiaCandles.map(c=>c.low)):0;const londonHigh=londonCandles.length?Math.max(...londonCandles.map(c=>c.high)):0;const londonLow=londonCandles.length?Math.min(...londonCandles.map(c=>c.low)):0;const lastCandle=recent[recent.length-1];let sweep=null;if(lastCandle.high>yesterdayHigh&&lastCandle.close<yesterdayHigh)sweep={type:'SWEEP_HIGH',level:yesterdayHigh,source:'YESTERDAY_HIGH',bias:'SELL'};else if(lastCandle.high>asiaHigh&&lastCandle.close<asiaHigh)sweep={type:'SWEEP_HIGH',level:asiaHigh,source:'ASIA_HIGH',bias:'SELL'};else if(lastCandle.low<yesterdayLow&&lastCandle.close>yesterdayLow)sweep={type:'SWEEP_LOW',level:yesterdayLow,source:'YESTERDAY_LOW',bias:'BUY'};else if(lastCandle.low<asiaLow&&lastCandle.close>asiaLow)sweep={type:'SWEEP_LOW',level:asiaLow,source:'ASIA_LOW',bias:'BUY'};return{yesterdayHigh,yesterdayLow,asiaHigh,asiaLow,londonHigh,londonLow,sweep,currentPrice:recent[recent.length-1].close}}
 
-// ===============================================
-// ANALYZE CANDLES — Confidence ≥70 filter
-// ===============================================
 function analyzeCandles(candles,symbol,snr,liquidity){
   if(!candles||candles.length<50)return null;
   const closes=candles.map(c=>c.close);
@@ -309,18 +239,13 @@ function analyzeCandles(candles,symbol,snr,liquidity){
   const winner=buyScore>sellScore?'BUY':sellScore>buyScore?'SELL':'WAIT';
   const winnerScore=Math.max(buyScore,sellScore);
   const maxScore=140;
-
   if(!(diff<10&&winnerScore>=SCORE_BOLEH)){
     if(winner==='BUY'&&buyScore>=SCORE_BOLEH){
       const conf=Math.min(Math.round((buyScore/maxScore)*100),100);
-      if(conf >= MIN_CONFIDENCE){
-        sig='BUY';confidence=conf;reasons=buyReasons;
-      }
+      if(conf >= MIN_CONFIDENCE){ sig='BUY';confidence=conf;reasons=buyReasons; }
     } else if(winner==='SELL'&&sellScore>=SCORE_BOLEH){
       const conf=Math.min(Math.round((sellScore/maxScore)*100),100);
-      if(conf >= MIN_CONFIDENCE){
-        sig='SELL';confidence=conf;reasons=sellReasons;
-      }
+      if(conf >= MIN_CONFIDENCE){ sig='SELL';confidence=conf;reasons=sellReasons; }
     }
   }
   return{signal:sig,confidence,score:winnerScore,ema9,ema21,ema50,buyScore,sellScore,reasons}
@@ -328,9 +253,6 @@ function analyzeCandles(candles,symbol,snr,liquidity){
 
 async function checkMultiTimeframe(symbol){const tfs=[{tf:'5min',label:'M5'},{tf:'15min',label:'M15'},{tf:'30min',label:'M30'},{tf:'1h',label:'H1'}];const results=await Promise.all(tfs.map(async t=>{try{const candles=await getOHLC(symbol,t.tf,100);const r=analyzeCandles(candles,symbol,null,null);return{tf:t.tf,label:t.label,signal:r?r.signal:'WAIT',confidence:r?r.confidence:0}}catch(e){return{tf:t.tf,label:t.label,signal:'WAIT',confidence:0}}}));let buyCount=0,sellCount=0;for(let r of results){if(r.signal==='BUY')buyCount++;if(r.signal==='SELL')sellCount++;}const maxCount=Math.max(buyCount,sellCount),majoritySignal=buyCount>sellCount?'BUY':sellCount>buyCount?'SELL':'WAIT';return{timeframes:results,buyCount,sellCount,agreement:maxCount+'/4',consensus:majoritySignal}}
 
-// ===============================================
-// 🔧 Pilih entry dari SNR + FVG + POC (v3.7.1)
-// ===============================================
 function pickEntryByLevel(harga, snr, fvgs, poc, bias, maxJarak) {
   const levels = [];
   if (snr.S1) levels.push({ level: snr.S1, type: 'S1', priority: 2 });
@@ -351,7 +273,7 @@ function pickEntryByLevel(harga, snr, fvgs, poc, bias, maxJarak) {
   const candidates = levels.filter(l => {
     const jarak = Math.abs(l.level - harga);
     if (jarak > maxJarak) return false;
-    if (jarak < MIN_ENTRY_DIST) return false; // 🔧 v3.7.1: guard 2.0
+    if (jarak < 2.0) return false;
     if (bias === 'BUY') return l.level < harga;
     if (bias === 'SELL') return l.level > harga;
     return false;
@@ -414,19 +336,21 @@ async function fetchNews(){if(Date.now()-newsCache.fetchedAt<NEWS_CACHE_MS&&news
 async function checkNewsBlock(){try{const events=await fetchNews();const now=Date.now();for(let ev of events){if(ev.impact!=='high')continue;const evTime=new Date(ev.time).getTime();if(isNaN(evTime))continue;if(Math.abs(evTime-now)<NEWS_AVOID_MS){const mins=Math.round((evTime-now)/60000);return{blocked:true,reason:'News '+ev.event+' ('+(mins>0?'in '+mins+' min':Math.abs(mins)+' min ago')+')'}}}return{blocked:false,reason:null}}catch(e){return{blocked:false,reason:null}}}
 
 // ===============================================
-// MAPPING — Confidence ≥70 + Guard 2.0
+// MAPPING
 // ===============================================
 async function generateSessionMapping(symbol, sessionName) {
   try {
     const decimal = getDecimal(symbol);
+    console.log(`🔍 [${sessionName}] Step 1 — Mula. symbol=${symbol}`);
     const tick = await getTick(symbol);
     const harga = tick.mid;
-    console.log(`[${sessionName}] RAW harga=${harga} source=${tick.source}`);
+    console.log(`🔍 [${sessionName}] Step 2 — Harga=${harga} source=${tick.source}`);
     if (!harga || harga <= 0) { console.log(`❌ [${sessionName}] skip: harga=${harga}`); return; }
 
     const candlesH4 = await getOHLC(symbol, '4h', 100);
     const candlesH1 = await getOHLC(symbol, '1h', 200);
     const candlesM15 = await getOHLC(symbol, '15min', 200);
+    console.log(`🔍 [${sessionName}] Step 3 — Candles H4=${candlesH4.length} H1=${candlesH1.length} M15=${candlesM15.length}`);
     if (candlesH4.length < 50) { console.log(`❌ [${sessionName}] skip: candlesH4=${candlesH4.length}`); return; }
 
     const h4SNR = detectSNR(candlesH4);
@@ -437,6 +361,7 @@ async function generateSessionMapping(symbol, sessionName) {
     const m15ATR = calculateATR(candlesM15, 14);
     const h4ATR = m15ATR > 0 ? m15ATR : calculateATR(candlesH4, 14);
     const atrSource = m15ATR > 0 ? 'M15' : 'H4(fallback)';
+    console.log(`🔍 [${sessionName}] Step 4 — ATR=${h4ATR} (${atrSource})`);
     if (!h4ATR || h4ATR <= 0) { console.log(`❌ [${sessionName}] skip: ATR=${h4ATR}`); return; }
 
     const rsi = calculateRSI(candlesM15, 14);
@@ -449,6 +374,7 @@ async function generateSessionMapping(symbol, sessionName) {
     const sessionStatus = getSessionStatus(sessionName);
     let bias = h4Analysis ? h4Analysis.signal : 'WAIT';
     let confidence = h4Analysis ? h4Analysis.confidence : 0;
+    console.log(`🔍 [${sessionName}] Step 5 — bias=${bias} conf=${confidence}%`);
     if (bias === 'WAIT' && mtf.consensus !== 'WAIT') {
       bias = mtf.consensus;
       confidence = Math.min(Math.round((bias === 'BUY' ? mtf.buyCount : mtf.sellCount) / 4 * 100 * 0.75), 100);
@@ -466,11 +392,11 @@ async function generateSessionMapping(symbol, sessionName) {
     const MAX_JARAK = Math.max(h4ATR * 1.5, 8);
     const entryPick = pickEntryByLevel(harga, h4SNR, fvgs, poc, bias, MAX_JARAK);
 
-    console.log(`[${sessionName}] RSI=${rsi.toFixed(1)} ST=${superTrend.trend} EMA=${emaDistance.strength} FVG=${fvgs.length} POC=${poc?.toFixed(2)} conf=${confidence}%`);
-    console.log(`[${sessionName}] entryPick=${entryPick ? entryPick.type + '@' + entryPick.level.toFixed(2) : 'NULL'}`);
+    console.log(`🔍 [${sessionName}] Step 6 — RSI=${rsi.toFixed(1)} ST=${superTrend.trend} EMA=${emaDistance.strength} FVG=${fvgs.length} POC=${poc?.toFixed(2)} conf=${confidence}%`);
+    console.log(`🔍 [${sessionName}] Step 7 — entryPick=${entryPick ? entryPick.type + '@' + entryPick.level.toFixed(2) : 'NULL'}`);
 
     if (!entryPick) {
-      console.log(`❌ [${sessionName}] skip: tiada SNR/FVG dekat (min jarak ${MIN_ENTRY_DIST})`);
+      console.log(`❌ [${sessionName}] skip: tiada SNR/FVG dekat dengan harga ${harga.toFixed(decimal)}`);
       return;
     }
 
@@ -505,6 +431,7 @@ async function generateSessionMapping(symbol, sessionName) {
 
     const prompt = `Mapping ${sessionName} ${symbol} harga ${harga.toFixed(decimal)} entry di ${entryType} ${entryNum.toFixed(decimal)} bias ${bias} ${confidence}% SL ${slNum.toFixed(decimal)} TP1 ${tp1Num.toFixed(decimal)} RSI ${rsi.toFixed(1)} SuperTrend ${superTrend.trend} EMA ${emaDistance.strength}`;
 
+    console.log(`🔍 [${sessionName}] Step 8 — Panggil AI...`);
     const aiAnalysis = await generateAIAnalysis(prompt, { bias, confidence, harga, entry: entryNum, sl: slNum, tp1: tp1Num, tp2: tp2Num, mtf, levels: { r1: h4SNR.R1, s1: h4SNR.S1 }, session: sessionName });
 
     const sessionEmoji = sessionName === 'LONDON' ? '🇬🇧' : sessionName === 'NEW YORK' ? '🇺🇸' : '🇯🇵';
@@ -519,7 +446,9 @@ async function generateSessionMapping(symbol, sessionName) {
 
     const msg = `${sessionEmoji} <b>MAPPING ${sessionName}</b>\n⏰ ${timeStr} MYT | 📅 ${dayName} ${dateStr}\n━━━━━━━━━━━━━━━━\n\n💰 <b>${symbol}: ${harga.toFixed(decimal)}</b> (${tick.source})\n📊 ${sessionStatus}\n\n${biasEmoji} <b>Bias: ${bias}</b> (${confidence}%) ✅\n\n━━━━━━━━━━━━━━━━\n🎯 <b>PLAN ENTRY</b>\n\n${planText}\n━━━━━━━━━━━━━━━━\n${indicatorText}\n━━━━━━━━━━━━━━━━\n📊 <b>KEY LEVELS</b>\n• R1: ${h4SNR.R1 ? h4SNR.R1.toFixed(decimal) : '-'}\n• R2: ${h4SNR.R2 ? h4SNR.R2.toFixed(decimal) : '-'}\n• S1: ${h4SNR.S1 ? h4SNR.S1.toFixed(decimal) : '-'}\n• S2: ${h4SNR.S2 ? h4SNR.S2.toFixed(decimal) : '-'}\n\n━━━━━━━━━━━━━━━━\n🤖 ${aiAnalysis}\n\n📈 MTF: ${mtf.agreement} (${mtf.consensus})\n📊 ATR ${atrSource}: ${h4ATR.toFixed(2)}\n⚠️ <i>Set limit order di ${entryType}!</i>`;
 
-    await sendTelegram(msg);
+    console.log(`🔍 [${sessionName}] Step 9 — Hantar Telegram...`);
+    const sent = await sendTelegram(msg);
+    console.log(`🔍 [${sessionName}] Step 10 — Telegram result: ${sent}`);
 
     aiMappings[sessionName] = {
       session: sessionName, timeStr, dateStr, dayName, symbol,
@@ -563,13 +492,30 @@ async function generateSessionMapping(symbol, sessionName) {
     if (messageHistory.length > 100) messageHistory.pop();
     saveHistory();
 
-    console.log(`✅ [${sessionName}] mapping ${bias} ${confidence}% | Entry ${entryType}@${entryNum.toFixed(decimal)} | RSI ${rsi.toFixed(1)} ST ${superTrend.trend} FVG Fresh ${Math.min(fvgs.length, 20)}`);
+    console.log(`✅ [${sessionName}] Step 11 — SELESAI. mapping ${bias} ${confidence}% | Entry ${entryType}@${entryNum.toFixed(decimal)}`);
   } catch (e) {
-    console.log(`❌ [${sessionName}] error:`, e.message);
+    console.log(`❌ [${sessionName}] CATCH ERROR: ${e.message} | Stack: ${e.stack?.substring(0,200)}`);
   }
 }
 
 // ===================== API ROUTES =====================
+
+// 🔧 v3.7.2: Log trace penuh
+app.get('/api/generate-mapping', async (req, res) => {
+  const symbol = req.query.symbol || 'XAU/USD';
+  const session = (req.query.session || 'LONDON').toUpperCase();
+  console.log(`🚀 [GENERATE] Request masuk — session=${session} symbol=${symbol}`);
+  try {
+    const tick = await getTick(symbol);
+    console.log(`🚀 [GENERATE] Tick OK — harga=${tick.mid} source=${tick.source}`);
+    await generateSessionMapping(symbol, session);
+    console.log(`🚀 [GENERATE] Selesai — ${session}`);
+    res.json({ status: 'OK', message: session + ' sent' });
+  } catch (e) {
+    console.log(`❌ [GENERATE] Error: ${e.message}`);
+    res.json({ status: 'FAIL', error: e.message });
+  }
+});
 
 app.get('/api/signal', async (req,res)=>{
   const symbol=req.query.symbol||'XAU/USD';
@@ -600,29 +546,21 @@ app.get('/api/signal', async (req,res)=>{
     if (rsi < 30) rsiStatus = 'OVERSOLD';
     else if (rsi > 70) rsiStatus = 'OVERBOUGHT';
 
-    const indicatorsObj = {
-      rsi: parseFloat(rsi.toFixed(1)), rsi_status: rsiStatus,
-      supertrend: superTrend.trend,
-      supertrend_value: parseFloat((superTrend.value || 0).toFixed(decimal)),
-      ema_distance: emaDistance.distance, ema_strength: emaDistance.strength,
-      fvg_count: Math.min(fvgs.length, 20),
-      poc: poc ? parseFloat(poc.toFixed(decimal)) : null
-    };
-
     if (analysis && analysis.signal !== 'WAIT' && analysis.confidence < MIN_CONFIDENCE) {
       return res.json({
-        symbol,
-        harga: parseFloat(harga.toFixed(decimal)),
-        harga_source: tick.source,
-        signal: 'WAIT',
-        score: analysis.score,
-        confidence: 0,
+        symbol, harga: parseFloat(harga.toFixed(decimal)), harga_source: tick.source,
+        signal: 'WAIT', score: analysis.score, confidence: 0,
         entry: null, sl: null, tp1: null, tp2: null, tp3: null,
-        session: getMarketSession(),
-        reason: `Signal lemah (${analysis.confidence}% < ${MIN_CONFIDENCE}%)`,
-        mtf,
-        snr,
-        indicators: indicatorsObj
+        session: getMarketSession(), reason: `Signal lemah (${analysis.confidence}% < ${MIN_CONFIDENCE}%)`,
+        mtf, snr,
+        indicators: {
+          rsi: parseFloat(rsi.toFixed(1)), rsi_status: rsiStatus,
+          supertrend: superTrend.trend,
+          supertrend_value: parseFloat((superTrend.value || 0).toFixed(decimal)),
+          ema_distance: emaDistance.distance, ema_strength: emaDistance.strength,
+          fvg_count: Math.min(fvgs.length, 20),
+          poc: poc ? parseFloat(poc.toFixed(decimal)) : null
+        }
       });
     }
 
@@ -631,18 +569,19 @@ app.get('/api/signal', async (req,res)=>{
 
     if (!entryPickSignal) {
       return res.json({
-        symbol,
-        harga: parseFloat(harga.toFixed(decimal)),
-        harga_source: tick.source,
-        signal: 'WAIT',
-        score: 0,
-        confidence: 0,
+        symbol, harga: parseFloat(harga.toFixed(decimal)), harga_source: tick.source,
+        signal: 'WAIT', score: 0, confidence: 0,
         entry: null, sl: null, tp1: null, tp2: null, tp3: null,
-        session: getMarketSession(),
-        reason: `Tiada SNR/FVG dekat (min jarak ${MIN_ENTRY_DIST})`,
-        mtf,
-        snr,
-        indicators: indicatorsObj
+        session: getMarketSession(), reason: 'Tiada SNR/FVG/POC dekat',
+        mtf, snr,
+        indicators: {
+          rsi: parseFloat(rsi.toFixed(1)), rsi_status: rsiStatus,
+          supertrend: superTrend.trend,
+          supertrend_value: parseFloat((superTrend.value || 0).toFixed(decimal)),
+          ema_distance: emaDistance.distance, ema_strength: emaDistance.strength,
+          fvg_count: Math.min(fvgs.length, 20),
+          poc: poc ? parseFloat(poc.toFixed(decimal)) : null
+        }
       });
     }
 
@@ -653,22 +592,24 @@ app.get('/api/signal', async (req,res)=>{
       : null;
 
     res.json({
-      symbol,
-      harga: parseFloat(harga.toFixed(decimal)),
-      harga_source: tick.source,
+      symbol, harga: parseFloat(harga.toFixed(decimal)), harga_source: tick.source,
       signal: analysis ? analysis.signal : 'WAIT',
       score: analysis ? analysis.score : 0,
       confidence: analysis ? analysis.confidence : 0,
-      entry: parseFloat(finalEntry.toFixed(decimal)),
-      entry_type: entryType,
+      entry: parseFloat(finalEntry.toFixed(decimal)), entry_type: entryType,
       sl: sltpFinal ? parseFloat(sltpFinal.sl) : null,
       tp1: sltpFinal ? parseFloat(sltpFinal.tp1) : null,
       tp2: sltpFinal ? parseFloat(sltpFinal.tp2) : null,
       tp3: sltpFinal ? parseFloat(sltpFinal.tp3) : null,
-      session: getMarketSession(),
-      mtf,
-      snr,
-      indicators: indicatorsObj
+      session: getMarketSession(), mtf, snr,
+      indicators: {
+        rsi: parseFloat(rsi.toFixed(1)), rsi_status: rsiStatus,
+        supertrend: superTrend.trend,
+        supertrend_value: parseFloat((superTrend.value || 0).toFixed(decimal)),
+        ema_distance: emaDistance.distance, ema_strength: emaDistance.strength,
+        fvg_count: Math.min(fvgs.length, 20),
+        poc: poc ? parseFloat(poc.toFixed(decimal)) : null
+      }
     });
   }catch(e){
     console.log(`❌ [SIGNAL] ${symbol} error:`, e.message);
@@ -677,11 +618,10 @@ app.get('/api/signal', async (req,res)=>{
 });
 
 app.get('/api/mapping',(req,res)=>{res.json({status:'OK',mappings:aiMappings,current_session:getMarketSession(),timestamp:Date.now()})});
-app.get('/api/generate-mapping',async(req,res)=>{const symbol=req.query.symbol||'XAU/USD';const session=(req.query.session||'LONDON').toUpperCase();try{await generateSessionMapping(symbol,session);res.json({status:'OK',message:session+' sent'})}catch(e){res.json({status:'FAIL',error:e.message})}});
 app.get('/api/market',async(req,res)=>{const symbol=req.query.symbol||'XAU/USD';const decimal=getDecimal(symbol);try{const tick=await getTick(symbol);const candles=await getOHLC(symbol,'5min',300);const harga=tick.mid||(candles.length?candles[candles.length-1].close:0);if(!harga)return res.status(503).json({error:'No price data'});const snr=detectSNR(candles);const liq=detectLiquidity(candles);res.json({symbol,harga:parseFloat(harga.toFixed(decimal)),harga_source:tick.source,spread:parseFloat(tick.spread.toFixed(decimal)),spread_ok:isSpreadOK(symbol,tick.spread),POC:snr.POC?parseFloat(snr.POC.toFixed(decimal)):null,R1:snr.R1?parseFloat(snr.R1.toFixed(decimal)):null,R2:snr.R2?parseFloat(snr.R2.toFixed(decimal)):null,R3:snr.R3?parseFloat(snr.R3.toFixed(decimal)):null,S1:snr.S1?parseFloat(snr.S1.toFixed(decimal)):null,S2:snr.S2?parseFloat(snr.S2.toFixed(decimal)):null,S3:snr.S3?parseFloat(snr.S3.toFixed(decimal)):null,liquidity:liq,session:getMarketSession()})}catch(e){res.status(500).json({error:e.message})}});
 app.get('/api/messages',(req,res)=>{const limit=parseInt(req.query.limit)||50;const type=req.query.type;let filtered=messageHistory;if(type&&type!=='all'){const types=type.split(',').map(t=>t.trim());filtered=messageHistory.filter(m=>types.includes(m.type))}const stats={signal:messageHistory.filter(m=>m.type==='signal').length,mapping:messageHistory.filter(m=>m.type==='mapping').length,asia_breakout:messageHistory.filter(m=>m.type==='asia_breakout').length,level_alert:messageHistory.filter(m=>m.type==='level_alert').length,news_alert:messageHistory.filter(m=>m.type==='news_alert').length,daily_outlook:messageHistory.filter(m=>m.type==='daily_outlook').length,pre_market:messageHistory.filter(m=>m.type==='pre_market').length,liquidity_sweep:messageHistory.filter(m=>m.type==='liquidity_sweep').length};res.json({status:'OK',messages:filtered.slice(0,limit),stats})});
 app.get('/api/news',async(req,res)=>{const events=await fetchNews();res.json({status:'success',events})});
-app.get('/api/health',(req,res)=>{res.json({status:'OK',version:'3.7.1',session:getMarketSession(),myt:new Date(Date.now()+8*60*60*1000).toISOString(),mappings:Object.keys(aiMappings).filter(k=>aiMappings[k]&&k!=='lastUpdate').length,ea_online:(Date.now()-eaStatus.lastSeen)<30000,min_confidence:MIN_CONFIDENCE,min_entry_dist:MIN_ENTRY_DIST})});
+app.get('/api/health',(req,res)=>{res.json({status:'OK',version:'3.7.2',session:getMarketSession(),myt:new Date(Date.now()+8*60*60*1000).toISOString(),mappings:Object.keys(aiMappings).filter(k=>aiMappings[k]&&k!=='lastUpdate').length,ea_online:(Date.now()-eaStatus.lastSeen)<30000,min_confidence:MIN_CONFIDENCE,min_entry_dist:2,telegram_configured:!!(TELEGRAM_BOT_TOKEN && TELEGRAM_CHAT_ID)})});
 
 function shouldRunScheduler(){const nowMYT=new Date(Date.now()+8*60*60*1000);if(nowMYT.getUTCDay()===0||nowMYT.getUTCDay()===6)return false;return true}
 setInterval(async()=>{
@@ -695,4 +635,4 @@ setInterval(async()=>{
 },60*1000);
 
 const PORT=process.env.PORT||3000;
-app.listen(PORT,()=>{console.log(`🚀 BPT v3.7.1 running on ${PORT} | MYT: ${new Date(Date.now()+8*60*60*1000).toISOString()} | MIN_CONF: ${MIN_CONFIDENCE}% | MIN_ENTRY_DIST: ${MIN_ENTRY_DIST}`)});
+app.listen(PORT,()=>{console.log(`🚀 BPT v3.7.2 running on ${PORT} | MYT: ${new Date(Date.now()+8*60*60*1000).toISOString()} | MIN_CONFIDENCE: ${MIN_CONFIDENCE}% | Telegram: ${TELEGRAM_BOT_TOKEN && TELEGRAM_CHAT_ID ? 'SET' : 'MISSING'}`)});
