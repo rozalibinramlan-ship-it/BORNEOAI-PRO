@@ -1,6 +1,6 @@
 // ===============================================
-// BPT — Borneo Pro Trade v3.7.2 FINAL
-// Patch: Log trace untuk generate-mapping
+// BPT — Borneo Pro Trade v3.8.0 FINAL
+// Fix: Repaint issue — guna candle CLOSED bukan live
 // EA TIDAK DISENTUH
 // ===============================================
 const express = require('express');
@@ -27,7 +27,7 @@ const COOLDOWN_MS = 15 * 60 * 1000;
 const MAX_LOCK_MS = 30 * 60 * 1000;
 const NEWS_AVOID_MS = 60 * 60 * 1000;
 const SCORE_BOLEH = 65;
-const MIN_CONFIDENCE = 70; // Signal filter — skip kalau bawah 70
+const MIN_CONFIDENCE = 70;
 const SPREAD_LIMIT = { 'XAU/USD': 0.80, 'XAG/USD': 0.05, 'EUR/USD': 0.00025, 'GBP/USD': 0.00035, 'USD/JPY': 0.025, 'DEFAULT': 0.0010 };
 const TWELVEDATA_KEYS = [process.env.TWELVEDATA_API_KEY||'',process.env.TWELVEDATA_API_KEY_2||'',process.env.TWELVEDATA_API_KEY_3||''].filter(k=>k.length>0);
 let currentKeyIndex=0;
@@ -35,7 +35,8 @@ function getCurrentKey(){return TWELVEDATA_KEYS[currentKeyIndex]||TWELVEDATA_KEY
 function switchKey(){if(TWELVEDATA_KEYS.length>1)currentKeyIndex=(currentKeyIndex+1)%TWELVEDATA_KEYS.length}
 
 console.log('╔══════════════════════════════════════╗');
-console.log('║ BPT — BORNEO PRO TRADE v3.7.2 FINAL ║');
+console.log('║ BPT — BORNEO PRO TRADE v3.8.0 FINAL ║');
+console.log('║ Fix: Repaint (candle CLOSED only)   ║');
 console.log('╚══════════════════════════════════════╝');
 
 const DATA_DIR=path.join(__dirname,'data');
@@ -142,7 +143,7 @@ async function sendTelegram(message){
       console.log('📱 [TELEGRAM] Sent OK — msg_id:',r.data?.result?.message_id);
       return true;
     }catch(e){
-      console.log(`❌ [TELEGRAM] Retry ${i+1}: ${e.message} | response: ${JSON.stringify(e.response?.data||{})}`);
+      console.log(`❌ [TELEGRAM] Retry ${i+1}: ${e.message}`);
       if(i<2)await new Promise(r=>setTimeout(r,2000*Math.pow(2,i)));
     }
   }
@@ -251,7 +252,22 @@ function analyzeCandles(candles,symbol,snr,liquidity){
   return{signal:sig,confidence,score:winnerScore,ema9,ema21,ema50,buyScore,sellScore,reasons}
 }
 
-async function checkMultiTimeframe(symbol){const tfs=[{tf:'5min',label:'M5'},{tf:'15min',label:'M15'},{tf:'30min',label:'M30'},{tf:'1h',label:'H1'}];const results=await Promise.all(tfs.map(async t=>{try{const candles=await getOHLC(symbol,t.tf,100);const r=analyzeCandles(candles,symbol,null,null);return{tf:t.tf,label:t.label,signal:r?r.signal:'WAIT',confidence:r?r.confidence:0}}catch(e){return{tf:t.tf,label:t.label,signal:'WAIT',confidence:0}}}));let buyCount=0,sellCount=0;for(let r of results){if(r.signal==='BUY')buyCount++;if(r.signal==='SELL')sellCount++;}const maxCount=Math.max(buyCount,sellCount),majoritySignal=buyCount>sellCount?'BUY':sellCount>buyCount?'SELL':'WAIT';return{timeframes:results,buyCount,sellCount,agreement:maxCount+'/4',consensus:majoritySignal}}
+async function checkMultiTimeframe(symbol){
+  const tfs=[{tf:'5min',label:'M5'},{tf:'15min',label:'M15'},{tf:'30min',label:'M30'},{tf:'1h',label:'H1'}];
+  const results=await Promise.all(tfs.map(async t=>{
+    try{
+      const candlesAll=await getOHLC(symbol,t.tf,100);
+      // 🔧 v3.8.0: Buang candle live terakhir
+      const candles = candlesAll.length > 1 ? candlesAll.slice(0, -1) : candlesAll;
+      const r=analyzeCandles(candles,symbol,null,null);
+      return{tf:t.tf,label:t.label,signal:r?r.signal:'WAIT',confidence:r?r.confidence:0}
+    }catch(e){return{tf:t.tf,label:t.label,signal:'WAIT',confidence:0}}
+  }));
+  let buyCount=0,sellCount=0;
+  for(let r of results){if(r.signal==='BUY')buyCount++;if(r.signal==='SELL')sellCount++;}
+  const maxCount=Math.max(buyCount,sellCount),majoritySignal=buyCount>sellCount?'BUY':sellCount>buyCount?'SELL':'WAIT';
+  return{timeframes:results,buyCount,sellCount,agreement:maxCount+'/4',consensus:majoritySignal}
+}
 
 function pickEntryByLevel(harga, snr, fvgs, poc, bias, maxJarak) {
   const levels = [];
@@ -336,22 +352,33 @@ async function fetchNews(){if(Date.now()-newsCache.fetchedAt<NEWS_CACHE_MS&&news
 async function checkNewsBlock(){try{const events=await fetchNews();const now=Date.now();for(let ev of events){if(ev.impact!=='high')continue;const evTime=new Date(ev.time).getTime();if(isNaN(evTime))continue;if(Math.abs(evTime-now)<NEWS_AVOID_MS){const mins=Math.round((evTime-now)/60000);return{blocked:true,reason:'News '+ev.event+' ('+(mins>0?'in '+mins+' min':Math.abs(mins)+' min ago')+')'}}}return{blocked:false,reason:null}}catch(e){return{blocked:false,reason:null}}}
 
 // ===============================================
-// MAPPING
+// MAPPING — v3.8.0: GUNA CANDLE CLOSED (fix repaint)
 // ===============================================
 async function generateSessionMapping(symbol, sessionName) {
   try {
     const decimal = getDecimal(symbol);
-    console.log(`🔍 [${sessionName}] Step 1 — Mula. symbol=${symbol}`);
     const tick = await getTick(symbol);
-    const harga = tick.mid;
-    console.log(`🔍 [${sessionName}] Step 2 — Harga=${harga} source=${tick.source}`);
-    if (!harga || harga <= 0) { console.log(`❌ [${sessionName}] skip: harga=${harga}`); return; }
+    const tickHarga = tick.mid;
 
-    const candlesH4 = await getOHLC(symbol, '4h', 100);
-    const candlesH1 = await getOHLC(symbol, '1h', 200);
-    const candlesM15 = await getOHLC(symbol, '15min', 200);
-    console.log(`🔍 [${sessionName}] Step 3 — Candles H4=${candlesH4.length} H1=${candlesH1.length} M15=${candlesM15.length}`);
+    console.log(`🔍 [${sessionName}] Step 1 — Mula. Tick harga=${tickHarga} source=${tick.source}`);
+    if (!tickHarga || tickHarga <= 0) { console.log(`❌ [${sessionName}] skip: tickHarga=${tickHarga}`); return; }
+
+    // 🔧 v3.8.0: Ambil candle dan BUANG yang terakhir (belum close)
+    const candlesH4All = await getOHLC(symbol, '4h', 100);
+    const candlesH1All = await getOHLC(symbol, '1h', 200);
+    const candlesM15All = await getOHLC(symbol, '15min', 200);
+
+    const candlesH4 = candlesH4All.length > 1 ? candlesH4All.slice(0, -1) : candlesH4All;
+    const candlesH1 = candlesH1All.length > 1 ? candlesH1All.slice(0, -1) : candlesH1All;
+    const candlesM15 = candlesM15All.length > 1 ? candlesM15All.slice(0, -1) : candlesM15All;
+
+    console.log(`🔍 [${sessionName}] Step 2 — Candles CLOSED H4=${candlesH4.length} H1=${candlesH1.length} M15=${candlesM15.length}`);
     if (candlesH4.length < 50) { console.log(`❌ [${sessionName}] skip: candlesH4=${candlesH4.length}`); return; }
+
+    // 🔧 Harga untuk SIGNAL = close candle M15 terakhir (bukan live tick)
+    const lastClosedM15 = candlesM15[candlesM15.length - 1];
+    const hargaSignal = lastClosedM15.close;
+    console.log(`🔍 [${sessionName}] Step 3 — Harga SIGNAL=${hargaSignal} (M15 closed) | Tick LIVE=${tickHarga}`);
 
     const h4SNR = detectSNR(candlesH4);
     const h4Liq = detectLiquidity(candlesH4);
@@ -360,8 +387,8 @@ async function generateSessionMapping(symbol, sessionName) {
 
     const m15ATR = calculateATR(candlesM15, 14);
     const h4ATR = m15ATR > 0 ? m15ATR : calculateATR(candlesH4, 14);
-    const atrSource = m15ATR > 0 ? 'M15' : 'H4(fallback)';
-    console.log(`🔍 [${sessionName}] Step 4 — ATR=${h4ATR} (${atrSource})`);
+    const atrSource = m15ATR > 0 ? 'M15(closed)' : 'H4(closed)';
+    console.log(`🔍 [${sessionName}] Step 4 — ATR=${h4ATR.toFixed(2)} (${atrSource})`);
     if (!h4ATR || h4ATR <= 0) { console.log(`❌ [${sessionName}] skip: ATR=${h4ATR}`); return; }
 
     const rsi = calculateRSI(candlesM15, 14);
@@ -372,16 +399,20 @@ async function generateSessionMapping(symbol, sessionName) {
 
     const mtf = await checkMultiTimeframe(symbol);
     const sessionStatus = getSessionStatus(sessionName);
+
     let bias = h4Analysis ? h4Analysis.signal : 'WAIT';
     let confidence = h4Analysis ? h4Analysis.confidence : 0;
-    console.log(`🔍 [${sessionName}] Step 5 — bias=${bias} conf=${confidence}%`);
+    console.log(`🔍 [${sessionName}] Step 5 — H4 bias=${bias} conf=${confidence}%`);
+
     if (bias === 'WAIT' && mtf.consensus !== 'WAIT') {
       bias = mtf.consensus;
       confidence = Math.min(Math.round((bias === 'BUY' ? mtf.buyCount : mtf.sellCount) / 4 * 100 * 0.75), 100);
+      console.log(`🔍 [${sessionName}] Step 5b — MTF fallback → bias=${bias} conf=${confidence}%`);
     }
     if (bias === 'WAIT' && h1Analysis && h1Analysis.signal !== 'WAIT') {
       bias = h1Analysis.signal;
       confidence = Math.min(Math.round(h1Analysis.confidence * 0.8), 100);
+      console.log(`🔍 [${sessionName}] Step 5c — H1 fallback → bias=${bias} conf=${confidence}%`);
     }
 
     if (confidence < MIN_CONFIDENCE) {
@@ -390,13 +421,14 @@ async function generateSessionMapping(symbol, sessionName) {
     }
 
     const MAX_JARAK = Math.max(h4ATR * 1.5, 8);
-    const entryPick = pickEntryByLevel(harga, h4SNR, fvgs, poc, bias, MAX_JARAK);
+    // Entry guna TICK LIVE (untuk jarak dari market sekarang)
+    const entryPick = pickEntryByLevel(tickHarga, h4SNR, fvgs, poc, bias, MAX_JARAK);
 
-    console.log(`🔍 [${sessionName}] Step 6 — RSI=${rsi.toFixed(1)} ST=${superTrend.trend} EMA=${emaDistance.strength} FVG=${fvgs.length} POC=${poc?.toFixed(2)} conf=${confidence}%`);
+    console.log(`🔍 [${sessionName}] Step 6 — RSI=${rsi.toFixed(1)} ST=${superTrend.trend} EMA=${emaDistance.strength} FVG=${fvgs.length} POC=${poc?.toFixed(2)}`);
     console.log(`🔍 [${sessionName}] Step 7 — entryPick=${entryPick ? entryPick.type + '@' + entryPick.level.toFixed(2) : 'NULL'}`);
 
     if (!entryPick) {
-      console.log(`❌ [${sessionName}] skip: tiada SNR/FVG dekat dengan harga ${harga.toFixed(decimal)}`);
+      console.log(`❌ [${sessionName}] skip: tiada SNR/FVG dekat dengan tick ${tickHarga.toFixed(decimal)}`);
       return;
     }
 
@@ -429,22 +461,22 @@ async function generateSessionMapping(symbol, sessionName) {
     if (rsi < 30) rsiStatus = 'OVERSOLD';
     else if (rsi > 70) rsiStatus = 'OVERBOUGHT';
 
-    const prompt = `Mapping ${sessionName} ${symbol} harga ${harga.toFixed(decimal)} entry di ${entryType} ${entryNum.toFixed(decimal)} bias ${bias} ${confidence}% SL ${slNum.toFixed(decimal)} TP1 ${tp1Num.toFixed(decimal)} RSI ${rsi.toFixed(1)} SuperTrend ${superTrend.trend} EMA ${emaDistance.strength}`;
+    const prompt = `Mapping ${sessionName} ${symbol} harga signal ${hargaSignal.toFixed(decimal)} (M15 closed) tick live ${tickHarga.toFixed(decimal)} entry di ${entryType} ${entryNum.toFixed(decimal)} bias ${bias} ${confidence}% SL ${slNum.toFixed(decimal)} TP1 ${tp1Num.toFixed(decimal)} RSI ${rsi.toFixed(1)} SuperTrend ${superTrend.trend} EMA ${emaDistance.strength}`;
 
     console.log(`🔍 [${sessionName}] Step 8 — Panggil AI...`);
-    const aiAnalysis = await generateAIAnalysis(prompt, { bias, confidence, harga, entry: entryNum, sl: slNum, tp1: tp1Num, tp2: tp2Num, mtf, levels: { r1: h4SNR.R1, s1: h4SNR.S1 }, session: sessionName });
+    const aiAnalysis = await generateAIAnalysis(prompt, { bias, confidence, harga: tickHarga, entry: entryNum, sl: slNum, tp1: tp1Num, tp2: tp2Num, mtf, levels: { r1: h4SNR.R1, s1: h4SNR.S1 }, session: sessionName });
 
     const sessionEmoji = sessionName === 'LONDON' ? '🇬🇧' : sessionName === 'NEW YORK' ? '🇺🇸' : '🇯🇵';
     const biasEmoji = bias === 'BUY' ? '📈' : bias === 'SELL' ? '📉' : '⏳';
-    const entryNote = `📍 Entry: <b>${entryNum.toFixed(decimal)}</b> (${entryType})\n💰 Harga semasa: ${harga.toFixed(decimal)}\n`;
+    const entryNote = `📍 Entry: <b>${entryNum.toFixed(decimal)}</b> (${entryType})\n💰 Tick live: ${tickHarga.toFixed(decimal)}\n📊 Signal (M15 close): ${hargaSignal.toFixed(decimal)}\n`;
 
     let planText = bias === 'WAIT'
       ? `⚠️ <i>Setup belum jelas — fallback SELL:</i>\n\n${entryNote}🛑 SL: <b>${slNum.toFixed(decimal)}</b>\n✅ TP1: <b>${tp1Num.toFixed(decimal)}</b>\n✅ TP2: <b>${tp2Num.toFixed(decimal)}</b>\n✅ TP3: <b>${tp3Num.toFixed(decimal)}</b>\n`
       : `${entryNote}🛑 SL: <b>${slNum.toFixed(decimal)}</b>\n✅ TP1: <b>${tp1Num.toFixed(decimal)}</b>\n✅ TP2: <b>${tp2Num.toFixed(decimal)}</b>\n✅ TP3: <b>${tp3Num.toFixed(decimal)}</b>\n`;
 
-    const indicatorText = `📊 <b>INDICATORS</b>\n• RSI(14): ${rsi.toFixed(1)} (${rsiStatus})\n• SuperTrend: ${superTrend.trend} ${superTrend.trend === 'BULLISH' ? '🟢' : '🔴'}\n• EMA Distance: ${emaDistance.distance} (${emaDistance.strength})\n• FVG Fresh: ${Math.min(fvgs.length, 20)} zone\n• POC: ${poc ? poc.toFixed(decimal) : '-'}\n`;
+    const indicatorText = `📊 <b>INDICATORS</b> (M15 closed)\n• RSI(14): ${rsi.toFixed(1)} (${rsiStatus})\n• SuperTrend: ${superTrend.trend} ${superTrend.trend === 'BULLISH' ? '🟢' : '🔴'}\n• EMA Distance: ${emaDistance.distance} (${emaDistance.strength})\n• FVG Fresh: ${Math.min(fvgs.length, 20)} zone\n• POC: ${poc ? poc.toFixed(decimal) : '-'}\n`;
 
-    const msg = `${sessionEmoji} <b>MAPPING ${sessionName}</b>\n⏰ ${timeStr} MYT | 📅 ${dayName} ${dateStr}\n━━━━━━━━━━━━━━━━\n\n💰 <b>${symbol}: ${harga.toFixed(decimal)}</b> (${tick.source})\n📊 ${sessionStatus}\n\n${biasEmoji} <b>Bias: ${bias}</b> (${confidence}%) ✅\n\n━━━━━━━━━━━━━━━━\n🎯 <b>PLAN ENTRY</b>\n\n${planText}\n━━━━━━━━━━━━━━━━\n${indicatorText}\n━━━━━━━━━━━━━━━━\n📊 <b>KEY LEVELS</b>\n• R1: ${h4SNR.R1 ? h4SNR.R1.toFixed(decimal) : '-'}\n• R2: ${h4SNR.R2 ? h4SNR.R2.toFixed(decimal) : '-'}\n• S1: ${h4SNR.S1 ? h4SNR.S1.toFixed(decimal) : '-'}\n• S2: ${h4SNR.S2 ? h4SNR.S2.toFixed(decimal) : '-'}\n\n━━━━━━━━━━━━━━━━\n🤖 ${aiAnalysis}\n\n📈 MTF: ${mtf.agreement} (${mtf.consensus})\n📊 ATR ${atrSource}: ${h4ATR.toFixed(2)}\n⚠️ <i>Set limit order di ${entryType}!</i>`;
+    const msg = `${sessionEmoji} <b>MAPPING ${sessionName}</b>\n⏰ ${timeStr} MYT | 📅 ${dayName} ${dateStr}\n━━━━━━━━━━━━━━━━\n\n💰 <b>${symbol}: ${tickHarga.toFixed(decimal)}</b> (${tick.source})\n📊 ${sessionStatus}\n🔒 Signal guna M15 CLOSED\n\n${biasEmoji} <b>Bias: ${bias}</b> (${confidence}%) ✅\n\n━━━━━━━━━━━━━━━━\n🎯 <b>PLAN ENTRY</b>\n\n${planText}\n━━━━━━━━━━━━━━━━\n${indicatorText}\n━━━━━━━━━━━━━━━━\n📊 <b>KEY LEVELS</b>\n• R1: ${h4SNR.R1 ? h4SNR.R1.toFixed(decimal) : '-'}\n• R2: ${h4SNR.R2 ? h4SNR.R2.toFixed(decimal) : '-'}\n• S1: ${h4SNR.S1 ? h4SNR.S1.toFixed(decimal) : '-'}\n• S2: ${h4SNR.S2 ? h4SNR.S2.toFixed(decimal) : '-'}\n\n━━━━━━━━━━━━━━━━\n🤖 ${aiAnalysis}\n\n📈 MTF: ${mtf.agreement} (${mtf.consensus})\n📊 ATR ${atrSource}: ${h4ATR.toFixed(2)}\n🔒 <i>Signal stabil — tiada repaint</i>\n⚠️ <i>Set limit order di ${entryType}!</i>`;
 
     console.log(`🔍 [${sessionName}] Step 9 — Hantar Telegram...`);
     const sent = await sendTelegram(msg);
@@ -452,8 +484,10 @@ async function generateSessionMapping(symbol, sessionName) {
 
     aiMappings[sessionName] = {
       session: sessionName, timeStr, dateStr, dayName, symbol,
-      harga: parseFloat(harga.toFixed(decimal)),
+      harga: parseFloat(tickHarga.toFixed(decimal)),
+      harga_signal: parseFloat(hargaSignal.toFixed(decimal)),
       harga_source: tick.source,
+      signal_source: 'M15_CLOSED',
       entry_type: entryType,
       session_status: sessionStatus,
       ai_analysis: aiAnalysis,
@@ -487,27 +521,24 @@ async function generateSessionMapping(symbol, sessionName) {
 
     messageHistory.unshift({
       id: Date.now(), type: 'mapping', timestamp: Date.now(),
-      data: { session: sessionName, symbol, harga, source: tick.source, entry_type: entryType, bias, confidence, entry: entryNum, sl: slNum, tp1: tp1Num, tp2: tp2Num, tp3: tp3Num, indicators: aiMappings[sessionName].indicators, telegram_msg: msg }
+      data: { session: sessionName, symbol, harga: tickHarga, harga_signal: hargaSignal, source: tick.source, signal_source: 'M15_CLOSED', entry_type: entryType, bias, confidence, entry: entryNum, sl: slNum, tp1: tp1Num, tp2: tp2Num, tp3: tp3Num, indicators: aiMappings[sessionName].indicators, telegram_msg: msg }
     });
     if (messageHistory.length > 100) messageHistory.pop();
     saveHistory();
 
-    console.log(`✅ [${sessionName}] Step 11 — SELESAI. mapping ${bias} ${confidence}% | Entry ${entryType}@${entryNum.toFixed(decimal)}`);
+    console.log(`✅ [${sessionName}] Step 11 — SELESAI. mapping ${bias} ${confidence}% | Entry ${entryType}@${entryNum.toFixed(decimal)} | Signal harga=${hargaSignal.toFixed(decimal)} | Tick=${tickHarga.toFixed(decimal)}`);
   } catch (e) {
-    console.log(`❌ [${sessionName}] CATCH ERROR: ${e.message} | Stack: ${e.stack?.substring(0,200)}`);
+    console.log(`❌ [${sessionName}] CATCH ERROR: ${e.message}`);
   }
 }
 
 // ===================== API ROUTES =====================
 
-// 🔧 v3.7.2: Log trace penuh
 app.get('/api/generate-mapping', async (req, res) => {
   const symbol = req.query.symbol || 'XAU/USD';
   const session = (req.query.session || 'LONDON').toUpperCase();
   console.log(`🚀 [GENERATE] Request masuk — session=${session} symbol=${symbol}`);
   try {
-    const tick = await getTick(symbol);
-    console.log(`🚀 [GENERATE] Tick OK — harga=${tick.mid} source=${tick.source}`);
     await generateSessionMapping(symbol, session);
     console.log(`🚀 [GENERATE] Selesai — ${session}`);
     res.json({ status: 'OK', message: session + ' sent' });
@@ -522,13 +553,18 @@ app.get('/api/signal', async (req,res)=>{
   const decimal=getDecimal(symbol);
   try{
     const tick=await getTick(symbol);
-    const harga=tick.mid;
-    if(!harga||harga<=0) return res.status(503).json({error:'No price data', signal:'WAIT', score:0});
+    const tickHarga=tick.mid;
+    if(!tickHarga||tickHarga<=0) return res.status(503).json({error:'No price data', signal:'WAIT', score:0});
 
-    const candles=await getOHLC(symbol,'5min',300);
-    if(candles.length<50) return res.json({symbol,harga:parseFloat(harga.toFixed(decimal)),harga_source:tick.source,signal:'WAIT',score:0,session:getMarketSession()});
+    const candlesAll=await getOHLC(symbol,'5min',300);
+    const candlesM15All=await getOHLC(symbol,'15min',200);
 
-    const candlesM15=await getOHLC(symbol,'15min',200);
+    // 🔧 v3.8.0: Buang candle live
+    const candles = candlesAll.length > 1 ? candlesAll.slice(0, -1) : candlesAll;
+    const candlesM15 = candlesM15All.length > 1 ? candlesM15All.slice(0, -1) : candlesM15All;
+
+    if(candles.length<50) return res.json({symbol,harga:parseFloat(tickHarga.toFixed(decimal)),harga_source:tick.source,signal:'WAIT',score:0,session:getMarketSession()});
+
     const snr=detectSNR(candles);
     const liq=detectLiquidity(candles);
     const analysis=analyzeCandles(candles,symbol,snr,liq);
@@ -548,7 +584,7 @@ app.get('/api/signal', async (req,res)=>{
 
     if (analysis && analysis.signal !== 'WAIT' && analysis.confidence < MIN_CONFIDENCE) {
       return res.json({
-        symbol, harga: parseFloat(harga.toFixed(decimal)), harga_source: tick.source,
+        symbol, harga: parseFloat(tickHarga.toFixed(decimal)), harga_source: tick.source,
         signal: 'WAIT', score: analysis.score, confidence: 0,
         entry: null, sl: null, tp1: null, tp2: null, tp3: null,
         session: getMarketSession(), reason: `Signal lemah (${analysis.confidence}% < ${MIN_CONFIDENCE}%)`,
@@ -565,11 +601,11 @@ app.get('/api/signal', async (req,res)=>{
     }
 
     const MAX_JARAK_SIGNAL = Math.max(atr * 1.5, 8);
-    const entryPickSignal = pickEntryByLevel(harga, snr, fvgs, poc, analysis ? analysis.signal : 'WAIT', MAX_JARAK_SIGNAL);
+    const entryPickSignal = pickEntryByLevel(tickHarga, snr, fvgs, poc, analysis ? analysis.signal : 'WAIT', MAX_JARAK_SIGNAL);
 
     if (!entryPickSignal) {
       return res.json({
-        symbol, harga: parseFloat(harga.toFixed(decimal)), harga_source: tick.source,
+        symbol, harga: parseFloat(tickHarga.toFixed(decimal)), harga_source: tick.source,
         signal: 'WAIT', score: 0, confidence: 0,
         entry: null, sl: null, tp1: null, tp2: null, tp3: null,
         session: getMarketSession(), reason: 'Tiada SNR/FVG/POC dekat',
@@ -592,7 +628,7 @@ app.get('/api/signal', async (req,res)=>{
       : null;
 
     res.json({
-      symbol, harga: parseFloat(harga.toFixed(decimal)), harga_source: tick.source,
+      symbol, harga: parseFloat(tickHarga.toFixed(decimal)), harga_source: tick.source,
       signal: analysis ? analysis.signal : 'WAIT',
       score: analysis ? analysis.score : 0,
       confidence: analysis ? analysis.confidence : 0,
@@ -602,6 +638,7 @@ app.get('/api/signal', async (req,res)=>{
       tp2: sltpFinal ? parseFloat(sltpFinal.tp2) : null,
       tp3: sltpFinal ? parseFloat(sltpFinal.tp3) : null,
       session: getMarketSession(), mtf, snr,
+      signal_source: 'CLOSED_CANDLES',
       indicators: {
         rsi: parseFloat(rsi.toFixed(1)), rsi_status: rsiStatus,
         supertrend: superTrend.trend,
@@ -618,10 +655,10 @@ app.get('/api/signal', async (req,res)=>{
 });
 
 app.get('/api/mapping',(req,res)=>{res.json({status:'OK',mappings:aiMappings,current_session:getMarketSession(),timestamp:Date.now()})});
-app.get('/api/market',async(req,res)=>{const symbol=req.query.symbol||'XAU/USD';const decimal=getDecimal(symbol);try{const tick=await getTick(symbol);const candles=await getOHLC(symbol,'5min',300);const harga=tick.mid||(candles.length?candles[candles.length-1].close:0);if(!harga)return res.status(503).json({error:'No price data'});const snr=detectSNR(candles);const liq=detectLiquidity(candles);res.json({symbol,harga:parseFloat(harga.toFixed(decimal)),harga_source:tick.source,spread:parseFloat(tick.spread.toFixed(decimal)),spread_ok:isSpreadOK(symbol,tick.spread),POC:snr.POC?parseFloat(snr.POC.toFixed(decimal)):null,R1:snr.R1?parseFloat(snr.R1.toFixed(decimal)):null,R2:snr.R2?parseFloat(snr.R2.toFixed(decimal)):null,R3:snr.R3?parseFloat(snr.R3.toFixed(decimal)):null,S1:snr.S1?parseFloat(snr.S1.toFixed(decimal)):null,S2:snr.S2?parseFloat(snr.S2.toFixed(decimal)):null,S3:snr.S3?parseFloat(snr.S3.toFixed(decimal)):null,liquidity:liq,session:getMarketSession()})}catch(e){res.status(500).json({error:e.message})}});
+app.get('/api/market',async(req,res)=>{const symbol=req.query.symbol||'XAU/USD';const decimal=getDecimal(symbol);try{const tick=await getTick(symbol);const candlesAll=await getOHLC(symbol,'5min',300);const candles = candlesAll.length > 1 ? candlesAll.slice(0, -1) : candlesAll;const harga=tick.mid||(candles.length?candles[candles.length-1].close:0);if(!harga)return res.status(503).json({error:'No price data'});const snr=detectSNR(candles);const liq=detectLiquidity(candles);res.json({symbol,harga:parseFloat(harga.toFixed(decimal)),harga_source:tick.source,spread:parseFloat(tick.spread.toFixed(decimal)),spread_ok:isSpreadOK(symbol,tick.spread),POC:snr.POC?parseFloat(snr.POC.toFixed(decimal)):null,R1:snr.R1?parseFloat(snr.R1.toFixed(decimal)):null,R2:snr.R2?parseFloat(snr.R2.toFixed(decimal)):null,R3:snr.R3?parseFloat(snr.R3.toFixed(decimal)):null,S1:snr.S1?parseFloat(snr.S1.toFixed(decimal)):null,S2:snr.S2?parseFloat(snr.S2.toFixed(decimal)):null,S3:snr.S3?parseFloat(snr.S3.toFixed(decimal)):null,liquidity:liq,session:getMarketSession()})}catch(e){res.status(500).json({error:e.message})}});
 app.get('/api/messages',(req,res)=>{const limit=parseInt(req.query.limit)||50;const type=req.query.type;let filtered=messageHistory;if(type&&type!=='all'){const types=type.split(',').map(t=>t.trim());filtered=messageHistory.filter(m=>types.includes(m.type))}const stats={signal:messageHistory.filter(m=>m.type==='signal').length,mapping:messageHistory.filter(m=>m.type==='mapping').length,asia_breakout:messageHistory.filter(m=>m.type==='asia_breakout').length,level_alert:messageHistory.filter(m=>m.type==='level_alert').length,news_alert:messageHistory.filter(m=>m.type==='news_alert').length,daily_outlook:messageHistory.filter(m=>m.type==='daily_outlook').length,pre_market:messageHistory.filter(m=>m.type==='pre_market').length,liquidity_sweep:messageHistory.filter(m=>m.type==='liquidity_sweep').length};res.json({status:'OK',messages:filtered.slice(0,limit),stats})});
 app.get('/api/news',async(req,res)=>{const events=await fetchNews();res.json({status:'success',events})});
-app.get('/api/health',(req,res)=>{res.json({status:'OK',version:'3.7.2',session:getMarketSession(),myt:new Date(Date.now()+8*60*60*1000).toISOString(),mappings:Object.keys(aiMappings).filter(k=>aiMappings[k]&&k!=='lastUpdate').length,ea_online:(Date.now()-eaStatus.lastSeen)<30000,min_confidence:MIN_CONFIDENCE,min_entry_dist:2,telegram_configured:!!(TELEGRAM_BOT_TOKEN && TELEGRAM_CHAT_ID)})});
+app.get('/api/health',(req,res)=>{res.json({status:'OK',version:'3.8.0',session:getMarketSession(),myt:new Date(Date.now()+8*60*60*1000).toISOString(),mappings:Object.keys(aiMappings).filter(k=>aiMappings[k]&&k!=='lastUpdate').length,ea_online:(Date.now()-eaStatus.lastSeen)<30000,min_confidence:MIN_CONFIDENCE,min_entry_dist:2,signal_source:'M15_CLOSED',telegram_configured:!!(TELEGRAM_BOT_TOKEN && TELEGRAM_CHAT_ID)})});
 
 function shouldRunScheduler(){const nowMYT=new Date(Date.now()+8*60*60*1000);if(nowMYT.getUTCDay()===0||nowMYT.getUTCDay()===6)return false;return true}
 setInterval(async()=>{
@@ -635,4 +672,4 @@ setInterval(async()=>{
 },60*1000);
 
 const PORT=process.env.PORT||3000;
-app.listen(PORT,()=>{console.log(`🚀 BPT v3.7.2 running on ${PORT} | MYT: ${new Date(Date.now()+8*60*60*1000).toISOString()} | MIN_CONFIDENCE: ${MIN_CONFIDENCE}% | Telegram: ${TELEGRAM_BOT_TOKEN && TELEGRAM_CHAT_ID ? 'SET' : 'MISSING'}`)});
+app.listen(PORT,()=>{console.log(`🚀 BPT v3.8.0 running on ${PORT} | MYT: ${new Date(Date.now()+8*60*60*1000).toISOString()} | Signal: M15 CLOSED | MIN_CONF: ${MIN_CONFIDENCE}%`)});
