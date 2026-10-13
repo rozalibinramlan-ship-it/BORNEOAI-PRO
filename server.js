@@ -1,6 +1,6 @@
 // ===============================================
-// BPT — Borneo Pro Trade v3.7.0 FINAL
-// Fix: FVG mitigation + Confidence ≥70 filter
+// BPT — Borneo Pro Trade v3.7.1 FINAL
+// Fix: FVG mitigation + Confidence ≥70 + Guard jarak 2.0
 // EA TIDAK DISENTUH
 // ===============================================
 const express = require('express');
@@ -27,7 +27,8 @@ const COOLDOWN_MS = 15 * 60 * 1000;
 const MAX_LOCK_MS = 30 * 60 * 1000;
 const NEWS_AVOID_MS = 60 * 60 * 1000;
 const SCORE_BOLEH = 65;
-const MIN_CONFIDENCE = 70; // 🔧 v3.7.0: Signal filter — skip kalau bawah 70
+const MIN_CONFIDENCE = 70; // 🔧 v3.7.1: Signal filter
+const MIN_ENTRY_DIST = 2.0; // 🔧 v3.7.1: Entry mesti ≥2 pts dari market
 const SPREAD_LIMIT = { 'XAU/USD': 0.80, 'XAG/USD': 0.05, 'EUR/USD': 0.00025, 'GBP/USD': 0.00035, 'USD/JPY': 0.025, 'DEFAULT': 0.0010 };
 const TWELVEDATA_KEYS = [process.env.TWELVEDATA_API_KEY||'',process.env.TWELVEDATA_API_KEY_2||'',process.env.TWELVEDATA_API_KEY_3||''].filter(k=>k.length>0);
 let currentKeyIndex=0;
@@ -35,7 +36,7 @@ function getCurrentKey(){return TWELVEDATA_KEYS[currentKeyIndex]||TWELVEDATA_KEY
 function switchKey(){if(TWELVEDATA_KEYS.length>1)currentKeyIndex=(currentKeyIndex+1)%TWELVEDATA_KEYS.length}
 
 console.log('╔══════════════════════════════════════╗');
-console.log('║ BPT — BORNEO PRO TRADE v3.7.0 FINAL ║');
+console.log('║ BPT — BORNEO PRO TRADE v3.7.1 FINAL ║');
 console.log('╚══════════════════════════════════════╝');
 
 const DATA_DIR=path.join(__dirname,'data');
@@ -171,7 +172,6 @@ function getPipSize(s){if(s.indexOf('JPY')>=0)return 0.01;if(s.indexOf('XAU')>=0
 function calculateEMA(closes,period){if(closes.length===0)return 0;let e=closes[0];let k=2/(period+1);for(let i=1;i<closes.length;i++)e=(closes[i]*k)+(e*(1-k));return e}
 function calculateATR(candles,period){period=period||14;if(candles.length<period+1)return 0;let trs=[];for(let i=candles.length-period;i<candles.length;i++){const h=candles[i].high,l=candles[i].low,pc=candles[i-1].close;trs.push(Math.max(h-l,Math.abs(h-pc),Math.abs(l-pc)))}return trs.reduce((a,b)=>a+b,0)/period}
 
-// 🔧 FASA 1: RSI(14) — simple average (cukup untuk filter)
 function calculateRSI(candles, period) {
   period = period || 14;
   if (candles.length < period + 1) return 0;
@@ -189,7 +189,6 @@ function calculateRSI(candles, period) {
   return 100 - (100 / (1 + rs));
 }
 
-// 🔧 FASA 1: SuperTrend (simplified — OK untuk scalper)
 function calculateSuperTrend(candles, period, multiplier) {
   period = period || 10;
   multiplier = multiplier || 3.0;
@@ -215,7 +214,6 @@ function calculateSuperTrend(candles, period, multiplier) {
   return { trend, value };
 }
 
-// 🔧 FASA 1: EMA Distance
 function calculateEMADistance(candles) {
   if (candles.length < 21) return { distance: 0, strength: 'WEAK' };
   const closes = candles.map(c => c.close);
@@ -228,7 +226,7 @@ function calculateEMADistance(candles) {
   return { distance: parseFloat(distance.toFixed(2)), strength };
 }
 
-// 🔧 FASA 2 + v3.7.0: FVG Detection DENGAN MITIGATION CHECK
+// 🔧 FASA 2: FVG Detection DENGAN MITIGATION CHECK
 function detectFVG(candles) {
   if (!candles || candles.length < 5) return [];
   const fvgs = [];
@@ -237,30 +235,14 @@ function detectFVG(candles) {
     const c1 = recent[i - 2];
     const c3 = recent[i];
 
-    // Bullish FVG: c1.high < c3.low
     if (c1.high < c3.low) {
-      const fvg = {
-        type: 'BULLISH',
-        top: c3.low,
-        bottom: c1.high,
-        mid: (c3.low + c1.high) / 2,
-        index: i
-      };
-      // 🔧 v3.7.0: Cek mitigasi — kalau FVG dah kena sentuh, skip
+      const fvg = { type: 'BULLISH', top: c3.low, bottom: c1.high, mid: (c3.low + c1.high) / 2, index: i };
       const mitigated = recent.slice(i + 1).some(c => c.low <= fvg.bottom);
       if (!mitigated) fvgs.push(fvg);
     }
 
-    // Bearish FVG: c1.low > c3.high
     if (c1.low > c3.high) {
-      const fvg = {
-        type: 'BEARISH',
-        top: c1.low,
-        bottom: c3.high,
-        mid: (c1.low + c3.high) / 2,
-        index: i
-      };
-      // 🔧 v3.7.0: Cek mitigasi — kalau FVG dah kena sentuh, skip
+      const fvg = { type: 'BEARISH', top: c1.low, bottom: c3.high, mid: (c1.low + c3.high) / 2, index: i };
       const mitigated = recent.slice(i + 1).some(c => c.high >= fvg.top);
       if (!mitigated) fvgs.push(fvg);
     }
@@ -268,7 +250,6 @@ function detectFVG(candles) {
   return fvgs;
 }
 
-// 🔧 FASA 2: POC (swing frequency proxy)
 function detectPOC(candles) {
   if (!candles || candles.length < 50) return null;
   const recent = candles.slice(-100);
@@ -292,7 +273,7 @@ function detectSNR(candles){if(!candles||candles.length<50)return{S1:null,S2:nul
 function detectLiquidity(candles){if(!candles||candles.length<100)return null;const recent=candles.slice(-300);const yesterdayCandles=recent.slice(-288,-50);const asiaCandles=recent.slice(-96,-20);const londonCandles=recent.slice(-60);const yesterdayHigh=yesterdayCandles.length?Math.max(...yesterdayCandles.map(c=>c.high)):0;const yesterdayLow=yesterdayCandles.length?Math.min(...yesterdayCandles.map(c=>c.low)):0;const asiaHigh=asiaCandles.length?Math.max(...asiaCandles.map(c=>c.high)):0;const asiaLow=asiaCandles.length?Math.min(...asiaCandles.map(c=>c.low)):0;const londonHigh=londonCandles.length?Math.max(...londonCandles.map(c=>c.high)):0;const londonLow=londonCandles.length?Math.min(...londonCandles.map(c=>c.low)):0;const lastCandle=recent[recent.length-1];let sweep=null;if(lastCandle.high>yesterdayHigh&&lastCandle.close<yesterdayHigh)sweep={type:'SWEEP_HIGH',level:yesterdayHigh,source:'YESTERDAY_HIGH',bias:'SELL'};else if(lastCandle.high>asiaHigh&&lastCandle.close<asiaHigh)sweep={type:'SWEEP_HIGH',level:asiaHigh,source:'ASIA_HIGH',bias:'SELL'};else if(lastCandle.low<yesterdayLow&&lastCandle.close>yesterdayLow)sweep={type:'SWEEP_LOW',level:yesterdayLow,source:'YESTERDAY_LOW',bias:'BUY'};else if(lastCandle.low<asiaLow&&lastCandle.close>asiaLow)sweep={type:'SWEEP_LOW',level:asiaLow,source:'ASIA_LOW',bias:'BUY'};return{yesterdayHigh,yesterdayLow,asiaHigh,asiaLow,londonHigh,londonLow,sweep,currentPrice:recent[recent.length-1].close}}
 
 // ===============================================
-// ANALYZE CANDLES — v3.7.0: Confidence ≥70 filter
+// ANALYZE CANDLES — Confidence ≥70 filter
 // ===============================================
 function analyzeCandles(candles,symbol,snr,liquidity){
   if(!candles||candles.length<50)return null;
@@ -332,13 +313,11 @@ function analyzeCandles(candles,symbol,snr,liquidity){
   if(!(diff<10&&winnerScore>=SCORE_BOLEH)){
     if(winner==='BUY'&&buyScore>=SCORE_BOLEH){
       const conf=Math.min(Math.round((buyScore/maxScore)*100),100);
-      // 🔧 v3.7.0: Filter — skip kalau bawah MIN_CONFIDENCE
       if(conf >= MIN_CONFIDENCE){
         sig='BUY';confidence=conf;reasons=buyReasons;
       }
     } else if(winner==='SELL'&&sellScore>=SCORE_BOLEH){
       const conf=Math.min(Math.round((sellScore/maxScore)*100),100);
-      // 🔧 v3.7.0: Filter — skip kalau bawah MIN_CONFIDENCE
       if(conf >= MIN_CONFIDENCE){
         sig='SELL';confidence=conf;reasons=sellReasons;
       }
@@ -350,7 +329,7 @@ function analyzeCandles(candles,symbol,snr,liquidity){
 async function checkMultiTimeframe(symbol){const tfs=[{tf:'5min',label:'M5'},{tf:'15min',label:'M15'},{tf:'30min',label:'M30'},{tf:'1h',label:'H1'}];const results=await Promise.all(tfs.map(async t=>{try{const candles=await getOHLC(symbol,t.tf,100);const r=analyzeCandles(candles,symbol,null,null);return{tf:t.tf,label:t.label,signal:r?r.signal:'WAIT',confidence:r?r.confidence:0}}catch(e){return{tf:t.tf,label:t.label,signal:'WAIT',confidence:0}}}));let buyCount=0,sellCount=0;for(let r of results){if(r.signal==='BUY')buyCount++;if(r.signal==='SELL')sellCount++;}const maxCount=Math.max(buyCount,sellCount),majoritySignal=buyCount>sellCount?'BUY':sellCount>buyCount?'SELL':'WAIT';return{timeframes:results,buyCount,sellCount,agreement:maxCount+'/4',consensus:majoritySignal}}
 
 // ===============================================
-// 🔧 FASA 2: Pilih entry dari SNR + FVG + POC
+// 🔧 Pilih entry dari SNR + FVG + POC (v3.7.1)
 // ===============================================
 function pickEntryByLevel(harga, snr, fvgs, poc, bias, maxJarak) {
   const levels = [];
@@ -372,7 +351,7 @@ function pickEntryByLevel(harga, snr, fvgs, poc, bias, maxJarak) {
   const candidates = levels.filter(l => {
     const jarak = Math.abs(l.level - harga);
     if (jarak > maxJarak) return false;
-    if (jarak < 1.0) return false;
+    if (jarak < MIN_ENTRY_DIST) return false; // 🔧 v3.7.1: guard 2.0
     if (bias === 'BUY') return l.level < harga;
     if (bias === 'SELL') return l.level > harga;
     return false;
@@ -435,7 +414,7 @@ async function fetchNews(){if(Date.now()-newsCache.fetchedAt<NEWS_CACHE_MS&&news
 async function checkNewsBlock(){try{const events=await fetchNews();const now=Date.now();for(let ev of events){if(ev.impact!=='high')continue;const evTime=new Date(ev.time).getTime();if(isNaN(evTime))continue;if(Math.abs(evTime-now)<NEWS_AVOID_MS){const mins=Math.round((evTime-now)/60000);return{blocked:true,reason:'News '+ev.event+' ('+(mins>0?'in '+mins+' min':Math.abs(mins)+' min ago')+')'}}}return{blocked:false,reason:null}}catch(e){return{blocked:false,reason:null}}}
 
 // ===============================================
-// MAPPING — v3.7.0: Confidence ≥70 filter
+// MAPPING — Confidence ≥70 + Guard 2.0
 // ===============================================
 async function generateSessionMapping(symbol, sessionName) {
   try {
@@ -479,7 +458,6 @@ async function generateSessionMapping(symbol, sessionName) {
       confidence = Math.min(Math.round(h1Analysis.confidence * 0.8), 100);
     }
 
-    // 🔧 v3.7.0: Filter — skip kalau confidence bawah 70
     if (confidence < MIN_CONFIDENCE) {
       console.log(`❌ [${sessionName}] skip: confidence ${confidence}% < ${MIN_CONFIDENCE}%`);
       return;
@@ -492,7 +470,7 @@ async function generateSessionMapping(symbol, sessionName) {
     console.log(`[${sessionName}] entryPick=${entryPick ? entryPick.type + '@' + entryPick.level.toFixed(2) : 'NULL'}`);
 
     if (!entryPick) {
-      console.log(`❌ [${sessionName}] skip: tiada SNR/FVG dekat dengan harga ${harga.toFixed(decimal)}`);
+      console.log(`❌ [${sessionName}] skip: tiada SNR/FVG dekat (min jarak ${MIN_ENTRY_DIST})`);
       return;
     }
 
@@ -622,7 +600,15 @@ app.get('/api/signal', async (req,res)=>{
     if (rsi < 30) rsiStatus = 'OVERSOLD';
     else if (rsi > 70) rsiStatus = 'OVERBOUGHT';
 
-    // 🔧 v3.7.0: Filter — skip kalau confidence bawah 70
+    const indicatorsObj = {
+      rsi: parseFloat(rsi.toFixed(1)), rsi_status: rsiStatus,
+      supertrend: superTrend.trend,
+      supertrend_value: parseFloat((superTrend.value || 0).toFixed(decimal)),
+      ema_distance: emaDistance.distance, ema_strength: emaDistance.strength,
+      fvg_count: Math.min(fvgs.length, 20),
+      poc: poc ? parseFloat(poc.toFixed(decimal)) : null
+    };
+
     if (analysis && analysis.signal !== 'WAIT' && analysis.confidence < MIN_CONFIDENCE) {
       return res.json({
         symbol,
@@ -636,14 +622,7 @@ app.get('/api/signal', async (req,res)=>{
         reason: `Signal lemah (${analysis.confidence}% < ${MIN_CONFIDENCE}%)`,
         mtf,
         snr,
-        indicators: {
-          rsi: parseFloat(rsi.toFixed(1)), rsi_status: rsiStatus,
-          supertrend: superTrend.trend,
-          supertrend_value: parseFloat((superTrend.value || 0).toFixed(decimal)),
-          ema_distance: emaDistance.distance, ema_strength: emaDistance.strength,
-          fvg_count: Math.min(fvgs.length, 20),
-          poc: poc ? parseFloat(poc.toFixed(decimal)) : null
-        }
+        indicators: indicatorsObj
       });
     }
 
@@ -660,17 +639,10 @@ app.get('/api/signal', async (req,res)=>{
         confidence: 0,
         entry: null, sl: null, tp1: null, tp2: null, tp3: null,
         session: getMarketSession(),
-        reason: 'Tiada SNR/FVG/POC dekat',
+        reason: `Tiada SNR/FVG dekat (min jarak ${MIN_ENTRY_DIST})`,
         mtf,
         snr,
-        indicators: {
-          rsi: parseFloat(rsi.toFixed(1)), rsi_status: rsiStatus,
-          supertrend: superTrend.trend,
-          supertrend_value: parseFloat((superTrend.value || 0).toFixed(decimal)),
-          ema_distance: emaDistance.distance, ema_strength: emaDistance.strength,
-          fvg_count: Math.min(fvgs.length, 20),
-          poc: poc ? parseFloat(poc.toFixed(decimal)) : null
-        }
+        indicators: indicatorsObj
       });
     }
 
@@ -696,14 +668,7 @@ app.get('/api/signal', async (req,res)=>{
       session: getMarketSession(),
       mtf,
       snr,
-      indicators: {
-        rsi: parseFloat(rsi.toFixed(1)), rsi_status: rsiStatus,
-        supertrend: superTrend.trend,
-        supertrend_value: parseFloat((superTrend.value || 0).toFixed(decimal)),
-        ema_distance: emaDistance.distance, ema_strength: emaDistance.strength,
-        fvg_count: Math.min(fvgs.length, 20),
-        poc: poc ? parseFloat(poc.toFixed(decimal)) : null
-      }
+      indicators: indicatorsObj
     });
   }catch(e){
     console.log(`❌ [SIGNAL] ${symbol} error:`, e.message);
@@ -716,7 +681,7 @@ app.get('/api/generate-mapping',async(req,res)=>{const symbol=req.query.symbol||
 app.get('/api/market',async(req,res)=>{const symbol=req.query.symbol||'XAU/USD';const decimal=getDecimal(symbol);try{const tick=await getTick(symbol);const candles=await getOHLC(symbol,'5min',300);const harga=tick.mid||(candles.length?candles[candles.length-1].close:0);if(!harga)return res.status(503).json({error:'No price data'});const snr=detectSNR(candles);const liq=detectLiquidity(candles);res.json({symbol,harga:parseFloat(harga.toFixed(decimal)),harga_source:tick.source,spread:parseFloat(tick.spread.toFixed(decimal)),spread_ok:isSpreadOK(symbol,tick.spread),POC:snr.POC?parseFloat(snr.POC.toFixed(decimal)):null,R1:snr.R1?parseFloat(snr.R1.toFixed(decimal)):null,R2:snr.R2?parseFloat(snr.R2.toFixed(decimal)):null,R3:snr.R3?parseFloat(snr.R3.toFixed(decimal)):null,S1:snr.S1?parseFloat(snr.S1.toFixed(decimal)):null,S2:snr.S2?parseFloat(snr.S2.toFixed(decimal)):null,S3:snr.S3?parseFloat(snr.S3.toFixed(decimal)):null,liquidity:liq,session:getMarketSession()})}catch(e){res.status(500).json({error:e.message})}});
 app.get('/api/messages',(req,res)=>{const limit=parseInt(req.query.limit)||50;const type=req.query.type;let filtered=messageHistory;if(type&&type!=='all'){const types=type.split(',').map(t=>t.trim());filtered=messageHistory.filter(m=>types.includes(m.type))}const stats={signal:messageHistory.filter(m=>m.type==='signal').length,mapping:messageHistory.filter(m=>m.type==='mapping').length,asia_breakout:messageHistory.filter(m=>m.type==='asia_breakout').length,level_alert:messageHistory.filter(m=>m.type==='level_alert').length,news_alert:messageHistory.filter(m=>m.type==='news_alert').length,daily_outlook:messageHistory.filter(m=>m.type==='daily_outlook').length,pre_market:messageHistory.filter(m=>m.type==='pre_market').length,liquidity_sweep:messageHistory.filter(m=>m.type==='liquidity_sweep').length};res.json({status:'OK',messages:filtered.slice(0,limit),stats})});
 app.get('/api/news',async(req,res)=>{const events=await fetchNews();res.json({status:'success',events})});
-app.get('/api/health',(req,res)=>{res.json({status:'OK',version:'3.7.0',session:getMarketSession(),myt:new Date(Date.now()+8*60*60*1000).toISOString(),mappings:Object.keys(aiMappings).filter(k=>aiMappings[k]&&k!=='lastUpdate').length,ea_online:(Date.now()-eaStatus.lastSeen)<30000,min_confidence:MIN_CONFIDENCE})});
+app.get('/api/health',(req,res)=>{res.json({status:'OK',version:'3.7.1',session:getMarketSession(),myt:new Date(Date.now()+8*60*60*1000).toISOString(),mappings:Object.keys(aiMappings).filter(k=>aiMappings[k]&&k!=='lastUpdate').length,ea_online:(Date.now()-eaStatus.lastSeen)<30000,min_confidence:MIN_CONFIDENCE,min_entry_dist:MIN_ENTRY_DIST})});
 
 function shouldRunScheduler(){const nowMYT=new Date(Date.now()+8*60*60*1000);if(nowMYT.getUTCDay()===0||nowMYT.getUTCDay()===6)return false;return true}
 setInterval(async()=>{
@@ -730,4 +695,4 @@ setInterval(async()=>{
 },60*1000);
 
 const PORT=process.env.PORT||3000;
-app.listen(PORT,()=>{console.log(`🚀 BPT v3.7.0 running on ${PORT} | MYT: ${new Date(Date.now()+8*60*60*1000).toISOString()} | MIN_CONFIDENCE: ${MIN_CONFIDENCE}%`)});
+app.listen(PORT,()=>{console.log(`🚀 BPT v3.7.1 running on ${PORT} | MYT: ${new Date(Date.now()+8*60*60*1000).toISOString()} | MIN_CONF: ${MIN_CONFIDENCE}% | MIN_ENTRY_DIST: ${MIN_ENTRY_DIST}`)});

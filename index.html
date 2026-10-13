@@ -38,44 +38,16 @@ body {
 .font-bangers { font-family: 'Luckiest Guy', cursive; letter-spacing: 1px; }
 .font-fredoka { font-family: 'Baloo 2', sans-serif; }
 
-/* ===== HEADER ===== */
 .header { padding: 14px 15px; background: #000; border-bottom: 1px solid var(--border); position: relative; }
 .header-top { position: relative; padding-top: 4px; }
 .header-brand { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
 .brand-left { display: flex; align-items: center; gap: 12px; }
-.brand-logo {
-  width: 44px; height: 44px; border-radius: 10px; object-fit: cover;
-  border: 1px solid var(--border-gold);
-  box-shadow: 0 0 15px rgba(251,191,36,0.4);
-  display: block;
-}
-.brand-icon {
-  width: 44px; height: 44px; border-radius: 10px;
-  background: linear-gradient(135deg, #1a1a1a, #0a0a0a);
-  border: 1px solid var(--border-gold);
-  display: flex; align-items: center; justify-content: center;
-  font-size: 22px;
-  box-shadow: 0 0 15px rgba(251,191,36,0.2);
-}
-.brand-name {
-  font-family: 'Luckiest Guy', cursive;
-  font-size: 26px; font-weight: 400; color: var(--gold);
-  letter-spacing: 1.5px; line-height: 1;
-  text-shadow: 0 0 15px rgba(251,191,36,0.5);
-}
-.brand-sub {
-  font-family: 'Baloo 2', sans-serif; font-size: 10px; color: var(--gray);
-  letter-spacing: 2px; margin-top: 3px; font-weight: 700; text-transform: uppercase;
-}
+.brand-logo { width: 44px; height: 44px; border-radius: 10px; object-fit: cover; border: 1px solid var(--border-gold); box-shadow: 0 0 15px rgba(251,191,36,0.4); display: block; }
+.brand-icon { width: 44px; height: 44px; border-radius: 10px; background: linear-gradient(135deg, #1a1a1a, #0a0a0a); border: 1px solid var(--border-gold); display: flex; align-items: center; justify-content: center; font-size: 22px; box-shadow: 0 0 15px rgba(251,191,36,0.2); }
+.brand-name { font-family: 'Luckiest Guy', cursive; font-size: 26px; font-weight: 400; color: var(--gold); letter-spacing: 1.5px; line-height: 1; text-shadow: 0 0 15px rgba(251,191,36,0.5); }
+.brand-sub { font-family: 'Baloo 2', sans-serif; font-size: 10px; color: var(--gray); letter-spacing: 2px; margin-top: 3px; font-weight: 700; text-transform: uppercase; }
 
-/* ===== MT4 BADGE ===== */
-.mt4-badge {
-  position: absolute; top: 4px; right: 15px;
-  display: flex; align-items: center; gap: 5px;
-  padding: 4px 9px; border-radius: 6px;
-  font-size: 9px; font-weight: 800; letter-spacing: 1px;
-  font-family: 'Baloo 2', sans-serif;
-}
+.mt4-badge { position: absolute; top: 4px; right: 15px; display: flex; align-items: center; gap: 5px; padding: 4px 9px; border-radius: 6px; font-size: 9px; font-weight: 800; letter-spacing: 1px; font-family: 'Baloo 2', sans-serif; }
 .mt4-badge.online { background: rgba(34,197,94,0.15); border: 1px solid var(--green); color: var(--green); }
 .mt4-badge.offline { background: rgba(239,68,68,0.15); border: 1px solid var(--red); color: var(--red); }
 .mt4-badge .dot { width: 5px; height: 5px; border-radius: 50%; display: inline-block; }
@@ -83,110 +55,46 @@ body {
 .mt4-badge.offline .dot { background: var(--red); }
 @keyframes blink { 0%,100% { opacity: 1; } 50% { opacity: 0.3; } }
 
-/* ===== MYT CLOCK ===== */
-.clock-row {
-  display: flex; justify-content: space-between; align-items: center;
-  padding: 6px 0; font-size: 11px; color: var(--gray);
-  font-weight: 700; font-family: 'Baloo 2', sans-serif;
-}
+.clock-row { display: flex; justify-content: space-between; align-items: center; padding: 6px 0; font-size: 11px; color: var(--gray); font-weight: 700; font-family: 'Baloo 2', sans-serif; }
 .clock-row .time { color: var(--gold); font-weight: 800; }
 
-/* ===== MT4 STATUS BAR ===== */
-.mt4-status-bar {
-  padding: 8px 12px;
-  background: linear-gradient(90deg, transparent, rgba(251,191,36,0.04), transparent);
-  border-bottom: 1px solid var(--border);
-  font-size: 10px; font-weight: 700; letter-spacing: 0.5px;
-  text-align: center; font-family: 'Baloo 2', sans-serif;
-}
+.mt4-status-bar { padding: 8px 12px; background: linear-gradient(90deg, transparent, rgba(251,191,36,0.04), transparent); border-bottom: 1px solid var(--border); font-size: 10px; font-weight: 700; letter-spacing: 0.5px; text-align: center; font-family: 'Baloo 2', sans-serif; }
 .mt4-status-bar.online { color: var(--green); }
 .mt4-status-bar.offline { color: var(--red); }
 .mt4-status-bar .row { display: flex; justify-content: center; gap: 8px; flex-wrap: wrap; margin: 2px 0; }
 .mt4-status-bar .sep { color: var(--gray-dim); }
 .mt4-status-bar .label { color: var(--gray); font-weight: 600; }
 
-/* ===== SELECT ===== */
-select {
-  margin-top: 10px; padding: 11px 14px; border-radius: 10px;
-  background: #0a0a0a; color: var(--gold);
-  border: 1px solid var(--border-gold);
-  font-weight: 700; width: 100%; font-size: 13px;
-  font-family: 'Baloo 2', sans-serif; outline: none; letter-spacing: 1px;
-}
+select { margin-top: 10px; padding: 11px 14px; border-radius: 10px; background: #0a0a0a; color: var(--gold); border: 1px solid var(--border-gold); font-weight: 700; width: 100%; font-size: 13px; font-family: 'Baloo 2', sans-serif; outline: none; letter-spacing: 1px; }
 
-/* ===== SCREEN ===== */
 .screen { display: none; padding: 14px; }
 .screen.active { display: block; }
 
-/* ===== CARD ===== */
-.card {
-  background: var(--bg-card); border: 1px solid var(--border);
-  border-radius: 14px; padding: 14px; margin-bottom: 12px; position: relative;
-}
-.card-title {
-  font-family: 'Luckiest Guy', cursive; font-size: 17px; font-weight: 400;
-  color: var(--gold); margin-bottom: 12px; letter-spacing: 1.5px;
-  display: flex; align-items: center; justify-content: space-between;
-  text-shadow: 0 0 10px rgba(251,191,36,0.4);
-}
-.card-title::after {
-  content: ''; flex: 1; height: 1px;
-  background: linear-gradient(90deg, var(--border-gold), transparent);
-  margin-left: 12px;
-}
+.card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 14px; padding: 14px; margin-bottom: 12px; position: relative; }
+.card-title { font-family: 'Luckiest Guy', cursive; font-size: 17px; font-weight: 400; color: var(--gold); margin-bottom: 12px; letter-spacing: 1.5px; display: flex; align-items: center; justify-content: space-between; text-shadow: 0 0 10px rgba(251,191,36,0.4); }
+.card-title::after { content: ''; flex: 1; height: 1px; background: linear-gradient(90deg, var(--border-gold), transparent); margin-left: 12px; }
 
-/* ===== PAIR HEADER ===== */
 .pair-header { background: #000; border: 1px solid var(--border); border-radius: 14px; padding: 18px; margin-bottom: 12px; }
 .pair-row-1 { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 6px; }
-.pair-name {
-  font-family: 'Luckiest Guy', cursive; font-size: 32px; font-weight: 400;
-  color: var(--gold); letter-spacing: 1px; line-height: 1;
-  text-shadow: 0 0 25px rgba(251,191,36,0.6);
-}
-.pair-price {
-  font-family: 'Luckiest Guy', cursive; font-size: 32px; font-weight: 400;
-  color: var(--gold-bright); letter-spacing: 1px; line-height: 1;
-  text-shadow: 0 0 25px rgba(251,191,36,0.7);
-}
-.pair-row-2 {
-  display: flex; justify-content: space-between; align-items: center;
-  font-size: 11px; color: var(--gray); font-weight: 700; letter-spacing: 1px;
-  font-family: 'Baloo 2', sans-serif;
-}
+.pair-name { font-family: 'Luckiest Guy', cursive; font-size: 32px; font-weight: 400; color: var(--gold); letter-spacing: 1px; line-height: 1; text-shadow: 0 0 25px rgba(251,191,36,0.6); }
+.pair-price { font-family: 'Luckiest Guy', cursive; font-size: 32px; font-weight: 400; color: var(--gold-bright); letter-spacing: 1px; line-height: 1; text-shadow: 0 0 25px rgba(251,191,36,0.7); }
+.pair-row-2 { display: flex; justify-content: space-between; align-items: center; font-size: 11px; color: var(--gray); font-weight: 700; letter-spacing: 1px; font-family: 'Baloo 2', sans-serif; }
 .pair-change { display: flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 800; }
 .pair-change.down { color: var(--red-neon); }
 .pair-change.up { color: var(--green-neon); }
 .pair-change.live { color: var(--gold); }
-.live-dot {
-  width: 6px; height: 6px; border-radius: 50%;
-  background: var(--green); box-shadow: 0 0 8px var(--green);
-  animation: blink 1.5s infinite; display: inline-block; margin-right: 4px;
-}
+.live-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--green); box-shadow: 0 0 8px var(--green); animation: blink 1.5s infinite; display: inline-block; margin-right: 4px; }
 
-/* ===== SIGNAL BOX ===== */
-.signal-box {
-  padding: 35px 20px; border-radius: 20px; text-align: center;
-  margin: 12px 0; border: 1px solid var(--border); background: #000;
-  position: relative; overflow: hidden;
-}
+.signal-box { padding: 35px 20px; border-radius: 20px; text-align: center; margin: 12px 0; border: 1px solid var(--border); background: #000; position: relative; overflow: hidden; }
 .signal-box.wait { color: var(--gray); }
-.signal-box.buy {
-  background: linear-gradient(135deg, #052e1a, #0a0a0a);
-  border: 1px solid rgba(0,255,136,0.3);
-  box-shadow: inset 0 0 40px rgba(0,255,136,0.1);
-}
-.signal-box.sell {
-  background: linear-gradient(135deg, #2e0512, #0a0a0a);
-  border: 1px solid rgba(255,46,91,0.3);
-  box-shadow: inset 0 0 40px rgba(255,46,91,0.1);
-}
+.signal-box.buy { background: linear-gradient(135deg, #052e1a, #0a0a0a); border: 1px solid rgba(0,255,136,0.3); box-shadow: inset 0 0 40px rgba(0,255,136,0.1); }
+.signal-box.sell { background: linear-gradient(135deg, #2e0512, #0a0a0a); border: 1px solid rgba(255,46,91,0.3); box-shadow: inset 0 0 40px rgba(255,46,91,0.1); }
 .signal-main { font-family: 'Luckiest Guy', cursive; font-size: 64px; font-weight: 400; letter-spacing: 3px; line-height: 1; }
 .signal-box.buy .signal-main { color: var(--green-neon); text-shadow: 0 0 30px var(--green-neon), 0 0 60px rgba(0,255,136,0.4); }
 .signal-box.sell .signal-main { color: var(--red-neon); text-shadow: 0 0 30px var(--red-neon), 0 0 60px rgba(255,46,91,0.4); }
 .signal-box.wait .signal-main { color: var(--gray); }
 .signal-conf { font-family: 'Baloo 2', sans-serif; font-size: 14px; margin-top: 10px; letter-spacing: 2px; color: var(--cream); opacity: 0.8; font-weight: 700; }
 
-/* ===== DATA GRID ===== */
 .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
 .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 .data-box { background: var(--bg-card-2); border: 1px solid var(--border); border-radius: 10px; padding: 12px 8px; text-align: center; }
@@ -199,13 +107,11 @@ select {
 .data-value.blue { color: #38bdf8; text-shadow: 0 0 12px rgba(56,189,248,0.4); }
 .data-value.gray { color: var(--gray); }
 
-/* ===== ENTRY CARD ===== */
 .entry-card { background: var(--bg-card); border: 1px solid var(--border-gold); border-radius: 14px; padding: 20px; text-align: center; margin-bottom: 12px; }
 .entry-label { font-family: 'Baloo 2', sans-serif; font-size: 10px; color: var(--gray); letter-spacing: 3px; font-weight: 700; margin-bottom: 8px; text-transform: uppercase; }
 .entry-value { font-family: 'Luckiest Guy', cursive; font-size: 42px; font-weight: 400; color: var(--gold); letter-spacing: 1.5px; text-shadow: 0 0 30px rgba(251,191,36,0.7); }
 .entry-source { font-family: 'Baloo 2', sans-serif; font-size: 10px; color: var(--gray); margin-top: 6px; letter-spacing: 1px; font-weight: 700; }
 
-/* ===== CONFIRMATION ===== */
 .conf-box { text-align: center; padding: 18px; }
 .conf-label { font-family: 'Baloo 2', sans-serif; font-size: 10px; color: var(--gray); letter-spacing: 3px; font-weight: 700; margin-bottom: 8px; text-transform: uppercase; }
 .conf-value { font-family: 'Luckiest Guy', cursive; font-size: 52px; font-weight: 400; color: var(--green-neon); text-shadow: 0 0 30px rgba(0,255,136,0.7); letter-spacing: 2px; }
@@ -214,22 +120,13 @@ select {
 .conf-value.low { color: var(--red-neon); text-shadow: 0 0 30px rgba(255,46,91,0.7); }
 .conf-value.gray { color: var(--gray); text-shadow: none; }
 
-/* ===== SESSION ROW ===== */
 .session-row { display: flex; justify-content: space-between; padding: 14px; background: var(--bg-card); border: 1px solid var(--border); border-radius: 14px; margin-bottom: 12px; }
 .session-item { text-align: center; flex: 1; }
 .session-label { font-family: 'Baloo 2', sans-serif; font-size: 9px; color: var(--gray); letter-spacing: 2px; margin-bottom: 6px; font-weight: 700; text-transform: uppercase; }
 .session-value { font-family: 'Luckiest Guy', cursive; font-size: 20px; font-weight: 400; color: var(--gold); letter-spacing: 1px; }
 
-/* ===== POC BANNER ===== */
-.poc-banner {
-  background: linear-gradient(135deg, var(--gold), var(--gold-dim));
-  color: #000; font-family: 'Luckiest Guy', cursive; font-weight: 400;
-  text-align: center; padding: 14px; border-radius: 12px; margin-bottom: 12px;
-  font-size: 20px; letter-spacing: 2px;
-  box-shadow: 0 0 25px rgba(251,191,36,0.4);
-}
+.poc-banner { background: linear-gradient(135deg, var(--gold), var(--gold-dim)); color: #000; font-family: 'Luckiest Guy', cursive; font-weight: 400; text-align: center; padding: 14px; border-radius: 12px; margin-bottom: 12px; font-size: 20px; letter-spacing: 2px; box-shadow: 0 0 25px rgba(251,191,36,0.4); }
 
-/* ===== SNR GRID ===== */
 .snr-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-bottom: 10px; }
 .snr-box { background: var(--bg-card-2); padding: 12px 6px; border-radius: 10px; text-align: center; border: 1px solid var(--border); }
 .snr-label { font-family: 'Baloo 2', sans-serif; font-size: 10px; margin-bottom: 6px; font-weight: 800; letter-spacing: 1px; }
@@ -246,21 +143,9 @@ select {
 .snr-box.yellow { background: linear-gradient(135deg, var(--gold), var(--gold-dim)); border: none; box-shadow: 0 0 15px rgba(251,191,36,0.4); }
 .snr-box.yellow .snr-label, .snr-box.yellow .snr-value { color: #000; }
 
-/* ===== MAPPING TABS ===== */
-.mapping-tab {
-  padding: 12px 8px; background: var(--bg-card-2);
-  border: 1px solid var(--border); border-radius: 10px;
-  color: var(--gray); font-family: 'Luckiest Guy', cursive;
-  font-size: 14px; font-weight: 400; cursor: pointer;
-  transition: all 0.3s; letter-spacing: 1px;
-}
-.mapping-tab.active {
-  background: linear-gradient(135deg, var(--gold), var(--gold-dim));
-  color: #000; border-color: var(--gold);
-  box-shadow: 0 0 20px rgba(251,191,36,0.5);
-}
+.mapping-tab { padding: 12px 8px; background: var(--bg-card-2); border: 1px solid var(--border); border-radius: 10px; color: var(--gray); font-family: 'Luckiest Guy', cursive; font-size: 14px; font-weight: 400; cursor: pointer; transition: all 0.3s; letter-spacing: 1px; }
+.mapping-tab.active { background: linear-gradient(135deg, var(--gold), var(--gold-dim)); color: #000; border-color: var(--gold); box-shadow: 0 0 20px rgba(251,191,36,0.5); }
 
-/* ===== MAPPING CARD ===== */
 .mapping-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 14px; padding: 16px; margin-bottom: 12px; }
 .mapping-ai-text { font-family: 'Baloo 2', sans-serif; font-size: 13px; line-height: 1.7; color: var(--cream); white-space: pre-wrap; word-break: break-word; font-weight: 600; }
 .mapping-badge { display: inline-block; padding: 4px 10px; border-radius: 6px; font-size: 10px; font-weight: 800; letter-spacing: 1px; font-family: 'Baloo 2', sans-serif; }
@@ -268,95 +153,33 @@ select {
 .badge-slow { background: rgba(251,191,36,0.15); color: var(--gold); border: 1px solid var(--gold); }
 .badge-closed { background: rgba(255,46,91,0.15); color: var(--red-neon); border: 1px solid var(--red-neon); }
 
-/* ===== MESSAGES ===== */
-.msg-filter {
-  padding: 8px 14px; background: var(--bg-card-2);
-  border: 1px solid var(--border); border-radius: 8px;
-  color: var(--gray); font-family: 'Luckiest Guy', cursive;
-  font-size: 13px; font-weight: 400; cursor: pointer;
-  transition: all 0.3s; letter-spacing: 1px;
-}
-.msg-filter.active {
-  background: linear-gradient(135deg, var(--gold), var(--gold-dim));
-  color: #000; border-color: var(--gold);
-  box-shadow: 0 0 15px rgba(251,191,36,0.4);
-}
+.msg-filter { padding: 8px 14px; background: var(--bg-card-2); border: 1px solid var(--border); border-radius: 8px; color: var(--gray); font-family: 'Luckiest Guy', cursive; font-size: 13px; font-weight: 400; cursor: pointer; transition: all 0.3s; letter-spacing: 1px; }
+.msg-filter.active { background: linear-gradient(135deg, var(--gold), var(--gold-dim)); color: #000; border-color: var(--gold); box-shadow: 0 0 15px rgba(251,191,36,0.4); }
 .msg-card { background: var(--bg-card); border: 1px solid var(--border); border-left: 3px solid var(--gold); border-radius: 10px; padding: 12px; margin-bottom: 10px; }
 .msg-card.signal { border-left-color: var(--green-neon); }
 .msg-card.mapping { border-left-color: #38bdf8; }
 .msg-card.asia_breakout { border-left-color: #a78bfa; }
-.msg-card.daily_outlook { border-left-color: var(--gold); }
-.msg-card.pre_market { border-left-color: #f97316; }
-.msg-card.level_alert { border-left-color: #ec4899; }
-.msg-card.news_alert { border-left-color: var(--red-neon); }
-.msg-card.liquidity_sweep { border-left-color: #06b6d4; }
 .msg-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; padding-bottom: 8px; border-bottom: 1px solid var(--border); }
 .msg-type { font-family: 'Luckiest Guy', cursive; font-size: 13px; font-weight: 400; color: var(--gold); letter-spacing: 1px; }
 .msg-time { font-family: 'Baloo 2', sans-serif; font-size: 10px; color: var(--gray); font-weight: 700; }
 .msg-body { font-family: 'Baloo 2', sans-serif; font-size: 12px; color: var(--cream); white-space: pre-wrap; line-height: 1.6; word-break: break-word; font-weight: 600; }
 
-/* ===== MT4 SCREEN ===== */
-.mt4-status {
-  display: flex; align-items: center; justify-content: center; gap: 10px;
-  padding: 14px; border-radius: 12px; margin-bottom: 14px;
-  font-family: 'Luckiest Guy', cursive; font-size: 20px; font-weight: 400; letter-spacing: 2px;
-}
-.mt4-status.online {
-  background: linear-gradient(135deg, rgba(0,255,136,0.1), rgba(0,0,0,0));
-  border: 1px solid var(--green-neon); color: var(--green-neon);
-  text-shadow: 0 0 15px rgba(0,255,136,0.6);
-  box-shadow: 0 0 25px rgba(0,255,136,0.2);
-}
-.mt4-status.offline {
-  background: linear-gradient(135deg, rgba(255,46,91,0.1), rgba(0,0,0,0));
-  border: 1px solid var(--red-neon); color: var(--red-neon);
-}
-.mt4-btn {
-  padding: 16px; border: none; border-radius: 12px;
-  font-family: 'Luckiest Guy', cursive; font-weight: 400;
-  font-size: 16px; cursor: pointer; letter-spacing: 1.5px;
-  transition: all 0.3s; width: 100%;
-}
+.mt4-status { display: flex; align-items: center; justify-content: center; gap: 10px; padding: 14px; border-radius: 12px; margin-bottom: 14px; font-family: 'Luckiest Guy', cursive; font-size: 20px; font-weight: 400; letter-spacing: 2px; }
+.mt4-status.online { background: linear-gradient(135deg, rgba(0,255,136,0.1), rgba(0,0,0,0)); border: 1px solid var(--green-neon); color: var(--green-neon); text-shadow: 0 0 15px rgba(0,255,136,0.6); box-shadow: 0 0 25px rgba(0,255,136,0.2); }
+.mt4-status.offline { background: linear-gradient(135deg, rgba(255,46,91,0.1), rgba(0,0,0,0)); border: 1px solid var(--red-neon); color: var(--red-neon); }
+.mt4-btn { padding: 16px; border: none; border-radius: 12px; font-family: 'Luckiest Guy', cursive; font-weight: 400; font-size: 16px; cursor: pointer; letter-spacing: 1.5px; transition: all 0.3s; width: 100%; }
 .mt4-btn.buy { background: linear-gradient(135deg, var(--green-neon), #059669); color: #000; box-shadow: 0 0 25px rgba(0,255,136,0.4); }
 .mt4-btn.sell { background: linear-gradient(135deg, var(--red-neon), #be123c); color: #fff; box-shadow: 0 0 25px rgba(255,46,91,0.4); }
 .mt4-btn.close { background: linear-gradient(135deg, var(--gold), var(--gold-dim)); color: #000; box-shadow: 0 0 25px rgba(251,191,36,0.4); }
 .mt4-btn:active { transform: scale(0.97); }
-.mt4-input {
-  flex: 1; padding: 12px; background: var(--bg-card-2);
-  border: 1px solid var(--border-gold); border-radius: 10px;
-  color: var(--gold); font-family: 'Luckiest Guy', cursive; font-weight: 400;
-  text-align: center; outline: none; font-size: 20px; letter-spacing: 1px;
-}
-.position-card {
-  background: var(--bg-card-2); border-left: 3px solid var(--gold);
-  border-radius: 8px; padding: 10px 12px; margin-bottom: 8px;
-  display: flex; justify-content: space-between; align-items: center;
-  font-family: 'Baloo 2', sans-serif; font-size: 12px; font-weight: 700;
-}
+.mt4-input { flex: 1; padding: 12px; background: var(--bg-card-2); border: 1px solid var(--border-gold); border-radius: 10px; color: var(--gold); font-family: 'Luckiest Guy', cursive; font-weight: 400; text-align: center; outline: none; font-size: 20px; letter-spacing: 1px; }
+.position-card { background: var(--bg-card-2); border-left: 3px solid var(--gold); border-radius: 8px; padding: 10px 12px; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; font-family: 'Baloo 2', sans-serif; font-size: 12px; font-weight: 700; }
 
-/* ===== NEWS ===== */
-.news-item {
-  background: var(--bg-card); border: 1px solid var(--border);
-  border-radius: 12px; padding: 14px; margin-bottom: 10px;
-  border-left: 3px solid var(--gold);
-  font-family: 'Baloo 2', sans-serif;
-}
+.news-item { background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; padding: 14px; margin-bottom: 10px; border-left: 3px solid var(--gold); font-family: 'Baloo 2', sans-serif; }
 
-/* ===== BOTTOM NAV ===== */
-#bottom-nav {
-  position: fixed; bottom: 0; left: 0; width: 100%;
-  background: linear-gradient(180deg, #0a0a0a, #000);
-  border-top: 1px solid var(--border);
-  padding: 8px 0 12px; z-index: 100;
-}
+#bottom-nav { position: fixed; bottom: 0; left: 0; width: 100%; background: linear-gradient(180deg, #0a0a0a, #000); border-top: 1px solid var(--border); padding: 8px 0 12px; z-index: 100; }
 .nav-grid { display: flex; justify-content: space-around; margin-bottom: 6px; }
-.nav-item {
-  display: flex; flex-direction: column; align-items: center;
-  color: var(--gray); font-family: 'Luckiest Guy', cursive;
-  font-size: 11px; cursor: pointer; background: none; border: none;
-  width: 13.5%; letter-spacing: 0.5px; font-weight: 400;
-  padding: 4px 0; position: relative;
-}
+.nav-item { display: flex; flex-direction: column; align-items: center; color: var(--gray); font-family: 'Luckiest Guy', cursive; font-size: 11px; cursor: pointer; background: none; border: none; width: 13.5%; letter-spacing: 0.5px; font-weight: 400; padding: 4px 0; position: relative; }
 .nav-item.active { color: var(--gold); }
 .nav-item.active span { color: var(--gold); }
 .nav-item span { margin-top: 4px; }
@@ -365,16 +188,8 @@ select {
 .nav-badge-dot.online { background: var(--green-neon); box-shadow: 0 0 8px var(--green-neon); animation: blink 1.5s infinite; display: block; }
 .nav-badge-dot.offline { background: var(--red-neon); display: block; }
 
-/* ===== TIER FOOTER ===== */
-.tier-footer {
-  text-align: center; font-family: 'Luckiest Guy', cursive;
-  font-size: 13px; color: var(--gold); letter-spacing: 2px;
-  padding: 8px; border: 1px solid var(--border-gold); border-radius: 20px;
-  margin: 0 30px; font-weight: 400;
-  text-shadow: 0 0 10px rgba(251,191,36,0.4);
-}
+.tier-footer { text-align: center; font-family: 'Luckiest Guy', cursive; font-size: 13px; color: var(--gold); letter-spacing: 2px; padding: 8px; border: 1px solid var(--border-gold); border-radius: 20px; margin: 0 30px; font-weight: 400; text-shadow: 0 0 10px rgba(251,191,36,0.4); }
 
-/* ===== LOADING ===== */
 .loading { text-align: center; padding: 40px; color: var(--gray); font-family: 'Baloo 2', sans-serif; }
 .loading .spinner { font-size: 42px; margin-bottom: 15px; animation: spin 2s linear infinite; display: inline-block; }
 @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
@@ -417,7 +232,6 @@ select {
   💼 MT4 OFFLINE · Menunggu EA connect...
 </div>
 
-<!-- ===== SCREEN: SIGNAL ===== -->
 <div id="screen-signal" class="screen active">
   <div class="pair-header">
     <div class="pair-row-1">
@@ -464,7 +278,6 @@ select {
     </div>
   </div>
 
-  <!-- 🔧 FASA 1 & 2: INDICATORS -->
   <div class="card">
     <div class="card-title">📊 INDICATORS</div>
     <div class="grid-3">
@@ -512,10 +325,8 @@ select {
   </div>
 </div>
 
-<!-- ===== SCREEN: LEVELS ===== -->
 <div id="screen-levels" class="screen">
   <div class="poc-banner">POC <span id="poc-val">-</span></div>
-
   <div class="card">
     <div class="card-title">⭐ AUTO SNR LEVELS</div>
     <div class="snr-grid">
@@ -530,7 +341,6 @@ select {
       <div class="snr-box green"><div class="snr-label">S3</div><div class="snr-value" id="s3">-</div></div>
     </div>
   </div>
-
   <div class="card">
     <div class="card-title">💧 LIQUIDITY LEVELS</div>
     <div id="liquidity-content" style="font-family:'Baloo 2',sans-serif; font-size:12px; color:var(--cream); line-height:1.8;">
@@ -539,7 +349,6 @@ select {
   </div>
 </div>
 
-<!-- ===== SCREEN: MAPPING ===== -->
 <div id="screen-mapping" class="screen">
   <div style="display:grid; grid-template-columns:repeat(3,1fr); gap:6px; margin-bottom:12px;">
     <button onclick="showMapping('ASIA')" class="mapping-tab" id="tab-asia">ASIA</button>
@@ -557,7 +366,6 @@ select {
   </button>
 </div>
 
-<!-- ===== SCREEN: ASIA ===== -->
 <div id="screen-asia" class="screen">
   <div class="card" style="text-align:center; padding:14px;">
     <div style="font-family:'Baloo 2',sans-serif; font-size:10px; color:var(--gray); letter-spacing:2px; margin-bottom:6px;">🔺 ASIA BREAKOUT STATUS</div>
@@ -572,7 +380,6 @@ select {
   </div>
 </div>
 
-<!-- ===== SCREEN: NEWS ===== -->
 <div id="screen-news" class="screen">
   <div class="card">
     <div class="card-title">📰 ECONOMIC NEWS (USD)</div>
@@ -582,7 +389,6 @@ select {
   </div>
 </div>
 
-<!-- ===== SCREEN: MESSAGES ===== -->
 <div id="screen-messages" class="screen">
   <div class="card">
     <div class="card-title">📨 NOTIFICATION HISTORY</div>
@@ -601,10 +407,8 @@ select {
   </div>
 </div>
 
-<!-- ===== SCREEN: MT4 ===== -->
 <div id="screen-mt4" class="screen">
   <div class="mt4-status offline" id="mt4-screen-status">🔴 OFFLINE</div>
-
   <div class="card">
     <div class="card-title">💼 ACCOUNT INFO</div>
     <div class="grid-2">
@@ -620,7 +424,6 @@ select {
       <div class="data-box"><div class="data-label">Currency</div><div class="data-value cream" id="mt4-currency" style="font-size:14px;">-</div></div>
     </div>
   </div>
-
   <div class="card">
     <div class="card-title">⚡ EXECUTE TRADE</div>
     <div class="grid-2" style="margin-bottom:10px;">
@@ -633,7 +436,6 @@ select {
     </div>
     <button class="mt4-btn close" onclick="mt4CloseAll()">⚠ CLOSE ALL POSITIONS</button>
   </div>
-
   <div class="card">
     <div class="card-title">📊 OPEN POSITIONS</div>
     <div id="mt4-positions">
@@ -724,7 +526,7 @@ async function dapatkanSignal() {
     if (data.signal === 'BUY' || data.signal === 'SELL') {
       sb.innerHTML = `
         <div class="signal-main">${data.signal}</div>
-        <div class="signal-conf">Confidence: ${data.score || 0}%</div>
+        <div class="signal-conf">Confidence: ${data.confidence || 0}%</div>
       `;
       sb.className = data.signal === 'BUY' ? 'signal-box buy' : 'signal-box sell';
     } else {
@@ -735,7 +537,6 @@ async function dapatkanSignal() {
       sb.className = 'signal-box wait';
     }
 
-    // Entry dengan entry_type
     const entryText = data.entry ? fmtValRaw(data.entry, '-') : '-';
     const entryType = data.entry_type ? ' (' + data.entry_type + ')' : '';
     document.getElementById('signal-entry').innerText = entryText + entryType;
@@ -746,7 +547,6 @@ async function dapatkanSignal() {
     document.getElementById('sig-tp2').innerText = fmtVal(data.tp2);
     document.getElementById('sig-tp3').innerText = fmtVal(data.tp3);
 
-    // 🔧 FASA 1 & 2: Papar indicators
     const ind = data.indicators || {};
 
     const rsiEl = document.getElementById('ind-rsi');
@@ -794,8 +594,9 @@ async function dapatkanSignal() {
       pocEl.innerText = ind.poc.toFixed(2);
     }
 
+    // 🔧 v3.7.1: Guna CONFIDENCE, bukan SCORE
     const confEl = document.getElementById('conf-percent');
-    const confValue = data.score || 0;
+    const confValue = data.confidence || 0;
     confEl.innerText = confValue + '%';
     confEl.className = 'conf-value';
     if (confValue >= 80) confEl.classList.add('high');
@@ -889,7 +690,6 @@ function showMapping(sessionName) {
   const tp2Display   = fmtVal(map.tp2, '—');
   const planIncomplete = (map.sl === 0 || map.tp1 === 0 || !map.sl || !map.tp1);
 
-  // Indicators block
   const ind = map.indicators || {};
   let indHtml = '';
   if (ind.rsi !== undefined) {
@@ -1041,7 +841,6 @@ async function loadMessages(filter) {
         `;
       }
       content.innerHTML = html;
-
       msgs.forEach(m => {
         const card = document.createElement('div');
         const mtype = m.type || 'unknown';
@@ -1050,14 +849,12 @@ async function loadMessages(filter) {
         const text = (m.data && m.data.telegram_msg)
           ? m.data.telegram_msg.replace(/<[^>]*>/g, '').replace(/\n+/g, ' · ').substring(0, 300)
           : JSON.stringify(m.data || {}).substring(0, 200);
-
         const typeLabels = {
           signal: '📊 SIGNAL', mapping: '🗺️ MAPPING', asia_breakout: '🔺 ASIA',
           daily_outlook: '📅 DAILY', pre_market: '⏰ PRE-MKT',
           level_alert: '🚨 LEVEL', news_alert: '📰 NEWS', liquidity_sweep: '💧 SWEEP'
         };
         const typeLabel = typeLabels[mtype] || mtype.toUpperCase();
-
         card.innerHTML = `
           <div class="msg-header">
             <div class="msg-type">${typeLabel}</div>
@@ -1109,9 +906,6 @@ async function loadAsiaBreakout() {
             <div>
               <div style="font-family:'Luckiest Guy',cursive; font-size:16px; color:${biasColor}; letter-spacing:0.5px;">${typeEmoji} ${(d.type || 'BREAKOUT').replace(/_/g, ' ')}</div>
               <div style="font-family:'Baloo 2',sans-serif; font-size:9px; color:var(--gray); margin-top:3px;">🕐 ${time} MYT</div>
-            </div>
-            <div style="text-align:right;">
-              <div style="font-family:'Luckiest Guy',cursive; font-size:12px; color:${biasColor}; padding:3px 8px; background:rgba(${d.bias === 'BUY' ? '0,255,136' : '255,46,91'},0.1); border-radius:6px; border:1px solid ${biasColor}; letter-spacing:0.5px;">${d.bias || '-'}</div>
             </div>
           </div>
         `;
