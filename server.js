@@ -1,7 +1,7 @@
 // ===============================================
-// BPT — Borneo Pro Trade v3.8.1 FINAL
-// Fix: Buang H4 dari bias — H1 primary
-// Signal: M15 CLOSED (anti-repaint)
+// BPT — Borneo Pro Trade v3.8.2 FINAL
+// SNR Primary Logic — Harga dekat R1/S1 = signal
+// H1 fallback · H4 info sahaja · Anti-repaint
 // EA TIDAK DISENTUH
 // ===============================================
 const express = require('express');
@@ -29,6 +29,8 @@ const MAX_LOCK_MS = 30 * 60 * 1000;
 const NEWS_AVOID_MS = 60 * 60 * 1000;
 const SCORE_BOLEH = 65;
 const MIN_CONFIDENCE = 70;
+const SNR_CONFIDENCE = 75; // 🔧 v3.8.2: Fixed confidence untuk SNR signal
+const SNR_PROXIMITY_MULT = 1.5; // 🔧 v3.8.2: ATR × 1.5
 const SPREAD_LIMIT = { 'XAU/USD': 0.80, 'XAG/USD': 0.05, 'EUR/USD': 0.00025, 'GBP/USD': 0.00035, 'USD/JPY': 0.025, 'DEFAULT': 0.0010 };
 const TWELVEDATA_KEYS = [process.env.TWELVEDATA_API_KEY||'',process.env.TWELVEDATA_API_KEY_2||'',process.env.TWELVEDATA_API_KEY_3||''].filter(k=>k.length>0);
 let currentKeyIndex=0;
@@ -36,8 +38,8 @@ function getCurrentKey(){return TWELVEDATA_KEYS[currentKeyIndex]||TWELVEDATA_KEY
 function switchKey(){if(TWELVEDATA_KEYS.length>1)currentKeyIndex=(currentKeyIndex+1)%TWELVEDATA_KEYS.length}
 
 console.log('╔══════════════════════════════════════╗');
-console.log('║ BPT — BORNEO PRO TRADE v3.8.1 FINAL ║');
-console.log('║ H1 primary · No H4 bias · No repaint║');
+console.log('║ BPT — BORNEO PRO TRADE v3.8.2 FINAL ║');
+console.log('║ SNR Primary · H1 Fallback · No Bias ║');
 console.log('╚══════════════════════════════════════╝');
 
 const DATA_DIR=path.join(__dirname,'data');
@@ -124,13 +126,12 @@ function getMarketSession(){
   return 'CLOSED';
 }
 function getSessionStatus(s){if(s==='LONDON'||s==='NEW YORK')return '🟢 PRIME';if(s==='ASIA')return '🟡 SLOW';return '🔴 CLOSED'}
-function isSessionActive(n){const c=getMarketSession();if(n==='NEW YORK')return c==='NEW YORK'||c==='LONDON';return c===n}
 
 async function generateAIAnalysis(prompt,fallbackData){
   if(GEMINI_API_KEY){try{const r=await ai.models.generateContent({model:GEMINI_MODEL,contents:prompt});if(r&&r.text&&r.text.length>10)return r.text}catch(e){}}
   const {bias,confidence,entry,sl,tp1,tp2,mtf,levels}=fallbackData;
   let a='';
-  if(bias==='WAIT')a=`⏳ <b>Setup belum jelas</b>\n• H1 belum confirm\n• MTF: ${mtf.agreement} (${mtf.consensus})\n• Tunggu close H1`;
+  if(bias==='WAIT')a=`⏳ <b>Setup belum jelas</b>\n• Harga tengah range\n• Tunggu dekat R1/S1`;
   else if(bias==='BUY')a=`📈 <b>Bias BUY (${confidence}%)</b>\n• Entry: ${entry}\n• TP1: ${tp1} | TP2: ${tp2}\n• Retest ${levels?.s1||'support'}`;
   else a=`📉 <b>Bias SELL (${confidence}%)</b>\n• Entry: ${entry}\n• TP1: ${tp1} | TP2: ${tp2}\n• Retest ${levels?.r1||'resistance'}`;
   return a+`\n\n⚙️ <i>Analysis manual — AI offline</i>`;
@@ -204,7 +205,7 @@ function detectPOC(candles) {
 }
 
 function getATRProfile(candles){const atrNow=calculateATR(candles,14),atrAvg=calculateATR(candles,50);if(atrAvg===0||atrNow===0)return {atrNow:0,ratio:1,level:'NORMAL',tp1Mult:3.0,tp2Mult:6.0,tp3Mult:10.0};const ratio=atrNow/atrAvg;let level,tp1Mult,tp2Mult,tp3Mult;if(ratio>=1.5){level='VOLATILE';tp1Mult=5.0;tp2Mult=10.0;tp3Mult=15.0}else if(ratio>=1.0){level='NORMAL';tp1Mult=3.0;tp2Mult=6.0;tp3Mult=10.0}else if(ratio>=0.7){level='SLOW';tp1Mult=2.0;tp2Mult=4.0;tp3Mult=6.0}else{level='VERY_SLOW';tp1Mult=1.5;tp2Mult=3.0;tp3Mult=4.5}return{atrNow,atrAvg,ratio,level,tp1Mult,tp2Mult,tp3Mult}}
-function detectSNR(candles){if(!candles||candles.length<50)return{S1:null,S2:null,S3:null,R1:null,R2:null,R3:null,POC:0};const recent=candles.slice(-200);const lastPrice=recent[recent.length-1].close;let atrSum=0;for(let i=0;i<14;i++)atrSum+=(recent.slice(-14)[i].high-recent.slice(-14)[i].low);const ATR=atrSum/14;const tolerance=Math.max(lastPrice*0.002,ATR*0.4);let swingLows=[],swingHighs=[];for(let i=2;i<recent.length-2;i++){const isLow=recent[i].low<recent[i-1].low&&recent[i].low<recent[i-2].low&&recent[i].low<recent[i+1].low&&recent[i].low<recent[i+2].low;const isHigh=recent[i].high>recent[i-1].high&&recent[i].high>recent[i-2].high&&recent[i].high>recent[i+1].high&&recent[i].high>recent[i+2].high;if(isLow)swingLows.push({price:recent[i].low});if(isHigh)swingHighs.push({price:recent[i].high})}let supports=swingLows.filter(s=>s.price<lastPrice).sort((a,b)=>b.price-a.price);let resistances=swingHighs.filter(s=>s.price>lastPrice).sort((a,b)=>a.price-b.price);return{S1:supports[0]?.price||null,S2:supports[1]?.price||null,S3:supports[2]?.price||null,R1:resistances[0]?.price||null,R2:resistances[1]?.price||null,R3:resistances[2]?.price||null,POC:lastPrice}}
+function detectSNR(candles){if(!candles||candles.length<50)return{S1:null,S2:null,S3:null,R1:null,R2:null,R3:null,POC:0};const recent=candles.slice(-200);const lastPrice=recent[recent.length-1].close;let atrSum=0;for(let i=0;i<14;i++)atrSum+=(recent.slice(-14)[i].high-recent.slice(-14)[i].low);const ATR=atrSum/14;let swingLows=[],swingHighs=[];for(let i=2;i<recent.length-2;i++){const isLow=recent[i].low<recent[i-1].low&&recent[i].low<recent[i-2].low&&recent[i].low<recent[i+1].low&&recent[i].low<recent[i+2].low;const isHigh=recent[i].high>recent[i-1].high&&recent[i].high>recent[i-2].high&&recent[i].high>recent[i+1].high&&recent[i].high>recent[i+2].high;if(isLow)swingLows.push({price:recent[i].low});if(isHigh)swingHighs.push({price:recent[i].high})}let supports=swingLows.filter(s=>s.price<lastPrice).sort((a,b)=>b.price-a.price);let resistances=swingHighs.filter(s=>s.price>lastPrice).sort((a,b)=>a.price-b.price);return{S1:supports[0]?.price||null,S2:supports[1]?.price||null,S3:supports[2]?.price||null,R1:resistances[0]?.price||null,R2:resistances[1]?.price||null,R3:resistances[2]?.price||null,POC:lastPrice}}
 function detectLiquidity(candles){if(!candles||candles.length<100)return null;const recent=candles.slice(-300);const yesterdayCandles=recent.slice(-288,-50);const asiaCandles=recent.slice(-96,-20);const londonCandles=recent.slice(-60);const yesterdayHigh=yesterdayCandles.length?Math.max(...yesterdayCandles.map(c=>c.high)):0;const yesterdayLow=yesterdayCandles.length?Math.min(...yesterdayCandles.map(c=>c.low)):0;const asiaHigh=asiaCandles.length?Math.max(...asiaCandles.map(c=>c.high)):0;const asiaLow=asiaCandles.length?Math.min(...asiaCandles.map(c=>c.low)):0;const londonHigh=londonCandles.length?Math.max(...londonCandles.map(c=>c.high)):0;const londonLow=londonCandles.length?Math.min(...londonCandles.map(c=>c.low)):0;const lastCandle=recent[recent.length-1];let sweep=null;if(lastCandle.high>yesterdayHigh&&lastCandle.close<yesterdayHigh)sweep={type:'SWEEP_HIGH',level:yesterdayHigh,source:'YESTERDAY_HIGH',bias:'SELL'};else if(lastCandle.high>asiaHigh&&lastCandle.close<asiaHigh)sweep={type:'SWEEP_HIGH',level:asiaHigh,source:'ASIA_HIGH',bias:'SELL'};else if(lastCandle.low<yesterdayLow&&lastCandle.close>yesterdayLow)sweep={type:'SWEEP_LOW',level:yesterdayLow,source:'YESTERDAY_LOW',bias:'BUY'};else if(lastCandle.low<asiaLow&&lastCandle.close>asiaLow)sweep={type:'SWEEP_LOW',level:asiaLow,source:'ASIA_LOW',bias:'BUY'};return{yesterdayHigh,yesterdayLow,asiaHigh,asiaLow,londonHigh,londonLow,sweep,currentPrice:recent[recent.length-1].close}}
 
 function analyzeCandles(candles,symbol,snr,liquidity){
@@ -269,13 +270,38 @@ async function checkMultiTimeframe(symbol){
   return{timeframes:results,buyCount,sellCount,agreement:maxCount+'/4',consensus:majoritySignal}
 }
 
+// ===============================================
+// 🔧 v3.8.2: SNR PROXIMITY — logik primary
+// ===============================================
+function detectSNRSignal(tickHarga, snr, atr) {
+  const proximity = atr * SNR_PROXIMITY_MULT;
+  const R1 = snr.R1;
+  const S1 = snr.S1;
+  const R2 = snr.R2;
+  const S2 = snr.S2;
+
+  // Cek R2 dulu (kalau ada) — lebih kuat dari R1
+  if (R2 && Math.abs(tickHarga - R2) <= proximity) {
+    return { bias: 'SELL', confidence: SNR_CONFIDENCE, entry: R2, entryType: 'R2', reason: 'SNR R2 retest' };
+  }
+  if (R1 && Math.abs(tickHarga - R1) <= proximity) {
+    return { bias: 'SELL', confidence: SNR_CONFIDENCE, entry: R1, entryType: 'R1', reason: 'SNR R1 retest' };
+  }
+  if (S2 && Math.abs(tickHarga - S2) <= proximity) {
+    return { bias: 'BUY', confidence: SNR_CONFIDENCE, entry: S2, entryType: 'S2', reason: 'SNR S2 retest' };
+  }
+  if (S1 && Math.abs(tickHarga - S1) <= proximity) {
+    return { bias: 'BUY', confidence: SNR_CONFIDENCE, entry: S1, entryType: 'S1', reason: 'SNR S1 retest' };
+  }
+  return null;
+}
+
 function pickEntryByLevel(harga, snr, fvgs, poc, bias, maxJarak) {
   const levels = [];
   if (snr.S1) levels.push({ level: snr.S1, type: 'S1', priority: 2 });
   if (snr.S2) levels.push({ level: snr.S2, type: 'S2', priority: 2 });
   if (snr.R1) levels.push({ level: snr.R1, type: 'R1', priority: 2 });
   if (snr.R2) levels.push({ level: snr.R2, type: 'R2', priority: 2 });
-
   if (Array.isArray(fvgs)) {
     fvgs.slice(-20).forEach((fvg) => {
       if (bias === 'BUY' && fvg.type !== 'BULLISH') return;
@@ -283,9 +309,7 @@ function pickEntryByLevel(harga, snr, fvgs, poc, bias, maxJarak) {
       if (fvg.mid) levels.push({ level: fvg.mid, type: 'FVG-' + fvg.type, priority: 1 });
     });
   }
-
   if (poc) levels.push({ level: poc, type: 'POC', priority: 3 });
-
   const candidates = levels.filter(l => {
     const jarak = Math.abs(l.level - harga);
     if (jarak > maxJarak) return false;
@@ -294,7 +318,6 @@ function pickEntryByLevel(harga, snr, fvgs, poc, bias, maxJarak) {
     if (bias === 'SELL') return l.level > harga;
     return false;
   });
-
   if (candidates.length === 0) return null;
   candidates.sort((a, b) => {
     const jarakA = Math.abs(a.level - harga);
@@ -345,14 +368,12 @@ async function getTick(symbol){
 }
 const ohlcCache=new Map();
 async function getOHLC(symbol,interval,limit){interval=interval||'5min';limit=limit||300;const cacheKey=symbol+'_'+interval+'_'+limit;const cached=ohlcCache.get(cacheKey);if(cached&&Date.now()-cached.time<180000)return cached.data;const tdSymbol=toTwelveData(symbol);let attempts=0,maxAttempts=TWELVEDATA_KEYS.length*2||2;while(attempts<maxAttempts){attempts++;try{const url=TWELVEDATA_URL+'/time_series?symbol='+encodeURIComponent(tdSymbol)+'&interval='+interval+'&outputsize='+limit+'&apikey='+getCurrentKey();const r=await axios.get(url,{timeout:10000});const d=r.data;if(d.status==='error'||d.code){if(d.code===429){switchKey();continue}throw new Error(d.message)}if(!d.values||!Array.isArray(d.values))return[];const result=d.values.slice().reverse().map(c=>({open:parseFloat(c.open||0),high:parseFloat(c.high||0),low:parseFloat(c.low||0),close:parseFloat(c.close||0)})).filter(c=>c.close>0);ohlcCache.set(cacheKey,{data:result,time:Date.now()});return result}catch(e){if(e.message&&e.message.indexOf('429')>=0){switchKey();continue}if(attempts>=maxAttempts)throw e}}return[]}
-const signalLock=new Map(),signalCooldown=new Map();
 function calculateSLTP(dir,entry,atr,symbol,atrProfile){if(!entry||!atr||atr<=0)return null;const slDist=atr*1.5;let tp1Mult=3.0,tp2Mult=6.0,tp3Mult=10.0;if(atrProfile){tp1Mult=atrProfile.tp1Mult;tp2Mult=atrProfile.tp2Mult;tp3Mult=atrProfile.tp3Mult}const dec=getDecimal(symbol);if(dir==='BUY')return{sl:(entry-slDist).toFixed(dec),tp1:(entry+atr*tp1Mult).toFixed(dec),tp2:(entry+atr*tp2Mult).toFixed(dec),tp3:(entry+atr*tp3Mult).toFixed(dec)};else return{sl:(entry+slDist).toFixed(dec),tp1:(entry-atr*tp1Mult).toFixed(dec),tp2:(entry-atr*tp2Mult).toFixed(dec),tp3:(entry-atr*tp3Mult).toFixed(dec)}}
 function isSpreadOK(s,spread){return spread>0&&spread<=getSpreadLimit(s)}
 async function fetchNews(){if(Date.now()-newsCache.fetchedAt<NEWS_CACHE_MS&&newsCache.events.length>0)return newsCache.events;try{const r=await axios.get(BIQUOTE_URL+'/calendar',{timeout:10000}).catch(()=>({data:{events:[]}}));let events=r.data.events||r.data.data||r.data.calendar||(Array.isArray(r.data)?r.data:[]);if(!Array.isArray(events))events=[];const usdEvents=events.filter(e=>String(e.currency||e.country||'').toUpperCase()==='USD'||String(e.currency||'').toUpperCase()==='US').slice(0,30).map(e=>({time:String(e.time||e.date||''),currency:'USD',impact:String(e.impact||'medium').toLowerCase(),event:String(e.event||e.title||''),actual:String(e.actual||'-'),forecast:String(e.forecast||'-'),previous:String(e.previous||'-')}));newsCache.events=usdEvents;newsCache.fetchedAt=Date.now();return usdEvents}catch(e){return[]}}
-async function checkNewsBlock(){try{const events=await fetchNews();const now=Date.now();for(let ev of events){if(ev.impact!=='high')continue;const evTime=new Date(ev.time).getTime();if(isNaN(evTime))continue;if(Math.abs(evTime-now)<NEWS_AVOID_MS){const mins=Math.round((evTime-now)/60000);return{blocked:true,reason:'News '+ev.event+' ('+(mins>0?'in '+mins+' min':Math.abs(mins)+' min ago')+')'}}}return{blocked:false,reason:null}}catch(e){return{blocked:false,reason:null}}}
 
 // ===============================================
-// MAPPING — v3.8.1: H1 primary, no H4 bias
+// MAPPING — v3.8.2: SNR Primary Logic
 // ===============================================
 async function generateSessionMapping(symbol, sessionName) {
   try {
@@ -366,7 +387,7 @@ async function generateSessionMapping(symbol, sessionName) {
     const candlesH1All = await getOHLC(symbol, '1h', 200);
     const candlesM30All = await getOHLC(symbol, '30min', 200);
     const candlesM15All = await getOHLC(symbol, '15min', 200);
-    const candlesH4All = await getOHLC(symbol, '4h', 100); // H4 cuma untuk info
+    const candlesH4All = await getOHLC(symbol, '4h', 100);
 
     const candlesH1 = candlesH1All.length > 1 ? candlesH1All.slice(0, -1) : candlesH1All;
     const candlesM30 = candlesM30All.length > 1 ? candlesM30All.slice(0, -1) : candlesM30All;
@@ -383,7 +404,6 @@ async function generateSessionMapping(symbol, sessionName) {
     const h1SNR = detectSNR(candlesH1);
     const h1Liq = detectLiquidity(candlesH1);
     const h1Analysis = analyzeCandles(candlesH1, symbol, h1SNR, h1Liq);
-    const m30Analysis = analyzeCandles(candlesM30, symbol, null, null);
     const h4Analysis = analyzeCandles(candlesH4, symbol, null, null);
 
     const m15ATR = calculateATR(candlesM15, 14);
@@ -402,46 +422,61 @@ async function generateSessionMapping(symbol, sessionName) {
     const mtf = await checkMultiTimeframe(symbol);
     const sessionStatus = getSessionStatus(sessionName);
 
-    // 🔧 v3.8.1: H1 primary, H4 cuma info
-    let bias = h1Analysis ? h1Analysis.signal : 'WAIT';
-    let confidence = h1Analysis ? h1Analysis.confidence : 0;
-    console.log(`🔍 [${sessionName}] Step 5 — H1 bias=${bias} conf=${confidence}%`);
+    // 🔧 v3.8.2: SNR Primary Logic
+    const proximity = atr * SNR_PROXIMITY_MULT;
+    console.log(`🔍 [${sessionName}] Step 5 — Check SNR proximity (near=${proximity.toFixed(2)} = ATR×${SNR_PROXIMITY_MULT})`);
+    console.log(`🔍 [${sessionName}] SNR: R2=${h1SNR.R2?.toFixed(decimal)||'-'} R1=${h1SNR.R1?.toFixed(decimal)||'-'} S1=${h1SNR.S1?.toFixed(decimal)||'-'} S2=${h1SNR.S2?.toFixed(decimal)||'-'}`);
 
-    // Fallback ke M30
-    if (bias === 'WAIT' && m30Analysis && m30Analysis.signal !== 'WAIT') {
-      bias = m30Analysis.signal;
-      confidence = Math.min(Math.round(m30Analysis.confidence * 0.85), 100);
-      console.log(`🔍 [${sessionName}] Step 5b — M30 fallback → bias=${bias} conf=${confidence}%`);
+    let bias = 'WAIT';
+    let confidence = 0;
+    let entryNum = null;
+    let entryType = null;
+    let signalSource = 'NONE';
+
+    // LAYER 1 — SNR Primary
+    const snrSignal = detectSNRSignal(tickHarga, h1SNR, atr);
+    if (snrSignal) {
+      bias = snrSignal.bias;
+      confidence = snrSignal.confidence;
+      entryNum = snrSignal.entry;
+      entryType = snrSignal.entryType;
+      signalSource = 'SNR';
+      console.log(`✅ [${sessionName}] Step 5a — ${snrSignal.reason} → ${bias} ${confidence}% @ ${entryNum.toFixed(decimal)}`);
     }
 
-    // Fallback ke MTF
-    if (bias === 'WAIT' && mtf.consensus !== 'WAIT') {
-      bias = mtf.consensus;
-      confidence = Math.min(Math.round((bias === 'BUY' ? mtf.buyCount : mtf.sellCount) / 4 * 100 * 0.75), 100);
-      console.log(`🔍 [${sessionName}] Step 5c — MTF fallback → bias=${bias} conf=${confidence}%`);
+    // LAYER 2 — H1 Fallback
+    if (bias === 'WAIT' && h1Analysis && h1Analysis.signal !== 'WAIT' && h1Analysis.confidence >= MIN_CONFIDENCE) {
+      bias = h1Analysis.signal;
+      confidence = h1Analysis.confidence;
+      signalSource = 'H1';
+      console.log(`✅ [${sessionName}] Step 5c — H1 fallback → ${bias} ${confidence}%`);
     }
 
+    // H4 info sahaja
     const h4TrendInfo = h4Analysis ? h4Analysis.signal : 'WAIT';
     console.log(`🔍 [${sessionName}] Step 5d — H4 info (tak block): ${h4TrendInfo}`);
 
-    if (confidence < MIN_CONFIDENCE) {
-      console.log(`❌ [${sessionName}] skip: confidence ${confidence}% < ${MIN_CONFIDENCE}%`);
+    // LAYER 3 — Skip kalau semua WAIT
+    if (bias === 'WAIT') {
+      console.log(`⏸️ [${sessionName}] Step 5e — Harga tengah range (${tickHarga.toFixed(decimal)}) — WAIT`);
+      console.log(`❌ [${sessionName}] skip: tiada signal SNR atau H1`);
       return;
     }
 
-    const MAX_JARAK = Math.max(atr * 1.5, 8);
-    const entryPick = pickEntryByLevel(tickHarga, h1SNR, fvgs, poc, bias, MAX_JARAK);
+    // Entry picker
+    if (!entryNum) {
+      const MAX_JARAK = Math.max(atr * 1.5, 8);
+      const entryPick = pickEntryByLevel(tickHarga, h1SNR, fvgs, poc, bias, MAX_JARAK);
+      if (!entryPick) {
+        console.log(`❌ [${sessionName}] skip: tiada SNR/FVG dekat`);
+        return;
+      }
+      entryNum = entryPick.level;
+      entryType = entryPick.type;
+    }
 
     console.log(`🔍 [${sessionName}] Step 6 — RSI=${rsi.toFixed(1)} ST=${superTrend.trend} EMA=${emaDistance.strength} FVG=${fvgs.length} POC=${poc?.toFixed(2)}`);
-    console.log(`🔍 [${sessionName}] Step 7 — entryPick=${entryPick ? entryPick.type + '@' + entryPick.level.toFixed(2) : 'NULL'}`);
-
-    if (!entryPick) {
-      console.log(`❌ [${sessionName}] skip: tiada SNR/FVG dekat dengan tick ${tickHarga.toFixed(decimal)}`);
-      return;
-    }
-
-    const entryNum = entryPick.level;
-    const entryType = entryPick.type;
+    console.log(`🔍 [${sessionName}] Step 7 — Entry: ${entryType}@${entryNum.toFixed(decimal)} (source: ${signalSource})`);
 
     const buffer = Math.max(atr * 0.3, 3.0);
     const tp1Mult = 1.5, tp2Mult = 3.0, tp3Mult = 4.5;
@@ -469,24 +504,23 @@ async function generateSessionMapping(symbol, sessionName) {
     if (rsi < 30) rsiStatus = 'OVERSOLD';
     else if (rsi > 70) rsiStatus = 'OVERBOUGHT';
 
-    const prompt = `Mapping ${sessionName} ${symbol} harga signal ${hargaSignal.toFixed(decimal)} (M15 closed) tick live ${tickHarga.toFixed(decimal)} entry di ${entryType} ${entryNum.toFixed(decimal)} bias ${bias} ${confidence}% SL ${slNum.toFixed(decimal)} TP1 ${tp1Num.toFixed(decimal)} RSI ${rsi.toFixed(1)} SuperTrend ${superTrend.trend} EMA ${emaDistance.strength}`;
+    const prompt = `Mapping ${sessionName} ${symbol} tick ${tickHarga.toFixed(decimal)} signal candle ${hargaSignal.toFixed(decimal)} entry ${entryType} ${entryNum.toFixed(decimal)} bias ${bias} ${confidence}% source ${signalSource} SL ${slNum.toFixed(decimal)} TP1 ${tp1Num.toFixed(decimal)} RSI ${rsi.toFixed(1)} SuperTrend ${superTrend.trend}`;
 
     console.log(`🔍 [${sessionName}] Step 8 — Panggil AI...`);
     const aiAnalysis = await generateAIAnalysis(prompt, { bias, confidence, harga: tickHarga, entry: entryNum, sl: slNum, tp1: tp1Num, tp2: tp2Num, mtf, levels: { r1: h1SNR.R1, s1: h1SNR.S1 }, session: sessionName });
 
     const sessionEmoji = sessionName === 'LONDON' ? '🇬🇧' : sessionName === 'NEW YORK' ? '🇺🇸' : '🇯🇵';
     const biasEmoji = bias === 'BUY' ? '📈' : bias === 'SELL' ? '📉' : '⏳';
-    const entryNote = `📍 Entry: <b>${entryNum.toFixed(decimal)}</b> (${entryType})\n💰 Tick live: ${tickHarga.toFixed(decimal)}\n📊 Signal (M15 close): ${hargaSignal.toFixed(decimal)}\n`;
+    const sourceEmoji = signalSource === 'SNR' ? '🎯' : '📊';
+    const entryNote = `${sourceEmoji} Entry: <b>${entryNum.toFixed(decimal)}</b> (${entryType})\n💰 Tick live: ${tickHarga.toFixed(decimal)}\n📊 Signal candle: ${hargaSignal.toFixed(decimal)}\n📡 Source: <b>${signalSource}</b>\n`;
 
-    let planText = bias === 'WAIT'
-      ? `⚠️ <i>Setup belum jelas — fallback SELL:</i>\n\n${entryNote}🛑 SL: <b>${slNum.toFixed(decimal)}</b>\n✅ TP1: <b>${tp1Num.toFixed(decimal)}</b>\n✅ TP2: <b>${tp2Num.toFixed(decimal)}</b>\n✅ TP3: <b>${tp3Num.toFixed(decimal)}</b>\n`
-      : `${entryNote}🛑 SL: <b>${slNum.toFixed(decimal)}</b>\n✅ TP1: <b>${tp1Num.toFixed(decimal)}</b>\n✅ TP2: <b>${tp2Num.toFixed(decimal)}</b>\n✅ TP3: <b>${tp3Num.toFixed(decimal)}</b>\n`;
+    const planText = `${entryNote}🛑 SL: <b>${slNum.toFixed(decimal)}</b>\n✅ TP1: <b>${tp1Num.toFixed(decimal)}</b>\n✅ TP2: <b>${tp2Num.toFixed(decimal)}</b>\n✅ TP3: <b>${tp3Num.toFixed(decimal)}</b>\n`;
 
     const indicatorText = `📊 <b>INDICATORS</b> (M15 closed)\n• RSI(14): ${rsi.toFixed(1)} (${rsiStatus})\n• SuperTrend: ${superTrend.trend} ${superTrend.trend === 'BULLISH' ? '🟢' : '🔴'}\n• EMA Distance: ${emaDistance.distance} (${emaDistance.strength})\n• FVG Fresh: ${Math.min(fvgs.length, 20)} zone\n• POC: ${poc ? poc.toFixed(decimal) : '-'}\n`;
 
-    const trendInfoText = `📊 <b>TREND INFO</b>\n• H1 (primary): ${h1Analysis?.signal || 'WAIT'} (${h1Analysis?.confidence || 0}%)\n• M30: ${m30Analysis?.signal || 'WAIT'}\n• H4 (info): ${h4TrendInfo}\n`;
+    const trendInfoText = `📊 <b>TREND INFO</b>\n• H1 (bias): ${h1Analysis?.signal || 'WAIT'} (${h1Analysis?.confidence || 0}%)\n• H4 (info): ${h4TrendInfo}\n`;
 
-    const msg = `${sessionEmoji} <b>MAPPING ${sessionName}</b>\n⏰ ${timeStr} MYT | 📅 ${dayName} ${dateStr}\n━━━━━━━━━━━━━━━━\n\n💰 <b>${symbol}: ${tickHarga.toFixed(decimal)}</b> (${tick.source})\n📊 ${sessionStatus}\n🔒 Signal guna M15 CLOSED (anti-repaint)\n🎯 Bias primary: H1\n\n${biasEmoji} <b>Bias: ${bias}</b> (${confidence}%) ✅\n\n━━━━━━━━━━━━━━━━\n🎯 <b>PLAN ENTRY</b>\n\n${planText}\n━━━━━━━━━━━━━━━━\n${indicatorText}\n━━━━━━━━━━━━━━━━\n${trendInfoText}\n━━━━━━━━━━━━━━━━\n📊 <b>KEY LEVELS (H1)</b>\n• R1: ${h1SNR.R1 ? h1SNR.R1.toFixed(decimal) : '-'}\n• R2: ${h1SNR.R2 ? h1SNR.R2.toFixed(decimal) : '-'}\n• S1: ${h1SNR.S1 ? h1SNR.S1.toFixed(decimal) : '-'}\n• S2: ${h1SNR.S2 ? h1SNR.S2.toFixed(decimal) : '-'}\n\n━━━━━━━━━━━━━━━━\n🤖 ${aiAnalysis}\n\n📈 MTF: ${mtf.agreement} (${mtf.consensus})\n📊 ATR ${atrSource}: ${atr.toFixed(2)}\n🔒 <i>Signal stabil — tiada repaint</i>\n⚠️ <i>Set limit order di ${entryType}!</i>`;
+    const msg = `${sessionEmoji} <b>MAPPING ${sessionName}</b>\n⏰ ${timeStr} MYT | 📅 ${dayName} ${dateStr}\n━━━━━━━━━━━━━━━━\n\n💰 <b>${symbol}: ${tickHarga.toFixed(decimal)}</b> (${tick.source})\n📊 ${sessionStatus}\n🎯 SNR Primary · M15 CLOSED\n\n${biasEmoji} <b>Bias: ${bias}</b> (${confidence}%) ✅\n${sourceEmoji} Source: <b>${signalSource}</b>\n\n━━━━━━━━━━━━━━━━\n🎯 <b>PLAN ENTRY</b>\n\n${planText}\n━━━━━━━━━━━━━━━━\n${indicatorText}\n━━━━━━━━━━━━━━━━\n${trendInfoText}\n━━━━━━━━━━━━━━━━\n📊 <b>KEY LEVELS (H1)</b>\n• R2: ${h1SNR.R2 ? h1SNR.R2.toFixed(decimal) : '-'}\n• R1: ${h1SNR.R1 ? h1SNR.R1.toFixed(decimal) : '-'}\n• S1: ${h1SNR.S1 ? h1SNR.S1.toFixed(decimal) : '-'}\n• S2: ${h1SNR.S2 ? h1SNR.S2.toFixed(decimal) : '-'}\n\n━━━━━━━━━━━━━━━━\n🤖 ${aiAnalysis}\n\n📈 MTF: ${mtf.agreement} (${mtf.consensus})\n📊 ATR ${atrSource}: ${atr.toFixed(2)}\n🎯 Proximity: ${proximity.toFixed(2)} pts (ATR×${SNR_PROXIMITY_MULT})\n⚠️ <i>Set limit order di ${entryType}!</i>`;
 
     console.log(`🔍 [${sessionName}] Step 9 — Hantar Telegram...`);
     const sent = await sendTelegram(msg);
@@ -497,8 +531,7 @@ async function generateSessionMapping(symbol, sessionName) {
       harga: parseFloat(tickHarga.toFixed(decimal)),
       harga_signal: parseFloat(hargaSignal.toFixed(decimal)),
       harga_source: tick.source,
-      signal_source: 'M15_CLOSED',
-      bias_primary: 'H1',
+      signal_source: signalSource,
       entry_type: entryType,
       session_status: sessionStatus,
       ai_analysis: aiAnalysis,
@@ -506,9 +539,9 @@ async function generateSessionMapping(symbol, sessionName) {
       mtf_consensus: mtf.consensus,
       atr: parseFloat(atr.toFixed(2)),
       atr_source: atrSource,
+      proximity: parseFloat(proximity.toFixed(2)),
       h1_signal: h1Analysis?.signal || 'WAIT',
       h1_confidence: h1Analysis?.confidence || 0,
-      m30_signal: m30Analysis?.signal || 'WAIT',
       h4_info: h4TrendInfo,
       indicators: {
         rsi: parseFloat(rsi.toFixed(1)), rsi_status: rsiStatus,
@@ -525,8 +558,8 @@ async function generateSessionMapping(symbol, sessionName) {
       tp2: parseFloat(tp2Num.toFixed(decimal)),
       tp3: parseFloat(tp3Num.toFixed(decimal)),
       levels: {
-        r1: h1SNR.R1 ? parseFloat(h1SNR.R1.toFixed(decimal)) : null,
         r2: h1SNR.R2 ? parseFloat(h1SNR.R2.toFixed(decimal)) : null,
+        r1: h1SNR.R1 ? parseFloat(h1SNR.R1.toFixed(decimal)) : null,
         s1: h1SNR.S1 ? parseFloat(h1SNR.S1.toFixed(decimal)) : null,
         s2: h1SNR.S2 ? parseFloat(h1SNR.S2.toFixed(decimal)) : null
       }
@@ -536,12 +569,12 @@ async function generateSessionMapping(symbol, sessionName) {
 
     messageHistory.unshift({
       id: Date.now(), type: 'mapping', timestamp: Date.now(),
-      data: { session: sessionName, symbol, harga: tickHarga, harga_signal: hargaSignal, source: tick.source, signal_source: 'M15_CLOSED', bias_primary: 'H1', entry_type: entryType, bias, confidence, entry: entryNum, sl: slNum, tp1: tp1Num, tp2: tp2Num, tp3: tp3Num, indicators: aiMappings[sessionName].indicators, telegram_msg: msg }
+      data: { session: sessionName, symbol, harga: tickHarga, harga_signal: hargaSignal, source: tick.source, signal_source: signalSource, entry_type: entryType, bias, confidence, entry: entryNum, sl: slNum, tp1: tp1Num, tp2: tp2Num, tp3: tp3Num, indicators: aiMappings[sessionName].indicators, telegram_msg: msg }
     });
     if (messageHistory.length > 100) messageHistory.pop();
     saveHistory();
 
-    console.log(`✅ [${sessionName}] Step 11 — SELESAI. mapping ${bias} ${confidence}% | Entry ${entryType}@${entryNum.toFixed(decimal)} | H1:${h1Analysis?.signal} H4-info:${h4TrendInfo}`);
+    console.log(`✅ [${sessionName}] Step 11 — SELESAI. ${bias} ${confidence}% (${signalSource}) | Entry ${entryType}@${entryNum.toFixed(decimal)}`);
   } catch (e) {
     console.log(`❌ [${sessionName}] CATCH ERROR: ${e.message}`);
   }
@@ -571,22 +604,19 @@ app.get('/api/signal', async (req,res)=>{
     const tickHarga=tick.mid;
     if(!tickHarga||tickHarga<=0) return res.status(503).json({error:'No price data', signal:'WAIT', score:0});
 
-    const candlesAll=await getOHLC(symbol,'5min',300);
     const candlesM15All=await getOHLC(symbol,'15min',200);
     const candlesH1All=await getOHLC(symbol,'1h',200);
-
-    const candles = candlesAll.length > 1 ? candlesAll.slice(0, -1) : candlesAll;
     const candlesM15 = candlesM15All.length > 1 ? candlesM15All.slice(0, -1) : candlesM15All;
     const candlesH1 = candlesH1All.length > 1 ? candlesH1All.slice(0, -1) : candlesH1All;
 
-    if(candles.length<50) return res.json({symbol,harga:parseFloat(tickHarga.toFixed(decimal)),harga_source:tick.source,signal:'WAIT',score:0,session:getMarketSession()});
+    if(candlesH1.length<50) return res.json({symbol,harga:parseFloat(tickHarga.toFixed(decimal)),harga_source:tick.source,signal:'WAIT',score:0,session:getMarketSession()});
 
     const snr=detectSNR(candlesH1);
     const liq=detectLiquidity(candlesH1);
-    const analysis=analyzeCandles(candlesH1,symbol,snr,liq);
+    const h1Analysis=analyzeCandles(candlesH1,symbol,snr,liq);
     const mtf=await checkMultiTimeframe(symbol);
-    const atr=calculateATR(candles,14);
-    const atrProfile=getATRProfile(candles);
+    const atr=calculateATR(candlesM15,14);
+    const atrProfile=getATRProfile(candlesM15);
 
     const rsi = calculateRSI(candlesM15, 14);
     const superTrend = calculateSuperTrend(candlesM15, 10, 3.0);
@@ -598,73 +628,58 @@ app.get('/api/signal', async (req,res)=>{
     if (rsi < 30) rsiStatus = 'OVERSOLD';
     else if (rsi > 70) rsiStatus = 'OVERBOUGHT';
 
-    if (analysis && analysis.signal !== 'WAIT' && analysis.confidence < MIN_CONFIDENCE) {
-      return res.json({
-        symbol, harga: parseFloat(tickHarga.toFixed(decimal)), harga_source: tick.source,
-        signal: 'WAIT', score: analysis.score, confidence: 0,
-        entry: null, sl: null, tp1: null, tp2: null, tp3: null,
-        session: getMarketSession(), reason: `Signal lemah (${analysis.confidence}% < ${MIN_CONFIDENCE}%)`,
-        mtf, snr,
-        signal_source: 'H1_CLOSED',
-        indicators: {
-          rsi: parseFloat(rsi.toFixed(1)), rsi_status: rsiStatus,
-          supertrend: superTrend.trend,
-          supertrend_value: parseFloat((superTrend.value || 0).toFixed(decimal)),
-          ema_distance: emaDistance.distance, ema_strength: emaDistance.strength,
-          fvg_count: Math.min(fvgs.length, 20),
-          poc: poc ? parseFloat(poc.toFixed(decimal)) : null
-        }
-      });
+    // SNR Primary Logic
+    const snrSignal = detectSNRSignal(tickHarga, snr, atr);
+    let bias = 'WAIT', confidence = 0, entryNum = null, entryType = null, signalSource = 'NONE';
+
+    if (snrSignal) {
+      bias = snrSignal.bias;
+      confidence = snrSignal.confidence;
+      entryNum = snrSignal.entry;
+      entryType = snrSignal.entryType;
+      signalSource = 'SNR';
+    } else if (h1Analysis && h1Analysis.signal !== 'WAIT' && h1Analysis.confidence >= MIN_CONFIDENCE) {
+      bias = h1Analysis.signal;
+      confidence = h1Analysis.confidence;
+      signalSource = 'H1';
     }
 
-    const MAX_JARAK_SIGNAL = Math.max(atr * 1.5, 8);
-    const entryPickSignal = pickEntryByLevel(tickHarga, snr, fvgs, poc, analysis ? analysis.signal : 'WAIT', MAX_JARAK_SIGNAL);
-
-    if (!entryPickSignal) {
+    if (bias === 'WAIT') {
       return res.json({
         symbol, harga: parseFloat(tickHarga.toFixed(decimal)), harga_source: tick.source,
         signal: 'WAIT', score: 0, confidence: 0,
         entry: null, sl: null, tp1: null, tp2: null, tp3: null,
-        session: getMarketSession(), reason: 'Tiada SNR/FVG/POC dekat',
-        mtf, snr,
-        signal_source: 'H1_CLOSED',
-        indicators: {
-          rsi: parseFloat(rsi.toFixed(1)), rsi_status: rsiStatus,
-          supertrend: superTrend.trend,
-          supertrend_value: parseFloat((superTrend.value || 0).toFixed(decimal)),
-          ema_distance: emaDistance.distance, ema_strength: emaDistance.strength,
-          fvg_count: Math.min(fvgs.length, 20),
-          poc: poc ? parseFloat(poc.toFixed(decimal)) : null
-        }
+        session: getMarketSession(), reason: 'Harga tengah range — tunggu dekat SNR',
+        signal_source: 'NONE', mtf, snr,
+        indicators: { rsi: parseFloat(rsi.toFixed(1)), rsi_status: rsiStatus, supertrend: superTrend.trend, supertrend_value: parseFloat((superTrend.value||0).toFixed(decimal)), ema_distance: emaDistance.distance, ema_strength: emaDistance.strength, fvg_count: Math.min(fvgs.length,20), poc: poc?parseFloat(poc.toFixed(decimal)):null }
       });
     }
 
-    const finalEntry = entryPickSignal.level;
-    const entryType = entryPickSignal.type;
-    const sltpFinal = analysis && analysis.signal !== 'WAIT' && atr > 0
-      ? calculateSLTP(analysis.signal, finalEntry, atr, symbol, atrProfile)
-      : null;
+    if (!entryNum) {
+      const MAX_JARAK_SIGNAL = Math.max(atr * 1.5, 8);
+      const entryPickSignal = pickEntryByLevel(tickHarga, snr, fvgs, poc, bias, MAX_JARAK_SIGNAL);
+      if (!entryPickSignal) {
+        return res.json({ symbol, harga: parseFloat(tickHarga.toFixed(decimal)), harga_source: tick.source, signal: 'WAIT', score: 0, confidence: 0, entry: null, sl: null, tp1: null, tp2: null, tp3: null, session: getMarketSession(), reason: 'Tiada SNR/FVG dekat', signal_source: 'NONE', mtf, snr, indicators: { rsi: parseFloat(rsi.toFixed(1)), rsi_status: rsiStatus, supertrend: superTrend.trend, supertrend_value: parseFloat((superTrend.value||0).toFixed(decimal)), ema_distance: emaDistance.distance, ema_strength: emaDistance.strength, fvg_count: Math.min(fvgs.length,20), poc: poc?parseFloat(poc.toFixed(decimal)):null } });
+      }
+      entryNum = entryPickSignal.level;
+      entryType = entryPickSignal.type;
+    }
+
+    const sltpFinal = calculateSLTP(bias, entryNum, atr, symbol, atrProfile);
 
     res.json({
       symbol, harga: parseFloat(tickHarga.toFixed(decimal)), harga_source: tick.source,
-      signal: analysis ? analysis.signal : 'WAIT',
-      score: analysis ? analysis.score : 0,
-      confidence: analysis ? analysis.confidence : 0,
-      entry: parseFloat(finalEntry.toFixed(decimal)), entry_type: entryType,
+      signal: bias,
+      score: confidence,
+      confidence: confidence,
+      entry: parseFloat(entryNum.toFixed(decimal)), entry_type: entryType,
       sl: sltpFinal ? parseFloat(sltpFinal.sl) : null,
       tp1: sltpFinal ? parseFloat(sltpFinal.tp1) : null,
       tp2: sltpFinal ? parseFloat(sltpFinal.tp2) : null,
       tp3: sltpFinal ? parseFloat(sltpFinal.tp3) : null,
       session: getMarketSession(), mtf, snr,
-      signal_source: 'H1_CLOSED',
-      indicators: {
-        rsi: parseFloat(rsi.toFixed(1)), rsi_status: rsiStatus,
-        supertrend: superTrend.trend,
-        supertrend_value: parseFloat((superTrend.value || 0).toFixed(decimal)),
-        ema_distance: emaDistance.distance, ema_strength: emaDistance.strength,
-        fvg_count: Math.min(fvgs.length, 20),
-        poc: poc ? parseFloat(poc.toFixed(decimal)) : null
-      }
+      signal_source: signalSource,
+      indicators: { rsi: parseFloat(rsi.toFixed(1)), rsi_status: rsiStatus, supertrend: superTrend.trend, supertrend_value: parseFloat((superTrend.value||0).toFixed(decimal)), ema_distance: emaDistance.distance, ema_strength: emaDistance.strength, fvg_count: Math.min(fvgs.length,20), poc: poc?parseFloat(poc.toFixed(decimal)):null }
     });
   }catch(e){
     console.log(`❌ [SIGNAL] ${symbol} error:`, e.message);
@@ -676,7 +691,7 @@ app.get('/api/mapping',(req,res)=>{res.json({status:'OK',mappings:aiMappings,cur
 app.get('/api/market',async(req,res)=>{const symbol=req.query.symbol||'XAU/USD';const decimal=getDecimal(symbol);try{const tick=await getTick(symbol);const candlesAll=await getOHLC(symbol,'1h',200);const candles = candlesAll.length > 1 ? candlesAll.slice(0, -1) : candlesAll;const harga=tick.mid||(candles.length?candles[candles.length-1].close:0);if(!harga)return res.status(503).json({error:'No price data'});const snr=detectSNR(candles);const liq=detectLiquidity(candles);res.json({symbol,harga:parseFloat(harga.toFixed(decimal)),harga_source:tick.source,spread:parseFloat(tick.spread.toFixed(decimal)),spread_ok:isSpreadOK(symbol,tick.spread),POC:snr.POC?parseFloat(snr.POC.toFixed(decimal)):null,R1:snr.R1?parseFloat(snr.R1.toFixed(decimal)):null,R2:snr.R2?parseFloat(snr.R2.toFixed(decimal)):null,R3:snr.R3?parseFloat(snr.R3.toFixed(decimal)):null,S1:snr.S1?parseFloat(snr.S1.toFixed(decimal)):null,S2:snr.S2?parseFloat(snr.S2.toFixed(decimal)):null,S3:snr.S3?parseFloat(snr.S3.toFixed(decimal)):null,liquidity:liq,session:getMarketSession()})}catch(e){res.status(500).json({error:e.message})}});
 app.get('/api/messages',(req,res)=>{const limit=parseInt(req.query.limit)||50;const type=req.query.type;let filtered=messageHistory;if(type&&type!=='all'){const types=type.split(',').map(t=>t.trim());filtered=messageHistory.filter(m=>types.includes(m.type))}const stats={signal:messageHistory.filter(m=>m.type==='signal').length,mapping:messageHistory.filter(m=>m.type==='mapping').length,asia_breakout:messageHistory.filter(m=>m.type==='asia_breakout').length,level_alert:messageHistory.filter(m=>m.type==='level_alert').length,news_alert:messageHistory.filter(m=>m.type==='news_alert').length,daily_outlook:messageHistory.filter(m=>m.type==='daily_outlook').length,pre_market:messageHistory.filter(m=>m.type==='pre_market').length,liquidity_sweep:messageHistory.filter(m=>m.type==='liquidity_sweep').length};res.json({status:'OK',messages:filtered.slice(0,limit),stats})});
 app.get('/api/news',async(req,res)=>{const events=await fetchNews();res.json({status:'success',events})});
-app.get('/api/health',(req,res)=>{res.json({status:'OK',version:'3.8.1',session:getMarketSession(),myt:new Date(Date.now()+8*60*60*1000).toISOString(),mappings:Object.keys(aiMappings).filter(k=>aiMappings[k]&&k!=='lastUpdate').length,ea_online:(Date.now()-eaStatus.lastSeen)<30000,min_confidence:MIN_CONFIDENCE,min_entry_dist:2,signal_source:'M15_CLOSED',bias_primary:'H1',h4_role:'info_only',telegram_configured:!!(TELEGRAM_BOT_TOKEN && TELEGRAM_CHAT_ID)})});
+app.get('/api/health',(req,res)=>{res.json({status:'OK',version:'3.8.2',session:getMarketSession(),myt:new Date(Date.now()+8*60*60*1000).toISOString(),mappings:Object.keys(aiMappings).filter(k=>aiMappings[k]&&k!=='lastUpdate').length,ea_online:(Date.now()-eaStatus.lastSeen)<30000,snr_confidence:SNR_CONFIDENCE,snr_proximity_mult:SNR_PROXIMITY_MULT,signal_source:'M15_CLOSED',bias_logic:'SNR_PRIMARY',telegram_configured:!!(TELEGRAM_BOT_TOKEN && TELEGRAM_CHAT_ID)})});
 
 function shouldRunScheduler(){const nowMYT=new Date(Date.now()+8*60*60*1000);if(nowMYT.getUTCDay()===0||nowMYT.getUTCDay()===6)return false;return true}
 setInterval(async()=>{
@@ -690,4 +705,4 @@ setInterval(async()=>{
 },60*1000);
 
 const PORT=process.env.PORT||3000;
-app.listen(PORT,()=>{console.log(`🚀 BPT v3.8.1 running on ${PORT} | MYT: ${new Date(Date.now()+8*60*60*1000).toISOString()} | Bias: H1 | H4: info only | Signal: M15 CLOSED`)});
+app.listen(PORT,()=>{console.log(`🚀 BPT v3.8.2 running on ${PORT} | MYT: ${new Date(Date.now()+8*60*60*1000).toISOString()} | SNR Primary · Proximity ATR×${SNR_PROXIMITY_MULT} · Conf ${SNR_CONFIDENCE}%`)});
