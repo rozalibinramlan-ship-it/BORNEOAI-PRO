@@ -417,6 +417,7 @@ select {
   💼 MT4 OFFLINE · Menunggu EA connect...
 </div>
 
+<!-- ===== SCREEN: SIGNAL ===== -->
 <div id="screen-signal" class="screen active">
   <div class="pair-header">
     <div class="pair-row-1">
@@ -463,6 +464,37 @@ select {
     </div>
   </div>
 
+  <!-- 🔧 FASA 1 & 2: INDICATORS -->
+  <div class="card">
+    <div class="card-title">📊 INDICATORS</div>
+    <div class="grid-3">
+      <div class="data-box" style="border-color:rgba(56,189,248,0.3);">
+        <div class="data-label">RSI</div>
+        <div class="data-value blue" id="ind-rsi">-</div>
+        <div style="font-family:'Baloo 2',sans-serif; font-size:9px; color:var(--gray); margin-top:4px; font-weight:700;" id="ind-rsi-status">-</div>
+      </div>
+      <div class="data-box" style="border-color:rgba(0,255,136,0.3);">
+        <div class="data-label">SUPERTREND</div>
+        <div class="data-value" id="ind-st" style="font-size:13px;">-</div>
+      </div>
+      <div class="data-box" style="border-color:rgba(251,191,36,0.3);">
+        <div class="data-label">EMA</div>
+        <div class="data-value gold" id="ind-ema">-</div>
+        <div style="font-family:'Baloo 2',sans-serif; font-size:9px; color:var(--gray); margin-top:4px; font-weight:700;" id="ind-ema-status">-</div>
+      </div>
+    </div>
+    <div class="grid-2" style="margin-top:8px;">
+      <div class="data-box" style="border-color:rgba(167,139,250,0.3);">
+        <div class="data-label">FVG</div>
+        <div class="data-value" id="ind-fvg" style="color:#a78bfa; font-size:13px;">-</div>
+      </div>
+      <div class="data-box" style="border-color:rgba(251,191,36,0.3);">
+        <div class="data-label">POC</div>
+        <div class="data-value gold" id="ind-poc">-</div>
+      </div>
+    </div>
+  </div>
+
   <div class="card conf-box">
     <div class="conf-label">📊 CONFIRMATION</div>
     <div class="conf-value" id="conf-percent">-</div>
@@ -480,6 +512,7 @@ select {
   </div>
 </div>
 
+<!-- ===== SCREEN: LEVELS ===== -->
 <div id="screen-levels" class="screen">
   <div class="poc-banner">POC <span id="poc-val">-</span></div>
 
@@ -506,6 +539,7 @@ select {
   </div>
 </div>
 
+<!-- ===== SCREEN: MAPPING ===== -->
 <div id="screen-mapping" class="screen">
   <div style="display:grid; grid-template-columns:repeat(3,1fr); gap:6px; margin-bottom:12px;">
     <button onclick="showMapping('ASIA')" class="mapping-tab" id="tab-asia">ASIA</button>
@@ -523,6 +557,7 @@ select {
   </button>
 </div>
 
+<!-- ===== SCREEN: ASIA ===== -->
 <div id="screen-asia" class="screen">
   <div class="card" style="text-align:center; padding:14px;">
     <div style="font-family:'Baloo 2',sans-serif; font-size:10px; color:var(--gray); letter-spacing:2px; margin-bottom:6px;">🔺 ASIA BREAKOUT STATUS</div>
@@ -537,6 +572,7 @@ select {
   </div>
 </div>
 
+<!-- ===== SCREEN: NEWS ===== -->
 <div id="screen-news" class="screen">
   <div class="card">
     <div class="card-title">📰 ECONOMIC NEWS (USD)</div>
@@ -546,6 +582,7 @@ select {
   </div>
 </div>
 
+<!-- ===== SCREEN: MESSAGES ===== -->
 <div id="screen-messages" class="screen">
   <div class="card">
     <div class="card-title">📨 NOTIFICATION HISTORY</div>
@@ -564,6 +601,7 @@ select {
   </div>
 </div>
 
+<!-- ===== SCREEN: MT4 ===== -->
 <div id="screen-mt4" class="screen">
   <div class="mt4-status offline" id="mt4-screen-status">🔴 OFFLINE</div>
 
@@ -624,7 +662,6 @@ let messagesLoaded = false;
 let asiaLoaded = false;
 let currentFilter = 'all';
 
-// ===== MYT CLOCK =====
 function updateUTCClock() {
   const now = new Date();
   const timeStr = now.toLocaleTimeString('ms-MY', { timeZone: 'Asia/Kuala_Lumpur', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false });
@@ -635,13 +672,11 @@ function updateUTCClock() {
 setInterval(updateUTCClock, 1000);
 updateUTCClock();
 
-// ===== TAB SWITCH =====
 function switchTab(tabName, element) {
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
   document.getElementById('screen-' + tabName).classList.add('active');
   document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
   if (element) element.classList.add('active');
-
   if (tabName === 'news' && !newsLoaded) loadNews();
   if (tabName === 'messages') { loadMessages(currentFilter); }
   if (tabName === 'asia') loadAsiaBreakout();
@@ -655,7 +690,6 @@ function tukarMarket() {
   dapatkanMarketData();
 }
 
-// 🔧 Helper — elak papar 0.00
 function fmtVal(v, fallback) {
   fallback = fallback || '-';
   if (v === null || v === undefined || v === '') return fallback;
@@ -671,7 +705,6 @@ function fmtValRaw(v, fallback) {
   return v;
 }
 
-// ===== SIGNAL =====
 async function dapatkanSignal() {
   try {
     const res = await fetch(`/api/signal?symbol=${marketAktif}`);
@@ -697,18 +730,69 @@ async function dapatkanSignal() {
     } else {
       sb.innerHTML = `
         <div class="signal-main">WAIT</div>
-        <div class="signal-conf">Menunggu setup</div>
+        <div class="signal-conf">${data.reason || 'Menunggu setup'}</div>
       `;
       sb.className = 'signal-box wait';
     }
 
-    document.getElementById('signal-entry').innerText = fmtValRaw(data.entry, '-');
+    // Entry dengan entry_type
+    const entryText = data.entry ? fmtValRaw(data.entry, '-') : '-';
+    const entryType = data.entry_type ? ' (' + data.entry_type + ')' : '';
+    document.getElementById('signal-entry').innerText = entryText + entryType;
     document.getElementById('signal-source').innerText = '💼 ' + (data.harga_source || 'MT4');
 
     document.getElementById('sig-sl').innerText = fmtVal(data.sl);
     document.getElementById('sig-tp1').innerText = fmtVal(data.tp1);
     document.getElementById('sig-tp2').innerText = fmtVal(data.tp2);
     document.getElementById('sig-tp3').innerText = fmtVal(data.tp3);
+
+    // 🔧 FASA 1 & 2: Papar indicators
+    const ind = data.indicators || {};
+
+    const rsiEl = document.getElementById('ind-rsi');
+    const rsiStatusEl = document.getElementById('ind-rsi-status');
+    if (rsiEl && ind.rsi !== undefined) {
+      rsiEl.innerText = ind.rsi.toFixed(1);
+      rsiStatusEl.innerText = ind.rsi_status || '-';
+      if (ind.rsi_status === 'OVERBOUGHT') {
+        rsiEl.style.color = 'var(--red-neon)';
+        rsiStatusEl.style.color = 'var(--red-neon)';
+      } else if (ind.rsi_status === 'OVERSOLD') {
+        rsiEl.style.color = 'var(--green-neon)';
+        rsiStatusEl.style.color = 'var(--green-neon)';
+      } else {
+        rsiEl.style.color = '#38bdf8';
+        rsiStatusEl.style.color = 'var(--gray)';
+      }
+    }
+
+    const stEl = document.getElementById('ind-st');
+    if (stEl && ind.supertrend) {
+      stEl.innerText = ind.supertrend;
+      stEl.style.color = ind.supertrend === 'BULLISH' ? 'var(--green-neon)' :
+                          ind.supertrend === 'BEARISH' ? 'var(--red-neon)' : 'var(--gray)';
+    }
+
+    const emaEl = document.getElementById('ind-ema');
+    const emaStatusEl = document.getElementById('ind-ema-status');
+    if (emaEl && ind.ema_distance !== undefined) {
+      emaEl.innerText = ind.ema_distance.toFixed(2);
+      emaStatusEl.innerText = ind.ema_strength || '-';
+      const strengthColor = ind.ema_strength === 'STRONG' ? 'var(--green-neon)' :
+                            ind.ema_strength === 'MEDIUM' ? 'var(--gold)' : 'var(--gray)';
+      emaEl.style.color = strengthColor;
+      emaStatusEl.style.color = strengthColor;
+    }
+
+    const fvgEl = document.getElementById('ind-fvg');
+    if (fvgEl && ind.fvg_count !== undefined) {
+      fvgEl.innerText = ind.fvg_count + ' zone';
+    }
+
+    const pocEl = document.getElementById('ind-poc');
+    if (pocEl && ind.poc) {
+      pocEl.innerText = ind.poc.toFixed(2);
+    }
 
     const confEl = document.getElementById('conf-percent');
     const confValue = data.score || 0;
@@ -725,7 +809,6 @@ async function dapatkanSignal() {
   } catch (e) { console.error('Signal error:', e); }
 }
 
-// ===== MARKET DATA =====
 async function dapatkanMarketData() {
   try {
     const res = await fetch(`/api/market?symbol=${marketAktif}`);
@@ -760,7 +843,6 @@ async function dapatkanMarketData() {
   } catch (e) { console.error('Market error:', e); }
 }
 
-// ===== MAPPING =====
 let currentMappingSession = 'LONDON';
 
 async function refreshMapping() {
@@ -807,6 +889,44 @@ function showMapping(sessionName) {
   const tp2Display   = fmtVal(map.tp2, '—');
   const planIncomplete = (map.sl === 0 || map.tp1 === 0 || !map.sl || !map.tp1);
 
+  // Indicators block
+  const ind = map.indicators || {};
+  let indHtml = '';
+  if (ind.rsi !== undefined) {
+    const rsiColor = ind.rsi_status === 'OVERBOUGHT' ? 'var(--red-neon)' : ind.rsi_status === 'OVERSOLD' ? 'var(--green-neon)' : '#38bdf8';
+    const stColor = ind.supertrend === 'BULLISH' ? 'var(--green-neon)' : ind.supertrend === 'BEARISH' ? 'var(--red-neon)' : 'var(--gray)';
+    const emaColor = ind.ema_strength === 'STRONG' ? 'var(--green-neon)' : ind.ema_strength === 'MEDIUM' ? 'var(--gold)' : 'var(--gray)';
+    indHtml = `
+      <div style="margin-bottom:14px;">
+        <div style="font-family:'Baloo 2',sans-serif; font-size:10px; color:var(--gray); margin-bottom:8px; font-weight:800; letter-spacing:1px;">📊 INDICATORS</div>
+        <div class="grid-2" style="margin-bottom:6px;">
+          <div style="text-align:center; padding:8px; background:rgba(56,189,248,0.08); border-radius:8px; border:1px solid rgba(56,189,248,0.2);">
+            <div style="font-family:'Baloo 2',sans-serif; font-size:9px; color:#38bdf8; font-weight:800;">RSI</div>
+            <div style="font-family:'Luckiest Guy',cursive; font-size:14px; color:${rsiColor}; margin-top:3px;">${ind.rsi} <span style="font-size:10px;">(${ind.rsi_status})</span></div>
+          </div>
+          <div style="text-align:center; padding:8px; background:rgba(0,255,136,0.08); border-radius:8px; border:1px solid rgba(0,255,136,0.2);">
+            <div style="font-family:'Baloo 2',sans-serif; font-size:9px; color:var(--green-neon); font-weight:800;">SUPERTREND</div>
+            <div style="font-family:'Luckiest Guy',cursive; font-size:14px; color:${stColor}; margin-top:3px;">${ind.supertrend}</div>
+          </div>
+        </div>
+        <div class="grid-3">
+          <div style="text-align:center; padding:6px; background:rgba(251,191,36,0.08); border-radius:8px; border:1px solid var(--border-gold);">
+            <div style="font-family:'Baloo 2',sans-serif; font-size:8px; color:var(--gold); font-weight:800;">EMA</div>
+            <div style="font-family:'Luckiest Guy',cursive; font-size:12px; color:${emaColor};">${ind.ema_distance} (${ind.ema_strength})</div>
+          </div>
+          <div style="text-align:center; padding:6px; background:rgba(167,139,250,0.08); border-radius:8px; border:1px solid rgba(167,139,250,0.3);">
+            <div style="font-family:'Baloo 2',sans-serif; font-size:8px; color:#a78bfa; font-weight:800;">FVG</div>
+            <div style="font-family:'Luckiest Guy',cursive; font-size:12px; color:#a78bfa;">${ind.fvg_count || 0} zone</div>
+          </div>
+          <div style="text-align:center; padding:6px; background:rgba(251,191,36,0.08); border-radius:8px; border:1px solid var(--border-gold);">
+            <div style="font-family:'Baloo 2',sans-serif; font-size:8px; color:var(--gold); font-weight:800;">POC</div>
+            <div style="font-family:'Luckiest Guy',cursive; font-size:12px; color:var(--cream);">${ind.poc || '-'}</div>
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
   container.innerHTML = `
     <div class="mapping-card">
       <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; padding-bottom:12px; border-bottom:1px solid var(--border);">
@@ -820,19 +940,20 @@ function showMapping(sessionName) {
         </div>
       </div>
       <div style="text-align:center; padding:14px; background:rgba(251,191,36,0.05); border-radius:10px; margin-bottom:14px; border:1px solid var(--border-gold);">
-        <div style="font-family:'Baloo 2',sans-serif; font-size:10px; color:var(--gray); letter-spacing:1px;">HARGA</div>
+        <div style="font-family:'Baloo 2',sans-serif; font-size:10px; color:var(--gray); letter-spacing:1px;">HARGA SEMASA</div>
         <div style="font-family:'Luckiest Guy',cursive; font-size:28px; color:var(--gold); margin-top:4px; letter-spacing:1px;">${fmtVal(map.harga, '—')}</div>
       </div>
       <div style="text-align:center; padding:16px; background:rgba(${map.bias === 'BUY' ? '0,255,136' : map.bias === 'SELL' ? '255,46,91' : '107,114,128'},0.08); border-radius:12px; margin-bottom:14px; border:1px solid ${map.bias === 'BUY' ? 'var(--green-neon)' : map.bias === 'SELL' ? 'var(--red-neon)' : 'var(--gray)'};">
         <div style="font-family:'Luckiest Guy',cursive; font-size:32px; color:${map.bias === 'BUY' ? 'var(--green-neon)' : map.bias === 'SELL' ? 'var(--red-neon)' : 'var(--gray)'}; letter-spacing:2px; text-shadow:0 0 20px ${map.bias === 'BUY' ? 'rgba(0,255,136,0.5)' : map.bias === 'SELL' ? 'rgba(255,46,91,0.5)' : 'transparent'};">${map.bias || 'WAIT'}</div>
         <div style="font-family:'Baloo 2',sans-serif; font-size:12px; color:var(--gray); margin-top:6px; font-weight:700;">Confidence: ${map.confidence || 0}%</div>
       </div>
+      ${indHtml}
       <div style="background:rgba(255,255,255,0.02); border-radius:12px; padding:14px; margin-bottom:14px; border:1px solid var(--border);">
         <div style="font-family:'Luckiest Guy',cursive; font-size:15px; color:var(--gold); margin-bottom:10px; letter-spacing:1px;">🎯 PLAN ENTRY</div>
-        ${planIncomplete ? `<div style="text-align:center; padding:14px; background:rgba(255,46,91,0.1); border-radius:8px; border:1px solid var(--red-neon); font-family:'Baloo 2',sans-serif; font-size:12px; color:var(--red-neon); font-weight:700; margin-bottom:10px;">⚠️ PLAN INCOMPLETE — SL/TP tiada. Tunggu mapping seterusnya.</div>` : ''}
+        ${planIncomplete ? `<div style="text-align:center; padding:14px; background:rgba(255,46,91,0.1); border-radius:8px; border:1px solid var(--red-neon); font-family:'Baloo 2',sans-serif; font-size:12px; color:var(--red-neon); font-weight:700; margin-bottom:10px;">⚠️ PLAN INCOMPLETE — SL/TP tiada</div>` : ''}
         <div style="display:flex; justify-content:space-between; align-items:center; padding:9px 0; border-bottom:1px solid var(--border);">
           <span style="font-family:'Baloo 2',sans-serif; font-size:12px; color:var(--gray); font-weight:700;">📍 ENTRY</span>
-          <span style="font-family:'Luckiest Guy',cursive; font-size:20px; color:var(--gold); letter-spacing:0.5px;">${entryDisplay}</span>
+          <span style="font-family:'Luckiest Guy',cursive; font-size:20px; color:var(--gold); letter-spacing:0.5px;">${entryDisplay}${map.entry_type ? ' <span style="font-size:12px; color:var(--gray);">(' + map.entry_type + ')</span>' : ''}</span>
         </div>
         <div style="display:flex; justify-content:space-between; align-items:center; padding:9px 0; border-bottom:1px solid var(--border);">
           <span style="font-family:'Baloo 2',sans-serif; font-size:12px; color:var(--gray); font-weight:700;">🛑 SL</span>
@@ -867,7 +988,6 @@ function showMapping(sessionName) {
   `;
 }
 
-// ===== NEWS =====
 async function loadNews() {
   newsLoaded = true;
   const list = document.getElementById('news-list');
@@ -887,7 +1007,6 @@ async function loadNews() {
   } catch (err) { list.innerHTML = '<div style="text-align:center; padding:30px; color:var(--red-neon);">Gagal load</div>'; }
 }
 
-// ===== MESSAGES =====
 async function loadMessages(filter) {
   messagesLoaded = true;
   currentFilter = filter;
@@ -906,7 +1025,6 @@ async function loadMessages(filter) {
     const res = await fetch(`/api/messages?type=${apiFilter}&limit=50`);
     if (!res.ok) throw new Error('HTTP ' + res.status);
     const data = await res.json();
-
     const msgs = data.messages || [];
     const stats = data.stats || {};
 
@@ -938,7 +1056,6 @@ async function loadMessages(filter) {
           daily_outlook: '📅 DAILY', pre_market: '⏰ PRE-MKT',
           level_alert: '🚨 LEVEL', news_alert: '📰 NEWS', liquidity_sweep: '💧 SWEEP'
         };
-
         const typeLabel = typeLabels[mtype] || mtype.toUpperCase();
 
         card.innerHTML = `
@@ -958,79 +1075,43 @@ async function loadMessages(filter) {
   }
 }
 
-// ===== ASIA =====
 async function loadAsiaBreakout() {
   asiaLoaded = true;
   const content = document.getElementById('asia-content');
   const statusEl = document.getElementById('asia-status');
   const lastEl = document.getElementById('asia-last');
-
   content.innerHTML = '<div class="loading"><div class="spinner">⏳</div><div>Loading...</div></div>';
 
   try {
     const res = await fetch('/api/messages?type=asia_breakout&limit=50');
     if (!res.ok) throw new Error('HTTP ' + res.status);
     const data = await res.json();
-
     const msgs = data.messages || [];
 
     if (msgs.length > 0) {
       statusEl.innerText = `${msgs.length} BREAKOUT`;
       statusEl.style.color = 'var(--green-neon)';
       statusEl.style.textShadow = '0 0 15px rgba(0,255,136,0.5)';
-
       const lastMsg = msgs[0];
       const lastTime = new Date(lastMsg.timestamp).toLocaleString('ms-MY', { timeZone: 'Asia/Kuala_Lumpur', hour: '2-digit', minute: '2-digit', day: '2-digit', month: 'short' });
       lastEl.innerText = `Terakhir: ${lastTime}`;
-
       content.innerHTML = '';
       msgs.forEach(m => {
         const d = m.data || {};
         const time = new Date(m.timestamp).toLocaleString('ms-MY', { timeZone: 'Asia/Kuala_Lumpur', hour: '2-digit', minute: '2-digit', day: '2-digit', month: 'short' });
         const biasColor = d.bias === 'BUY' ? 'var(--green-neon)' : d.bias === 'SELL' ? 'var(--red-neon)' : 'var(--gray)';
         const typeEmoji = (d.type || '').indexOf('HIGH') >= 0 ? '🔺' : '🔻';
-
         const card = document.createElement('div');
         card.className = 'mapping-card';
         card.style.borderLeft = '3px solid ' + biasColor;
-
         card.innerHTML = `
           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
             <div>
-              <div style="font-family:'Luckiest Guy',cursive; font-size:16px; color:${biasColor}; letter-spacing:0.5px;">
-                ${typeEmoji} ${(d.type || 'BREAKOUT').replace(/_/g, ' ')}
-              </div>
+              <div style="font-family:'Luckiest Guy',cursive; font-size:16px; color:${biasColor}; letter-spacing:0.5px;">${typeEmoji} ${(d.type || 'BREAKOUT').replace(/_/g, ' ')}</div>
               <div style="font-family:'Baloo 2',sans-serif; font-size:9px; color:var(--gray); margin-top:3px;">🕐 ${time} MYT</div>
             </div>
             <div style="text-align:right;">
-              <div style="font-family:'Luckiest Guy',cursive; font-size:12px; color:${biasColor}; padding:3px 8px; background:rgba(${d.bias === 'BUY' ? '0,255,136' : '255,46,91'},0.1); border-radius:6px; border:1px solid ${biasColor}; letter-spacing:0.5px;">
-                ${d.bias || '-'}
-              </div>
-              <div style="font-family:'Baloo 2',sans-serif; font-size:9px; color:var(--gray); margin-top:3px;">MTF: ${d.mtf_agreement || '-'}</div>
-            </div>
-          </div>
-          <div style="background:rgba(255,255,255,0.02); border-radius:8px; padding:10px; margin-bottom:8px; border:1px solid var(--border);">
-            <div style="display:flex; justify-content:space-between; margin-bottom:6px;">
-              <span style="font-family:'Baloo 2',sans-serif; font-size:10px; color:var(--gray); font-weight:700;">💰 Harga</span>
-              <span style="font-family:'Luckiest Guy',cursive; font-size:12px; color:var(--cream);">${fmtValRaw(d.harga, '-')}</span>
-            </div>
-            <div style="display:flex; justify-content:space-between;">
-              <span style="font-family:'Baloo 2',sans-serif; font-size:10px; color:var(--gray); font-weight:700;">📍 Level</span>
-              <span style="font-family:'Luckiest Guy',cursive; font-size:12px; color:var(--gold);">${fmtValRaw(d.level, '-')}</span>
-            </div>
-          </div>
-          <div class="grid-3">
-            <div style="text-align:center; padding:6px; background:rgba(255,46,91,0.08); border-radius:6px; border:1px solid rgba(255,46,91,0.2);">
-              <div style="font-family:'Baloo 2',sans-serif; font-size:8px; color:var(--red-neon); font-weight:800;">SL</div>
-              <div style="font-family:'Luckiest Guy',cursive; font-size:12px; color:var(--red-neon);">${fmtVal(d.sl, '-')}</div>
-            </div>
-            <div style="text-align:center; padding:6px; background:rgba(0,255,136,0.08); border-radius:6px; border:1px solid rgba(0,255,136,0.2);">
-              <div style="font-family:'Baloo 2',sans-serif; font-size:8px; color:var(--green-neon); font-weight:800;">TP1</div>
-              <div style="font-family:'Luckiest Guy',cursive; font-size:12px; color:var(--green-neon);">${fmtVal(d.tp1, '-')}</div>
-            </div>
-            <div style="text-align:center; padding:6px; background:rgba(0,255,136,0.08); border-radius:6px; border:1px solid rgba(0,255,136,0.2);">
-              <div style="font-family:'Baloo 2',sans-serif; font-size:8px; color:var(--green-neon); font-weight:800;">TP2</div>
-              <div style="font-family:'Luckiest Guy',cursive; font-size:12px; color:var(--green-neon);">${fmtVal(d.tp2, '-')}</div>
+              <div style="font-family:'Luckiest Guy',cursive; font-size:12px; color:${biasColor}; padding:3px 8px; background:rgba(${d.bias === 'BUY' ? '0,255,136' : '255,46,91'},0.1); border-radius:6px; border:1px solid ${biasColor}; letter-spacing:0.5px;">${d.bias || '-'}</div>
             </div>
           </div>
         `;
@@ -1041,19 +1122,13 @@ async function loadAsiaBreakout() {
       statusEl.style.color = 'var(--gray)';
       statusEl.style.textShadow = 'none';
       lastEl.innerText = 'Menunggu Asia session...';
-      content.innerHTML = `
-        <div class="loading">
-          <div class="spinner">⏳</div>
-          <div>Tiada Asia Breakout detected</div>
-        </div>
-      `;
+      content.innerHTML = '<div class="loading"><div class="spinner">⏳</div><div>Tiada Asia Breakout detected</div></div>';
     }
   } catch (e) {
     content.innerHTML = '<div style="text-align:center; padding:40px; color:var(--red-neon);">Gagal load</div>';
   }
 }
 
-// ===== MT4 =====
 async function refreshMT4Status() {
   try {
     const res = await fetch('/api/ea/status');
@@ -1081,7 +1156,6 @@ async function refreshMT4Status() {
       const broker = data.broker || '-';
       const profitSign = profitVal >= 0 ? '+' : '';
       const profitColor = profitVal > 0 ? 'var(--green-neon)' : profitVal < 0 ? 'var(--red-neon)' : 'var(--gray)';
-
       statusBar.className = 'mt4-status-bar online';
       statusBar.innerHTML = `
         <div class="row">
@@ -1214,7 +1288,6 @@ async function mt4CloseAll() {
   } catch (e) { alert(`Error: ${e.message}`); }
 }
 
-// ===== AUTO REFRESH =====
 setInterval(dapatkanSignal, 30000);
 setInterval(dapatkanMarketData, 30000);
 setInterval(refreshMT4Status, 5000);
