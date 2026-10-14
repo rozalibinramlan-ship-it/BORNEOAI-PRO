@@ -1,8 +1,6 @@
 // ===============================================
 // BPT — Borneo Pro Trade v3.8.5 FINAL
-// 3 Range Rules (tengah, min range, trend)
-// + v3.8.4 Filters · Signal Alert · Asia Breakout
-// EA TIDAK DISENTUH
+// 3 Range Rules + 4 Filters + Signal Alert + Asia Breakout
 // ===============================================
 const express = require('express');
 const cors = require('cors');
@@ -16,7 +14,6 @@ const app = express();
 app.use(cors());
 app.use(express.static(__dirname));
 
-// CONFIG — JANGAN UBAH
 const TWELVEDATA_URL = 'https://api.twelvedata.com';
 const BIQUOTE_URL = 'https://biquote.io/api';
 const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN || '';
@@ -27,14 +24,10 @@ const GEMINI_MODEL = 'gemini-flash-latest';
 const SCORE_BOLEH = 65;
 const MIN_CONFIDENCE = 70;
 const SNR_CONFIDENCE = 75;
-
-// 🔧 v3.8.5: Range Rules
 const SNR_PROXIMITY_MULT = 1.0;
 const MIN_ENTRY_DISTANCE = 3.0;
 const MIDPOINT_THRESHOLD_PCT = 0.15;
 const MIN_RANGE_MULT = 2.5;
-
-// 🔧 v3.8.4: Asia Breakout
 const ASIA_BREAKOUT_BODY_PCT = 0.60;
 const ASIA_BREAKOUT_COOLDOWN_MS = 30 * 60 * 1000;
 
@@ -84,9 +77,6 @@ function saveTradeHistory(){saveJSON(FILES.trades,tradeHistory.slice(0,200))}
 function saveAsiaBreakouts(){saveJSON(FILES.asiaBreakouts,asiaBreakouts.slice(0,100))}
 loadAllData();
 
-// ===============================================
-// EA BRIDGE — JANGAN SENTUH
-// ===============================================
 let eaStatus={online:false,lastSeen:0,balance:0,equity:0,margin:0,freeMargin:0,profit:0,positions:[],prices:{},accountNumber:'',broker:'',leverage:0,currency:'USD'};
 let tradeQueue=[];
 
@@ -135,9 +125,6 @@ app.use(express.json({ strict: false, limit: '5mb' }));
 
 app.post('/api/ea/execute',(req,res)=>{const b=req.body;if(!b.symbol||!b.action||!b.lot)return res.status(400).json({error:'Missing'});const cmd={id:Date.now()+Math.floor(Math.random()*1000),symbol:b.symbol,action:b.action,lot:parseFloat(b.lot),sl:parseFloat(b.sl||0),tp:parseFloat(b.tp||0),timestamp:Date.now(),status:'pending'};tradeQueue.push(cmd);res.json({status:'OK',id:cmd.id})});
 
-// ===============================================
-// SESSION
-// ===============================================
 function getMarketSession(){
   const nowMYT=new Date(Date.now()+8*60*60*1000);
   const dayOfWeek=nowMYT.getUTCDay();
@@ -176,9 +163,6 @@ async function sendTelegram(message){
   return false;
 }
 
-// ===============================================
-// HELPERS
-// ===============================================
 const symbolMap={'XAU/USD':'XAU/USD','XAG/USD':'XAG/USD','EUR/USD':'EUR/USD','GBP/USD':'GBP/USD','USD/JPY':'USD/JPY','AUD/USD':'AUD/USD','USD/CAD':'USD/CAD','USD/CHF':'USD/CHF'};
 function toTwelveData(s){return symbolMap[s]||s}
 function getDecimal(s){if(s.indexOf('JPY')>=0)return 3;if(s.indexOf('XAU')>=0||s.indexOf('XAG')>=0)return 2;return 5}
@@ -294,29 +278,22 @@ async function checkMultiTimeframe(symbol){
   return{timeframes:results,buyCount,sellCount,agreement:maxCount+'/4',consensus:majoritySignal}
 }
 
-// ===============================================
-// 🔧 v3.8.5: SNR SIGNAL — 3 Range Rules + 4 Filters
-// ===============================================
 function detectSNRSignal(tickHarga, snr, atr, rsi, superTrend, emaDistance, decimal) {
   const proximity = atr * SNR_PROXIMITY_MULT;
   const R1 = snr.R1, S1 = snr.S1, R2 = snr.R2, S2 = snr.S2;
 
-  // RULE 1: SNR lengkap
   if (!S1 || !R1) {
     console.log(`⏸️ [RULE 1] SNR tak lengkap (S1/R1 hilang) — SKIP`);
     return null;
   }
 
   const rangeSize = Math.abs(R1 - S1);
-
-  // RULE 2: Min range size (2.5× ATR)
   const minRange = atr * MIN_RANGE_MULT;
   if (rangeSize < minRange) {
     console.log(`⏸️ [RULE 2] Range kecil (${rangeSize.toFixed(2)} < ${minRange.toFixed(2)}) — SKIP`);
     return null;
   }
 
-  // RULE 3: Harga tengah range (elak flip-flop)
   const midpoint = (S1 + R1) / 2;
   const distFromMid = Math.abs(tickHarga - midpoint);
   const midThreshold = rangeSize * MIDPOINT_THRESHOLD_PCT;
@@ -326,14 +303,12 @@ function detectSNRSignal(tickHarga, snr, atr, rsi, superTrend, emaDistance, deci
     return null;
   }
 
-  // RULE 4: Trend filter (market trending?)
   const isTrending = emaDistance.strength === 'STRONG' || emaDistance.strength === 'MEDIUM';
   if (!isTrending) {
     console.log(`⏸️ [RULE 4] Market ranging (EMA ${emaDistance.strength}) — SKIP`);
     return null;
   }
 
-  // Cari SNR candidate
   let candidate = null;
   if (R2 && Math.abs(tickHarga - R2) <= proximity) candidate = { bias: 'SELL', entry: R2, entryType: 'R2', reason: 'SNR R2 retest' };
   else if (R1 && Math.abs(tickHarga - R1) <= proximity) candidate = { bias: 'SELL', entry: R1, entryType: 'R1', reason: 'SNR R1 retest' };
@@ -345,14 +320,12 @@ function detectSNRSignal(tickHarga, snr, atr, rsi, superTrend, emaDistance, deci
     return null;
   }
 
-  // FILTER 1: Min distance dari market
   const dist = Math.abs(tickHarga - candidate.entry);
   if (dist < MIN_ENTRY_DISTANCE) {
     console.log(`⏸️ [FILTER 1] ${candidate.entryType}@${candidate.entry.toFixed(decimal)} jarak ${dist.toFixed(2)} < ${MIN_ENTRY_DISTANCE} — SKIP`);
     return null;
   }
 
-  // FILTER 2: RSI conflict
   if (candidate.bias === 'SELL' && rsi < 30) {
     console.log(`⏸️ [FILTER 2] SELL tapi RSI ${rsi.toFixed(1)} OVERSOLD — SKIP`);
     return null;
@@ -362,7 +335,6 @@ function detectSNRSignal(tickHarga, snr, atr, rsi, superTrend, emaDistance, deci
     return null;
   }
 
-  // FILTER 3: SuperTrend conflict
   if (candidate.bias === 'SELL' && superTrend.trend === 'BULLISH') {
     console.log(`⏸️ [FILTER 3] SELL tapi SuperTrend BULLISH — SKIP`);
     return null;
@@ -372,19 +344,10 @@ function detectSNRSignal(tickHarga, snr, atr, rsi, superTrend, emaDistance, deci
     return null;
   }
 
-  // LULUS SEMUA
   candidate.confidence = SNR_CONFIDENCE;
   console.log(`✅ [PASS] ${candidate.reason} → ${candidate.bias} ${SNR_CONFIDENCE}% @ ${candidate.entry.toFixed(decimal)}`);
   return candidate;
-}
-
-// ===============================================
-// ✅ BAHAGIAN 1/2 TAMAT
-// SAMBUNG BAHAGIAN 2/2 (paste TERUS selepas baris ini)
-// ===============================================// ===============================================
-// 🔧 v3.8.5: PICK ENTRY BY LEVEL
-// ===============================================
-function pickEntryByLevel(harga, snr, fvgs, poc, bias, maxJarak) {
+}function pickEntryByLevel(harga, snr, fvgs, poc, bias, maxJarak) {
   const levels = [];
   if (snr.S1) levels.push({ level: snr.S1, type: 'S1', priority: 2 });
   if (snr.S2) levels.push({ level: snr.S2, type: 'S2', priority: 2 });
@@ -515,9 +478,6 @@ async function fetchNews(){
   }catch(e){return[]}
 }
 
-// ===============================================
-// v3.8.5: ASIA BREAKOUT
-// ===============================================
 function detectAsiaBreakout(candlesM15, candlesH1, tickHarga) {
   if (!candlesM15 || candlesM15.length < 50) return null;
   if (!candlesH1 || candlesH1.length < 24) return null;
@@ -641,9 +601,6 @@ async function processAsiaBreakout(symbol, sessionName) {
   }
 }
 
-// ===============================================
-// v3.8.5: SIGNAL ALERT Telegram
-// ===============================================
 async function sendSignalAlert(symbol, bias, confidence, tickHarga, entryNum, entryType, slNum, tp1Num, tp2Num, tp3Num, rsi, rsiStatus, superTrend, emaDistance, decimal) {
   const nowMYT = new Date(Date.now() + 8 * 60 * 60 * 1000);
   const timeStr = nowMYT.toTimeString().substring(0, 5);
@@ -655,9 +612,6 @@ async function sendSignalAlert(symbol, bias, confidence, tickHarga, entryNum, en
   await sendTelegram(msg);
 }
 
-// ===============================================
-// v3.8.5: MAPPING (KEKAL — hantar selalu 4x sehari)
-// ===============================================
 async function generateSessionMapping(symbol, sessionName) {
   try {
     const decimal = getDecimal(symbol);
@@ -703,7 +657,7 @@ async function generateSessionMapping(symbol, sessionName) {
     const sessionStatus = getSessionStatus(sessionName);
 
     const proximity = atr * SNR_PROXIMITY_MULT;
-    console.log(`🔍 [${sessionName}] Step 5 — Check SNR proximity (near=${proximity.toFixed(2)})`);
+    console.log(`🔍 [${sessionName}] Step 5 — SNR proximity near=${proximity.toFixed(2)}`);
     console.log(`🔍 [${sessionName}] SNR: R2=${h1SNR.R2?.toFixed(decimal)||'-'} R1=${h1SNR.R1?.toFixed(decimal)||'-'} S1=${h1SNR.S1?.toFixed(decimal)||'-'} S2=${h1SNR.S2?.toFixed(decimal)||'-'}`);
 
     let bias = 'WAIT', confidence = 0, entryNum = null, entryType = null, signalSource = 'NONE';
@@ -840,8 +794,6 @@ async function generateSessionMapping(symbol, sessionName) {
   }
 }
 
-// ===================== API ROUTES =====================
-
 app.get('/api/generate-mapping', async (req, res) => {
   const symbol = req.query.symbol || 'XAU/USD';
   const session = (req.query.session || 'LONDON').toUpperCase();
@@ -907,7 +859,6 @@ app.get('/api/signal', async (req,res)=>{
       }
     }
 
-    // Signal Alert
     if (bias === 'BUY' || bias === 'SELL') {
       if (!entryNum) {
         const MAX_JARAK_SIGNAL = Math.max(atr * 1.5, 8);
@@ -969,7 +920,6 @@ app.get('/api/signal', async (req,res)=>{
   }
 });
 
-// ASIA BREAKOUT ENDPOINTS
 app.get('/api/asia-breakout', async (req, res) => {
   const symbol = req.query.symbol || 'XAU/USD';
   const session = (req.query.session || 'ASIA').toUpperCase();
@@ -987,16 +937,12 @@ app.get('/api/asia-breakouts', (req, res) => {
   res.json({ status: 'OK', breakouts: asiaBreakouts.slice(0, limit), count: asiaBreakouts.length });
 });
 
-// STANDARD ENDPOINTS
 app.get('/api/mapping',(req,res)=>{res.json({status:'OK',mappings:aiMappings,current_session:getMarketSession(),timestamp:Date.now()})});
 app.get('/api/market',async(req,res)=>{const symbol=req.query.symbol||'XAU/USD';const decimal=getDecimal(symbol);try{const tick=await getTick(symbol);const candlesAll=await getOHLC(symbol,'1h',200);const candles = candlesAll.length > 1 ? candlesAll.slice(0, -1) : candlesAll;const harga=tick.mid||(candles.length?candles[candles.length-1].close:0);if(!harga)return res.status(503).json({error:'No price data'});const snr=detectSNR(candles);const liq=detectLiquidity(candles);res.json({symbol,harga:parseFloat(harga.toFixed(decimal)),harga_source:tick.source,spread:parseFloat(tick.spread.toFixed(decimal)),spread_ok:isSpreadOK(symbol,tick.spread),POC:snr.POC?parseFloat(snr.POC.toFixed(decimal)):null,R1:snr.R1?parseFloat(snr.R1.toFixed(decimal)):null,R2:snr.R2?parseFloat(snr.R2.toFixed(decimal)):null,R3:snr.R3?parseFloat(snr.R3.toFixed(decimal)):null,S1:snr.S1?parseFloat(snr.S1.toFixed(decimal)):null,S2:snr.S2?parseFloat(snr.S2.toFixed(decimal)):null,S3:snr.S3?parseFloat(snr.S3.toFixed(decimal)):null,liquidity:liq,session:getMarketSession()})}catch(e){res.status(500).json({error:e.message})}});
 app.get('/api/messages',(req,res)=>{const limit=parseInt(req.query.limit)||50;const type=req.query.type;let filtered=messageHistory;if(type&&type!=='all'){const types=type.split(',').map(t=>t.trim());filtered=messageHistory.filter(m=>types.includes(m.type))}const stats={signal:messageHistory.filter(m=>m.type==='signal').length,mapping:messageHistory.filter(m=>m.type==='mapping').length,asia_breakout:messageHistory.filter(m=>m.type==='asia_breakout').length,level_alert:messageHistory.filter(m=>m.type==='level_alert').length,news_alert:messageHistory.filter(m=>m.type==='news_alert').length,daily_outlook:messageHistory.filter(m=>m.type==='daily_outlook').length,pre_market:messageHistory.filter(m=>m.type==='pre_market').length,liquidity_sweep:messageHistory.filter(m=>m.type==='liquidity_sweep').length};res.json({status:'OK',messages:filtered.slice(0,limit),stats})});
 app.get('/api/news',async(req,res)=>{const events=await fetchNews();res.json({status:'success',events})});
 app.get('/api/health',(req,res)=>{res.json({status:'OK',version:'3.8.5',session:getMarketSession(),myt:new Date(Date.now()+8*60*60*1000).toISOString(),mappings:Object.keys(aiMappings).filter(k=>aiMappings[k]&&k!=='lastUpdate').length,ea_online:(Date.now()-eaStatus.lastSeen)<30000,range_rules:{midpoint_threshold:MIDPOINT_THRESHOLD_PCT,min_range_mult:MIN_RANGE_MULT},filters:{proximity_mult:SNR_PROXIMITY_MULT,min_entry_distance:MIN_ENTRY_DISTANCE},asia_breakouts_count:asiaBreakouts.length,signal_alert_state:Array.from(signalAlertState.entries()).map(([k,v])=>({symbol:k,bias:v.bias,conf:v.confidence})),features:{signal_alert:'bias_change_only',mapping:'always_send',range_rules:['midpoint','min_range','trend'],filters:['proximity_1.0','min_distance_3','rsi_conflict','supertrend_conflict'],asia_breakout:'30min_cooldown'},telegram_configured:!!(TELEGRAM_BOT_TOKEN && TELEGRAM_CHAT_ID)})});
 
-// ===============================================
-// SCHEDULER
-// ===============================================
 function shouldRunScheduler(){const nowMYT=new Date(Date.now()+8*60*60*1000);if(nowMYT.getUTCDay()===0||nowMYT.getUTCDay()===6)return false;return true}
 
 setInterval(async()=>{
