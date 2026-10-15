@@ -1,8 +1,7 @@
 // ===============================================
-// BPT — Borneo Pro Trade v3.8.4 FINAL
+// BPT — Borneo Pro Trade v3.8.5 FINAL
+// FIX: MT4 candle key mismatch (.vxx)
 // EMA Ribbon · Signal Ringkas · 12-Jam
-// SNR DIBUANG · TP/SL ATR · Anti-repaint
-// EA: Hantar candle + volume dari MT4
 // ===============================================
 const express = require('express');
 const cors = require('cors');
@@ -35,8 +34,8 @@ function getCurrentKey(){return TWELVEDATA_KEYS[currentKeyIndex]||TWELVEDATA_KEY
 function switchKey(){if(TWELVEDATA_KEYS.length>1)currentKeyIndex=(currentKeyIndex+1)%TWELVEDATA_KEYS.length}
 
 console.log('╔══════════════════════════════════════╗');
-console.log('║ BPT — BORNEO PRO TRADE v3.8.4 FINAL ║');
-console.log('║ EMA Ribbon · Ringkas · 12-Jam        ║');
+console.log('║ BPT — BORNEO PRO TRADE v3.8.5 FINAL ║');
+console.log('║ FIX: MT4 Candle Key Match (.vxx)     ║');
 console.log('╚══════════════════════════════════════╝');
 
 const DATA_DIR=path.join(__dirname,'data');
@@ -406,15 +405,23 @@ async function getOHLC(symbol, interval, limit) {
   const cached = ohlcCache.get(cacheKey);
   if (cached && Date.now() - cached.time < 180000) return cached.data;
 
-  // === CUBA MT4 DULU ===
+  // === CUBA MT4 DULU — FIX v3.8.5 (key pattern match) ===
   const isEAOnline = (Date.now() - eaStatus.lastSeen) < 30000;
   if (isEAOnline && eaStatus.candles) {
-    const eaSymbol = toEASymbol(symbol);
+    const allKeys = Object.keys(eaStatus.candles);
+    const base = symbol.replace('/', '');  // XAU/USD -> XAUUSD
     const tfMap = { '5min': 'M5', '15min': 'M15', '30min': 'M30', '1h': 'H1', '4h': 'H4' };
-    const key = eaSymbol + '_' + (tfMap[interval] || 'M30');
-    const candles = eaStatus.candles[key];
+    const tf = tfMap[interval] || 'M30';
+
+    // Cari key yang match: XAUUSD_M30 ATAU XAUUSD.vxx_M30 ATAU XAUUSD.vx_M30
+    let foundKey = allKeys.find(k =>
+      k.toUpperCase().includes(base.toUpperCase()) &&
+      k.toUpperCase().includes('_' + tf)
+    );
+
+    const candles = foundKey ? eaStatus.candles[foundKey] : null;
     if (candles && Array.isArray(candles) && candles.length >= 50) {
-      console.log(`📊 [OHLC] ${symbol} ${interval} — MT4 (${candles.length} candle)`);
+      console.log(`📊 [OHLC] ${symbol} ${interval} — MT4 LIVE ${foundKey} (${candles.length} candle)`);
       const result = candles.map(c => ({
         open: parseFloat(c.open || 0),
         high: parseFloat(c.high || 0),
@@ -505,7 +512,7 @@ async function computeSignal(symbol) {
 }
 
 // ===============================================
-// MAPPING — v3.8.4
+// MAPPING — v3.8.5
 // ===============================================
 async function generateSessionMapping(symbol, sessionName) {
   try {
@@ -710,16 +717,18 @@ app.get('/api/check-volume', async (req, res) => {
   const symbol = req.query.symbol || 'XAU/USD';
   const candles = await getOHLC(symbol, '30min', 30);
   const withVol = candles.filter(c => c.volume > 0).length;
+  const allKeys = Object.keys(eaStatus.candles || {});
   res.json({
     symbol,
     total: candles.length,
     withVolume: withVol,
     sample: candles.slice(-5).map(c => ({ close: c.close, volume: c.volume })),
-    source: (Date.now() - eaStatus.lastSeen) < 30000 && eaStatus.candles ? 'MT4' : 'TWELVEDATA'
+    source: (Date.now() - eaStatus.lastSeen) < 30000 && eaStatus.candles ? 'MT4' : 'TWELVEDATA',
+    ea_candle_keys: allKeys
   });
 });
 
-app.get('/api/health',(req,res)=>{res.json({status:'OK',version:'3.8.4',session:getMarketSession(),myt:new Date(Date.now()+8*60*60*1000).toISOString(),ea_online:(Date.now()-eaStatus.lastSeen)<30000,ea_has_candles:Object.keys(eaStatus.candles||{}).length>0,min_confidence:MIN_CONFIDENCE,ema_retest_atr:EMA_RETEST_ATR,ema_overextend_atr:EMA_OVEREXTEND_ATR,signal_alert_state:Array.from(signalAlertState.entries()).map(([k,v])=>({symbol:k,bias:v.bias,conf:v.confidence})),telegram_configured:!!(TELEGRAM_BOT_TOKEN && TELEGRAM_CHAT_ID)})});
+app.get('/api/health',(req,res)=>{res.json({status:'OK',version:'3.8.5',session:getMarketSession(),myt:new Date(Date.now()+8*60*60*1000).toISOString(),ea_online:(Date.now()-eaStatus.lastSeen)<30000,ea_has_candles:Object.keys(eaStatus.candles||{}).length>0,ea_candle_keys:Object.keys(eaStatus.candles||{}),min_confidence:MIN_CONFIDENCE,telegram_configured:!!(TELEGRAM_BOT_TOKEN && TELEGRAM_CHAT_ID)})});
 
 // ===============================================
 // SCHEDULER
@@ -743,4 +752,4 @@ setInterval(async()=>{
 }, 30*1000);
 
 const PORT=process.env.PORT||3000;
-app.listen(PORT,()=>{console.log(`🚀 BPT v3.8.4 running on ${PORT} | MYT: ${new Date(Date.now()+8*60*60*1000).toISOString()} | EMA Ribbon · M30 | Signal Alert: bias change only | Mapping: 3x/day`)});
+app.listen(PORT,()=>{console.log(`🚀 BPT v3.8.5 running on ${PORT} | MYT: ${new Date(Date.now()+8*60*60*1000).toISOString()} | EMA Ribbon · M30 | Signal Alert: bias change only | Mapping: 3x/day`)});
