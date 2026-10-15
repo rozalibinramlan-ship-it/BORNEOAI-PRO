@@ -1,7 +1,7 @@
 // ===============================================
 // BPT — Borneo Pro Trade v3.8.5 FINAL
 // FIX: MT4 candle key mismatch (.vxx)
-// EMA Ribbon · Signal Ringkas · 12-Jam
+// + Endpoint /api/test-mapping
 // ===============================================
 const express = require('express');
 const cors = require('cors');
@@ -470,7 +470,7 @@ function isSpreadOK(s,spread){return spread>0&&spread<=getSpreadLimit(s)}
 async function fetchNews(){if(Date.now()-newsCache.fetchedAt<NEWS_CACHE_MS&&newsCache.events.length>0)return newsCache.events;try{const r=await axios.get(BIQUOTE_URL+'/calendar',{timeout:10000}).catch(()=>({data:{events:[]}}));let events=r.data.events||r.data.data||r.data.calendar||(Array.isArray(r.data)?r.data:[]);if(!Array.isArray(events))events=[];const usdEvents=events.filter(e=>String(e.currency||e.country||'').toUpperCase()==='USD'||String(e.currency||'').toUpperCase()==='US').slice(0,30).map(e=>({time:String(e.time||e.date||''),currency:'USD',impact:String(e.impact||'medium').toLowerCase(),event:String(e.event||e.title||''),actual:String(e.actual||'-'),forecast:String(e.forecast||'-'),previous:String(e.previous||'-')}));newsCache.events=usdEvents;newsCache.fetchedAt=Date.now();return usdEvents}catch(e){return[]}}
 
 // ===============================================
-// SIGNAL LOGIC (dikongsi oleh /api/signal + mapping)
+// SIGNAL LOGIC
 // ===============================================
 async function computeSignal(symbol) {
   const decimal = getDecimal(symbol);
@@ -726,6 +726,21 @@ app.get('/api/check-volume', async (req, res) => {
     source: (Date.now() - eaStatus.lastSeen) < 30000 && eaStatus.candles ? 'MT4' : 'TWELVEDATA',
     ea_candle_keys: allKeys
   });
+});
+
+// ===============================================
+// TEST MAPPING — trigger manual
+// ===============================================
+app.get('/api/test-mapping', async (req, res) => {
+  try {
+    const session = req.query.session || 'NEW YORK';
+    const symbol = req.query.symbol || 'XAU/USD';
+    console.log(`🧪 [TEST] Trigger mapping ${session} untuk ${symbol}`);
+    await generateSessionMapping(symbol, session);
+    res.json({ status: 'OK', session, symbol });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
 });
 
 app.get('/api/health',(req,res)=>{res.json({status:'OK',version:'3.8.5',session:getMarketSession(),myt:new Date(Date.now()+8*60*60*1000).toISOString(),ea_online:(Date.now()-eaStatus.lastSeen)<30000,ea_has_candles:Object.keys(eaStatus.candles||{}).length>0,ea_candle_keys:Object.keys(eaStatus.candles||{}),min_confidence:MIN_CONFIDENCE,telegram_configured:!!(TELEGRAM_BOT_TOKEN && TELEGRAM_CHAT_ID)})});
