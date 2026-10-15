@@ -2,7 +2,7 @@
 // BPT — Borneo Pro Trade v3.8.4 FINAL
 // EMA Ribbon · Signal Ringkas · 12-Jam
 // SNR DIBUANG · TP/SL ATR · Anti-repaint
-// EA: Hantar candle + volume (optional)
+// EA: Hantar candle + volume dari MT4
 // ===============================================
 const express = require('express');
 const cors = require('cors');
@@ -90,13 +90,32 @@ app.post('/api/ea/heartbeat', express.text({type:'*/*', limit:'20mb'}), (req, re
     profit: parseFloat(b.profit ?? b.Profit ?? b.floatingPL ?? b.pl ?? 0),
     positions: b.positions || b.Positions || [],
     prices: b.prices || b.Prices || {},
-    candles: b.candles || b.Candles || {},
+    candles: b.candles || b.Candles || eaStatus.candles || {},
     accountNumber: String(b.accountNumber || b.account || b.AccountNumber || b.login || ''),
     broker: String(b.broker || b.brokerName || b.Broker || ''),
     leverage: b.leverage || b.Leverage || 0,
     currency: b.currency || b.Currency || 'USD'
   };
   res.json({status:'OK'});
+});
+
+// ===============================================
+// EA CANDLES — terima candle push dari MT4
+// ===============================================
+app.post('/api/ea/candles', express.text({type:'*/*', limit:'20mb'}), (req, res) => {
+  try {
+    const b = parseEAJson(req.body);
+    if (b.candles && typeof b.candles === 'object') {
+      if (!eaStatus.candles) eaStatus.candles = {};
+      Object.assign(eaStatus.candles, b.candles);
+      const keys = Object.keys(b.candles);
+      console.log('📊 [EA CANDLES] Diterima ' + keys.length + ' TF: ' + keys.join(', '));
+    }
+    res.json({status:'OK'});
+  } catch (e) {
+    console.log('❌ [EA CANDLES] Error:', e.message);
+    res.status(500).json({error: e.message});
+  }
 });
 
 app.get('/api/ea/status',(req,res)=>{const on=(Date.now()-eaStatus.lastSeen)<30000;res.json({...eaStatus,online:on,secondsAgo:on?Math.round((Date.now()-eaStatus.lastSeen)/1000):null})});
@@ -523,7 +542,6 @@ async function generateSessionMapping(symbol, sessionName) {
       console.log(`⏸️ [${sessionName}] ${status} — hantar nota WAIT`);
     }
 
-    // Format mesej
     const sessionEmoji = sessionName === 'LONDON' ? '🇬🇧' : sessionName === 'NEW YORK' ? '🇺🇸' : '🇯🇵';
     let msg;
     if (bias === 'BUY') {
@@ -578,7 +596,6 @@ async function generateSessionMapping(symbol, sessionName) {
 async function sendSignalAlert(symbol, bias, confidence, entryNum, slNum, tp1Num, tp2Num, tp3Num, decimal) {
   const nowMYT = new Date(Date.now() + 8 * 60 * 60 * 1000);
   const timeStr = format12Hour(nowMYT);
-  const emoji = bias === 'BUY' ? '📈' : '📉';
 
   const msg = `🎯 <b>${symbol} — ${bias} (${confidence}%)</b>\n\nEntry: <b>${entryNum.toFixed(decimal)}</b>\nSL:    <b>${slNum.toFixed(decimal)}</b>\nTP1:   <b>${tp1Num.toFixed(decimal)}</b>\nTP2:   <b>${tp2Num.toFixed(decimal)}</b>\nTP3:   <b>${tp3Num.toFixed(decimal)}</b>\n\n⏰ ${timeStr} MYT`;
 
@@ -605,7 +622,6 @@ app.get('/api/signal', async (req,res)=>{
       sltp = calculateSLTP(bias, entryNum, d.atr, symbol, d.atrProfile);
     }
 
-    // Signal Alert — hantar bila bias berubah
     if ((bias === 'BUY' || bias === 'SELL') && sltp) {
       const lastState = signalAlertState.get(symbol);
       const lastBias = lastState?.bias || 'NONE';
@@ -614,7 +630,6 @@ app.get('/api/signal', async (req,res)=>{
         await sendSignalAlert(symbol, bias, confidence, entryNum, sltp.sl, sltp.tp1, sltp.tp2, sltp.tp3, decimal);
         signalAlertState.set(symbol, { bias, confidence, time: Date.now() });
 
-        // Auto-reset 2 jam
         const resetTime = Date.now();
         setTimeout(() => {
           const s = signalAlertState.get(symbol);
